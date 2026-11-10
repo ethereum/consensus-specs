@@ -1,3 +1,5 @@
+from eth_consensus_specs.test.helpers.keys import get_request_pubkey
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.withdrawals import set_eth1_withdrawal_credential_with_balance
 
 
@@ -6,12 +8,12 @@ def get_max_consolidation_requests(spec):
 
 
 def prepare_switch_to_compounding_request(spec, state, validator_index, address=None):
-    validator = state.validators[validator_index]
+    validator = get_validators(spec, state)[validator_index]
     if not spec.has_execution_withdrawal_credential(validator):
         set_eth1_withdrawal_credential_with_balance(spec, state, validator_index, address=address)
 
     return spec.ConsolidationRequest(
-        source_address=state.validators[validator_index].withdrawal_credentials[12:],
-        source_pubkey=state.validators[validator_index].pubkey,
-        target_pubkey=state.validators[validator_index].pubkey,
+        source_address=get_validators(spec, state)[validator_index].withdrawal_credentials[12:],
+        source_pubkey=get_request_pubkey(spec, state.validators[validator_index].pubkey),
+        target_pubkey=get_request_pubkey(spec, state.validators[validator_index].pubkey),
     )

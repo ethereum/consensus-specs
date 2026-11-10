@@ -1,5 +1,7 @@
 """Helper functions for builder registry management in tests."""
 
+from eth_consensus_specs.test.helpers.registry import append_builder, get_builders
+
 
 def add_builder_to_registry(
     spec,
@@ -26,11 +28,13 @@ def add_builder_to_registry(
     """
     # Grow registry if needed
     while len(state.builders) <= builder_index:
-        state.builders.append(spec.Builder())
+        append_builder(spec, state, spec.Builder())
 
     # Set builder properties
-    builder = state.builders[builder_index]
-    builder.pubkey = pubkey if pubkey is not None else builder_index.to_bytes(48, "little")
+    state.builders[builder_index].pubkey = (
+        pubkey if pubkey is not None else builder_index.to_bytes(48, "little")
+    )
+    builder = get_builders(spec, state)[builder_index]
     builder.execution_address = (
         execution_address if execution_address is not None else builder_index.to_bytes(20, "little")
     )
@@ -54,4 +58,4 @@ def set_builder_balance(spec, state, builder_index, balance):
     """
     if builder_index >= len(state.builders):
         add_builder_to_registry(spec, state, builder_index)
-    state.builders[builder_index].balance = balance
+    get_builders(spec, state)[builder_index].balance = balance

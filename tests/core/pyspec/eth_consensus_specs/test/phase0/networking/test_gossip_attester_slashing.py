@@ -12,6 +12,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     get_store_from_state,
     run_validate_gossip,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 
 
 @with_all_phases
@@ -490,7 +491,7 @@ def test_gossip_attester_slashing__reject_no_slashable_validators(spec, state):
         attester_slashing.attestation_2.attesting_indices
     )
     for index in indices:
-        state.validators[index].slashed = True
+        get_validators(spec, state)[index].slashed = True
 
     yield "state", state
 

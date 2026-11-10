@@ -3,6 +3,8 @@ from eth_consensus_specs.test.context import (
     with_deneb_and_later,
 )
 from eth_consensus_specs.test.helpers.attestations import (
+    get_aggregate_and_proof,
+    get_aggregator_index,
     get_valid_attestation,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
@@ -20,24 +22,12 @@ from eth_consensus_specs.test.helpers.state import transition_to
 
 
 def create_signed_aggregate_and_proof(spec, state, attestation):
-    committee = spec.get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-
-    aggregator_index = None
-    for index in committee:
-        privkey = privkeys[index]
-        selection_proof = spec.get_slot_signature(state, attestation.data.slot, privkey)
-        if spec.is_aggregator(
-            state, attestation.data.slot, attestation.data.index, selection_proof
-        ):
-            aggregator_index = index
-            break
-
-    if aggregator_index is None:
-        aggregator_index = committee[0]
-
+    aggregator_index = get_aggregator_index(
+        spec, state, attestation.data.slot, attestation.data.index
+    )
     privkey = privkeys[aggregator_index]
-    aggregate_and_proof = spec.get_aggregate_and_proof(
-        state, aggregator_index, attestation, privkey
+    aggregate_and_proof = get_aggregate_and_proof(
+        spec, state, aggregator_index, attestation, privkey
     )
     signature = spec.get_aggregate_and_proof_signature(state, aggregate_and_proof, privkey)
 

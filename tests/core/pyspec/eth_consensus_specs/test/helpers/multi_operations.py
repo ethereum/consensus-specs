@@ -21,6 +21,7 @@ from eth_consensus_specs.test.helpers.forks import (
 )
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 from eth_consensus_specs.test.helpers.proposer_slashings import get_valid_proposer_slashing
+from eth_consensus_specs.test.helpers.registry import get_balances, get_validators
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -64,7 +65,7 @@ def run_slash_and_exit(spec, state, slash_index, exit_index, valid=True):
 def get_random_proposer_slashings(spec, state, rng):
     num_slashings = rng.randrange(1, spec.MAX_PROPOSER_SLASHINGS)
     active_indices = spec.get_active_validator_indices(state, spec.get_current_epoch(state)).copy()
-    indices = [index for index in active_indices if not state.validators[index].slashed]
+    indices = [index for index in active_indices if not get_validators(spec, state)[index].slashed]
     slashings = [
         get_valid_proposer_slashing(
             spec,
@@ -91,7 +92,7 @@ def get_random_attester_slashings(spec, state, rng, slashed_indices=None):
     indices = [
         index
         for index in active_indices
-        if (not state.validators[index].slashed and index not in slashed_indices)
+        if (not get_validators(spec, state)[index].slashed and index not in slashed_indices)
     ]
     sample_upper_bound = 4
     max_slashed_count = num_slashings * sample_upper_bound - 1
@@ -177,7 +178,7 @@ def prepare_state_and_get_random_deposits(spec, state, rng, num_deposits=None):
 
 
 def _eligible_for_exit(spec, state, index):
-    validator = state.validators[index]
+    validator = get_validators(spec, state)[index]
 
     not_slashed = not validator.slashed
 
@@ -235,7 +236,7 @@ def get_random_bls_to_execution_changes(spec, state, rng=None, num_address_chang
         rng = Random(2188)
     bls_indices = [
         index
-        for index, validator in enumerate(state.validators)
+        for index, validator in enumerate(get_validators(spec, state))
         if validator.withdrawal_credentials[:1] == spec.BLS_WITHDRAWAL_PREFIX
     ]
     assert len(bls_indices) > 0
@@ -371,7 +372,7 @@ def get_random_withdrawal_requests(spec, state, rng, num_withdrawals=None):
         address = rng.getrandbits(160).to_bytes(20, "big")
         validator_index = rng.choice(active_validator_indices)
         validator = state.validators[validator_index]
-        validator_balance = state.balances[validator_index]
+        validator_balance = get_balances(spec, state)[validator_index]
         withdrawal_requests.append(
             spec.WithdrawalRequest(
                 source_address=address,

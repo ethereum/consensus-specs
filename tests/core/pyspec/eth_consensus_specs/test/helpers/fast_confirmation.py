@@ -5,6 +5,7 @@ from random import Random
 from eth_utils import encode_hex
 
 from eth_consensus_specs.test.helpers.attestations import (
+    get_max_attestations,
     get_valid_attestations_for_block_at_slot,
 )
 from eth_consensus_specs.test.helpers.attester_slashings import (
@@ -33,6 +34,7 @@ from eth_consensus_specs.test.helpers.genesis import (
     GENESIS_ETH1_BLOCK_HASH,
     get_sample_genesis_execution_payload,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
     transition_to,
@@ -193,10 +195,7 @@ class FCRTest:
         self.recent_attestations = []
 
     def max_attestations(self):
-        if is_post_electra(self.spec):
-            return self.spec.MAX_ATTESTATIONS_ELECTRA
-        else:
-            return self.spec.MAX_ATTESTATIONS
+        return get_max_attestations(self.spec)
 
     def get_parent_payload(self, parent_root):
         assert is_post_bellatrix(self.spec)
@@ -499,7 +498,9 @@ class FCRTest:
         if slashing_indices is None:
             assert slashing_percentage is not None
             slashing_count = len(state.validators) * slashing_percentage // 100
-            unslashed_indices = [idx for idx, val in enumerate(state.validators) if not val.slashed]
+            unslashed_indices = [
+                idx for idx, val in enumerate(get_validators(self.spec, state)) if not val.slashed
+            ]
             self.rng.shuffle(unslashed_indices)
             slashing_indices = unslashed_indices[:slashing_count]
         else:

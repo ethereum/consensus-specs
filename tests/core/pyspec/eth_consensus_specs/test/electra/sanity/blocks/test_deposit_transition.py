@@ -15,6 +15,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
     compute_el_block_hash_for_block,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
+from eth_consensus_specs.test.helpers.registry import get_balances, get_validators
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -46,11 +47,11 @@ def run_deposit_transition_block(spec, state, block, top_up_keys=None, valid=Tru
         # Check that deposits are applied
         for i, deposit in enumerate(block.body.deposits):
             # Validator is created with 0 balance
-            validator = state.validators[pre_validators_len + i]
-            assert validator.pubkey == deposit.data.pubkey
+            validator = get_validators(spec, state)[pre_validators_len + i]
+            assert state.validators[pre_validators_len + i].pubkey == deposit.data.pubkey
             assert validator.withdrawal_credentials == deposit.data.withdrawal_credentials
             assert validator.effective_balance == spec.Gwei(0)
-            assert state.balances[pre_validators_len + i] == spec.Gwei(0)
+            assert get_balances(spec, state)[pre_validators_len + i] == spec.Gwei(0)
 
             # The corresponding pending deposit is created
             pending_deposit = state.pending_deposits[pre_pending_deposits_len + i]

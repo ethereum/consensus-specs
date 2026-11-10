@@ -11,6 +11,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.churn import get_validator_exit_count_per_epoch
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.keys import pubkey_to_privkey
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.voluntary_exits import (
     run_voluntary_exit_processing,
     sign_voluntary_exit,
@@ -36,9 +37,9 @@ def test_basic(spec, state):
 
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit)
 
-    assert state.validators[validator_index].exit_epoch == spec.compute_activation_exit_epoch(
-        current_epoch
-    )
+    assert get_validators(spec, state)[
+        validator_index
+    ].exit_epoch == spec.compute_activation_exit_epoch(current_epoch)
 
 
 @with_all_phases
@@ -105,7 +106,8 @@ def run_test_success_exit_queue(spec, state):
 
     for index in initial_indices:
         assert (
-            state.validators[validator_index].exit_epoch == state.validators[index].exit_epoch + 1
+            get_validators(spec, state)[validator_index].exit_epoch
+            == get_validators(spec, state)[index].exit_epoch + 1
         )
 
 
@@ -151,13 +153,13 @@ def test_default_exit_epoch_subsequent_exit(spec, state):
 
     # Exit one validator prior to this new one
     exited_index = spec.get_active_validator_indices(state, current_epoch)[-1]
-    state.validators[exited_index].exit_epoch = current_epoch - 1
+    get_validators(spec, state)[exited_index].exit_epoch = current_epoch - 1
 
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit)
 
-    assert state.validators[validator_index].exit_epoch == spec.compute_activation_exit_epoch(
-        current_epoch
-    )
+    assert get_validators(spec, state)[
+        validator_index
+    ].exit_epoch == spec.compute_activation_exit_epoch(current_epoch)
 
 
 @with_all_phases
@@ -205,7 +207,7 @@ def test_invalid_validator_not_active(spec, state):
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
     privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
 
-    state.validators[validator_index].activation_epoch = spec.FAR_FUTURE_EPOCH
+    get_validators(spec, state)[validator_index].activation_epoch = spec.FAR_FUTURE_EPOCH
 
     signed_voluntary_exit = sign_voluntary_exit(
         spec,
@@ -228,7 +230,7 @@ def test_invalid_validator_already_exited(spec, state):
     privkey = pubkey_to_privkey[state.validators[validator_index].pubkey]
 
     # but validator already has exited
-    state.validators[validator_index].exit_epoch = current_epoch + 2
+    get_validators(spec, state)[validator_index].exit_epoch = current_epoch + 2
 
     signed_voluntary_exit = sign_voluntary_exit(
         spec,
@@ -255,7 +257,7 @@ def test_invalid_validator_not_active_long_enough(spec, state):
     )
 
     assert (
-        current_epoch - state.validators[validator_index].activation_epoch
+        current_epoch - get_validators(spec, state)[validator_index].activation_epoch
         < spec.config.SHARD_COMMITTEE_PERIOD
     )
 

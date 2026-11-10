@@ -4,13 +4,15 @@ from collections import defaultdict
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
-    with_altair_and_later,
+    with_all_phases_from_except,
     with_presets,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block
 from eth_consensus_specs.test.helpers.constants import (
+    ALTAIR,
     MAINNET,
     MINIMAL,
+    PQ,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkey_to_privkey, pubkeys
 from eth_consensus_specs.test.helpers.state import transition_to
@@ -28,7 +30,7 @@ def ensure_assignments_in_sync_committee(spec, state, epoch, sync_committee, act
         assert spec.is_assigned_to_sync_committee(state, epoch, validator_index)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_is_assigned_to_sync_committee(spec, state):
     epoch = spec.get_current_epoch(state)
@@ -83,7 +85,7 @@ def _get_sync_committee_signature(
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @with_presets([MINIMAL], reason="too slow")
 @spec_state_test
 @always_bls
@@ -126,7 +128,7 @@ def test_process_sync_committee_contributions(spec, state):
     spec.process_block(state, block)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_get_sync_committee_message(spec, state):
@@ -165,7 +167,7 @@ def _get_expected_subnets_by_pubkey(sync_committee_members):
     return expected_subnets_by_pubkey
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @with_presets([MINIMAL], reason="too slow")
 @spec_state_test
 def test_compute_subnets_for_sync_committee(state, spec):
@@ -195,7 +197,7 @@ def test_compute_subnets_for_sync_committee(state, spec):
         assert subnets == expected_subnets
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @with_presets([MINIMAL], reason="too slow")
 @spec_state_test
 def test_compute_subnets_for_sync_committee_slot_period_boundary(state, spec):
@@ -225,7 +227,7 @@ def test_compute_subnets_for_sync_committee_slot_period_boundary(state, spec):
         assert subnets == expected_subnets
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_get_sync_committee_selection_proof(spec, state):
@@ -251,7 +253,7 @@ def test_get_sync_committee_selection_proof(spec, state):
     assert bls.Verify(pubkey, signing_root, sync_committee_selection_proof)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MAINNET], reason="to test against the mainnet SYNC_COMMITTEE_SIZE")
 def test_is_sync_committee_aggregator(spec, state):
@@ -267,7 +269,7 @@ def test_is_sync_committee_aggregator(spec, state):
     assert target_count * 0.9 <= is_aggregator_count <= target_count * 1.1
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_get_contribution_and_proof(spec, state):
     aggregator_index = 10
@@ -298,7 +300,7 @@ def test_get_contribution_and_proof(spec, state):
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_get_contribution_and_proof_signature(spec, state):

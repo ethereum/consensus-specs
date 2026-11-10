@@ -11,6 +11,7 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.keys import pubkey_to_privkey
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.voluntary_exits import (
     run_voluntary_exit_processing,
     sign_voluntary_exit,
@@ -29,7 +30,7 @@ def run_exit_at_churn_boundary(spec, state):
     exit_churn = spec.get_exit_churn_limit(state)
 
     validator_index = spec.get_active_validator_indices(state, current_epoch)[0]
-    to_exit = state.validators[validator_index].effective_balance
+    to_exit = get_validators(spec, state)[validator_index].effective_balance
 
     earliest_exit_epoch = spec.compute_activation_exit_epoch(current_epoch)
     additional_epochs = spec.Epoch((to_exit - 1) // exit_churn)
@@ -48,8 +49,11 @@ def run_exit_at_churn_boundary(spec, state):
 
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit)
 
-    assert state.validators[validator_index].exit_epoch == expected_exit_epoch
-    assert state.validators[validator_index].withdrawable_epoch == expected_withdrawable_epoch
+    assert get_validators(spec, state)[validator_index].exit_epoch == expected_exit_epoch
+    assert (
+        get_validators(spec, state)[validator_index].withdrawable_epoch
+        == expected_withdrawable_epoch
+    )
     assert state.exit_balance_to_consume == spec.Gwei(additional_epochs + 1) * exit_churn - to_exit
     assert state.earliest_exit_epoch == expected_exit_epoch
 

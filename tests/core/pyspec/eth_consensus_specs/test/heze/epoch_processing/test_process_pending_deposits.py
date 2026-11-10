@@ -14,6 +14,7 @@ from eth_consensus_specs.test.helpers.deposits import (
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import pubkeys
+from eth_consensus_specs.test.helpers.registry import get_balances
 
 
 @with_heze_and_later
@@ -110,7 +111,7 @@ def test_bls_withdrawal_credentials_followed_by_eth1_deposit(spec, state):
 
     assert len(state.validators) == validator_index + 1
     assert state.validators[validator_index].withdrawal_credentials == eth1_credentials
-    assert state.balances[validator_index] == amount
+    assert get_balances(spec, state)[validator_index] == amount
     assert state.pending_deposits == spec.PendingDeposits()
 
 
@@ -121,7 +122,7 @@ def test_bls_withdrawal_credentials_followed_by_eth1_deposit(spec, state):
 def test_bls_withdrawal_credentials_queued_before_heze(spec, phases, state):
     pre_spec = phases[GLOAS]
     pre_state = create_genesis_state(
-        pre_spec, list(state.balances), pre_spec.MIN_ACTIVATION_BALANCE
+        pre_spec, list(get_balances(spec, state)), pre_spec.MIN_ACTIVATION_BALANCE
     )
     validator_index = len(pre_state.validators)
     withdrawal_credentials = (
@@ -140,5 +141,5 @@ def test_bls_withdrawal_credentials_queued_before_heze(spec, phases, state):
     yield from run_epoch_processing_with(spec, state, "process_pending_deposits")
 
     assert len(state.validators) == validator_index
-    assert len(state.balances) == validator_index
+    assert len(get_balances(spec, state)) == validator_index
     assert state.pending_deposits == spec.PendingDeposits()

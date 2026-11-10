@@ -19,6 +19,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     tick_store_to_slot,
 )
 from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
+from eth_consensus_specs.test.helpers.signatures import get_unsigned_signature
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -64,7 +65,7 @@ def _build_invalid_envelope(spec, state, block_root, signed_block, **overrides):
             privkey = builder_privkeys[envelope.builder_index]
         signature = spec.get_execution_payload_envelope_signature(state, envelope, privkey)
     else:
-        signature = spec.BLSSignature()
+        signature = get_unsigned_signature(spec)
 
     return spec.SignedExecutionPayloadEnvelope(message=envelope, signature=signature)
 
@@ -254,7 +255,6 @@ def test_on_execution_payload_envelope_wrong_execution_requests_root(spec, state
             )
         ),
         withdrawals=spec.WithdrawalRequests(),
-        consolidations=spec.ConsolidationRequests(),
     )
 
     envelope = _build_invalid_envelope(

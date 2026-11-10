@@ -10,6 +10,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     run_validate_gossip,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     next_epoch_via_block,
 )
@@ -220,7 +221,7 @@ def test_gossip_voluntary_exit__reject_validator_not_active(spec, state):
 
     # Pick a validator and make it inactive by setting activation_epoch to far future
     validator_index = 0
-    state.validators[validator_index].activation_epoch = spec.FAR_FUTURE_EPOCH
+    get_validators(spec, state)[validator_index].activation_epoch = spec.FAR_FUTURE_EPOCH
     yield "state", state
 
     store, signed_anchor = get_store_from_state(spec, state)
@@ -272,7 +273,7 @@ def test_gossip_voluntary_exit__ignore_already_initiated_exit(spec, state):
 
     # Pick a validator and set their exit_epoch (simulating already initiated exit)
     validator_index = 0
-    state.validators[validator_index].exit_epoch = spec.get_current_epoch(state) + 10
+    get_validators(spec, state)[validator_index].exit_epoch = spec.get_current_epoch(state) + 10
     yield "state", state
 
     store, signed_anchor = get_store_from_state(spec, state)

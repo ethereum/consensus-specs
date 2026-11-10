@@ -6,6 +6,7 @@ from eth_consensus_specs.test.context import (
     HEZE,
     spec_state_test,
     spec_state_test_with_matching_config,
+    with_all_phases_from_except,
     with_all_phases_from_to,
     with_gloas_and_later,
     with_phases,
@@ -27,6 +28,7 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth_consensus_specs.test.helpers.bls_to_execution_changes import get_signed_address_change
+from eth_consensus_specs.test.helpers.constants import PQ
 from eth_consensus_specs.test.helpers.execution_requests import (
     get_non_empty_execution_requests,
 )
@@ -38,6 +40,7 @@ from eth_consensus_specs.test.helpers.payload_attestation import get_random_payl
 from eth_consensus_specs.test.helpers.proposer_slashings import (
     get_valid_proposer_slashings,
 )
+from eth_consensus_specs.test.helpers.registry import get_builders, get_validators
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
     next_epoch_with_full_participation,
@@ -385,7 +388,7 @@ def test_missed_payload_next_block_without_withdrawals_unsatisfying_payload(spec
     assert not _attempt_payload_with_withdrawals(spec, state, empty_withdrawals)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_invalid_payload_attestation_wrong_beacon_block_root(spec, state):
     """
@@ -470,7 +473,7 @@ def test_invalid_too_many_proposer_slashings(spec, state):
     yield "post", None
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_invalid_payload_attestation_too_old_slot(spec, state):
     """
@@ -586,7 +589,7 @@ def test_builder_payment_removed_when_proposer_slashes_itself(spec, state):
         message=bid,
         signature=signature,
     )
-    state.builders[builder_index].balance = spec.MIN_DEPOSIT_AMOUNT + value
+    get_builders(spec, state)[builder_index].balance = spec.MIN_DEPOSIT_AMOUNT + value
 
     attester_slashing = get_valid_attester_slashing_by_indices(
         spec, state, [block.proposer_index], signed_1=True, signed_2=True
@@ -600,7 +603,7 @@ def test_builder_payment_removed_when_proposer_slashes_itself(spec, state):
     yield "blocks", [signed_block]
     yield "post", state
 
-    assert state.validators[block.proposer_index].slashed
+    assert get_validators(spec, state)[block.proposer_index].slashed
     payment_index = spec.SLOTS_PER_EPOCH + block.slot % spec.SLOTS_PER_EPOCH
     assert state.builder_pending_payments[payment_index] == spec.BuilderPendingPayment()
 
@@ -709,7 +712,7 @@ def test_invalid_too_many_voluntary_exits(spec, state):
     yield "post", None
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_max_bls_to_execution_changes(spec, state):
     num_address_changes = spec.MAX_BLS_TO_EXECUTION_CHANGES
@@ -728,7 +731,7 @@ def test_max_bls_to_execution_changes(spec, state):
     yield "post", state
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_invalid_too_many_bls_to_execution_changes(spec, state):
     num_address_changes = spec.MAX_BLS_TO_EXECUTION_CHANGES + 1
@@ -747,7 +750,7 @@ def test_invalid_too_many_bls_to_execution_changes(spec, state):
     yield "post", None
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_max_payload_attestations(spec, state):
     rng = Random(3000)
@@ -769,7 +772,7 @@ def test_max_payload_attestations(spec, state):
     yield "post", state
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_invalid_too_many_payload_attestations(spec, state):
     rng = Random(3000)
@@ -791,7 +794,7 @@ def test_invalid_too_many_payload_attestations(spec, state):
     yield "post", None
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 @always_bls
 def test_invalid_payload_attestation_invalid_signature(spec, state):
@@ -863,7 +866,7 @@ def test_builder_payment_after_missed_epochs(spec, state):
     )
 
     # Ensure builder can cover the bid
-    state.builders[builder_index].balance = spec.MIN_DEPOSIT_AMOUNT + value
+    get_builders(spec, state)[builder_index].balance = spec.MIN_DEPOSIT_AMOUNT + value
 
     yield "pre", state
 
@@ -877,7 +880,7 @@ def test_builder_payment_after_missed_epochs(spec, state):
     assert payment.withdrawal.builder_index == builder_index
     assert payment.weight == 0
 
-    pre_builder_balance = state.builders[builder_index].balance
+    pre_builder_balance = get_builders(spec, state)[builder_index].balance
 
     # Build Block 2 with 2+ epochs of missed slots. During the slot advancement,
     # process_builder_pending_payments runs at each epoch boundary:
@@ -900,7 +903,7 @@ def test_builder_payment_after_missed_epochs(spec, state):
     assert state.execution_payload_availability[parent_slot_index]
 
     # Verify the builder was charged — balance decreased by the bid value
-    assert state.builders[builder_index].balance == pre_builder_balance - value
+    assert get_builders(spec, state)[builder_index].balance == pre_builder_balance - value
 
 
 @with_gloas_and_later
@@ -1040,20 +1043,22 @@ def test_proposer_lookahead_excludes_slashed_validators(spec, state):
 
     # Slash some validators
     for validator_index in range(len(state.validators) // 2):
-        state.validators[validator_index].slashed = True
+        get_validators(spec, state)[validator_index].slashed = True
 
     # Fulu includes slashed validators
     proposers_in_fulu = spec.fulu.get_beacon_proposer_indices(state, new_half_epoch)
-    assert any(state.validators[v].slashed for v in proposers_in_fulu)
+    assert any(get_validators(spec, state)[v].slashed for v in proposers_in_fulu)
 
     # Gloas excludes slashed validators
     proposers_in_gloas = spec.get_beacon_proposer_indices(state, new_half_epoch)
-    assert not any(state.validators[v].slashed for v in proposers_in_gloas)
+    assert not any(get_validators(spec, state)[v].slashed for v in proposers_in_gloas)
 
     # Cross into the next epoch with a block, picking a slot whose proposer is
     # not one of the validators we slashed so the block is valid
     epoch_n1_proposers = list(state.proposer_lookahead[spec.SLOTS_PER_EPOCH :])
-    offset = next(i for i, p in enumerate(epoch_n1_proposers) if not state.validators[p].slashed)
+    offset = next(
+        i for i, p in enumerate(epoch_n1_proposers) if not get_validators(spec, state)[p].slashed
+    )
     block_slot = spec.compute_start_slot_at_epoch(current_epoch + 1) + offset
 
     yield "pre", state
@@ -1132,5 +1137,5 @@ def test_builder_payment_weight_no_double_counting_target_equivocation(spec, sta
     # Credited once, not once per flag set.
     assert (
         state.builder_pending_payments[payment_index].weight
-        == state.validators[attester].effective_balance
+        == get_validators(spec, state)[attester].effective_balance
     )

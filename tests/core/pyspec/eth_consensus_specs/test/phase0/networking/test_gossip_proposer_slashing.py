@@ -12,6 +12,7 @@ from eth_consensus_specs.test.helpers.gossip import (
 from eth_consensus_specs.test.helpers.proposer_slashings import (
     get_valid_proposer_slashing,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 
 
 @with_all_phases
@@ -282,7 +283,7 @@ def test_gossip_proposer_slashing__reject_proposer_not_slashable(spec, state):
     proposer_index = proposer_slashing.signed_header_1.message.proposer_index
 
     # Make the proposer not slashable by setting slashed=True
-    state.validators[proposer_index].slashed = True
+    get_validators(spec, state)[proposer_index].slashed = True
 
     yield "state", state
 

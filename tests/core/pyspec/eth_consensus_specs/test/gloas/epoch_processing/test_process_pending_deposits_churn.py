@@ -12,6 +12,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.deposits import prepare_pending_deposit
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
+from eth_consensus_specs.test.helpers.registry import get_balances
 
 
 def run_process_pending_deposits(spec, state):
@@ -31,11 +32,11 @@ def run_test_pending_deposits_activation_churn(spec, state):
 
     amount = activation_churn
     state.pending_deposits.append(prepare_pending_deposit(spec, index, amount))
-    pre_balance = state.balances[index]
+    pre_balance = get_balances(spec, state)[index]
 
     yield from run_process_pending_deposits(spec, state)
 
-    assert state.balances[index] == pre_balance + amount
+    assert get_balances(spec, state)[index] == pre_balance + amount
     assert state.deposit_balance_to_consume == 0
     assert state.pending_deposits == spec.PendingDeposits()
 
@@ -104,10 +105,10 @@ def test_deposit_above_activation_churn_not_processed(spec, state):
     activation_churn = spec.get_activation_churn_limit(state)
     amount = activation_churn + 1
     state.pending_deposits.append(prepare_pending_deposit(spec, index, amount))
-    pre_balance = state.balances[index]
+    pre_balance = get_balances(spec, state)[index]
 
     yield from run_process_pending_deposits(spec, state)
 
-    assert state.balances[index] == pre_balance
+    assert get_balances(spec, state)[index] == pre_balance
     assert state.deposit_balance_to_consume == activation_churn
     assert list(state.pending_deposits) == [prepare_pending_deposit(spec, index, amount)]

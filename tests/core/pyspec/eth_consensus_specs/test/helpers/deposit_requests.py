@@ -3,6 +3,7 @@ import pytest
 from eth_consensus_specs.test.helpers.deposits import build_deposit_data
 from eth_consensus_specs.test.helpers.forks import is_post_heze
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
+from eth_consensus_specs.test.helpers.registry import get_balances
 from eth_consensus_specs.test.helpers.state import next_epoch
 
 
@@ -199,7 +200,7 @@ def assert_process_deposit_request(
     )
 
     # INVARIANT: Balances unchanged (balance applied during epoch processing)
-    assert list(state.balances) == list(pre_state.balances), (
+    assert list(get_balances(spec, state)) == list(get_balances(spec, pre_state)), (
         "Balances should not change during deposit request processing"
     )
 

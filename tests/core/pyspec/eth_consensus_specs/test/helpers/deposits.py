@@ -11,13 +11,19 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_electra,
     is_post_fulu,
     is_post_heze,
+    is_post_pq,
 )
 from eth_consensus_specs.test.helpers.keys import (
     builder_pubkey_to_privkey,
     builder_pubkeys,
+    get_request_pubkey,
+    get_vrf_root,
     privkeys,
+    pubkey_to_privkey,
     pubkeys,
+    xmss_builder_pubkeys,
 )
+from eth_consensus_specs.test.helpers.registry import get_balances, get_validators
 from eth_consensus_specs.test.helpers.state import get_balance
 from eth_consensus_specs.utils import bls
 from eth_consensus_specs.utils.merkle_minimal import calc_merkle_tree_from_leaves, get_merkle_proof
@@ -40,18 +46,24 @@ def mock_deposit(spec, state, index):
     """
     Mock validator at ``index`` as having just made a deposit
     """
-    assert spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
-    state.validators[index].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
-    state.validators[index].activation_epoch = spec.FAR_FUTURE_EPOCH
-    state.validators[index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
+    assert spec.is_active_validator(
+        get_validators(spec, state)[index], spec.get_current_epoch(state)
+    )
+    get_validators(spec, state)[index].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
+    get_validators(spec, state)[index].activation_epoch = spec.FAR_FUTURE_EPOCH
+    get_validators(spec, state)[index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
     if is_post_altair(spec):
         state.inactivity_scores[index] = 0
-    assert not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
+    assert not spec.is_active_validator(
+        get_validators(spec, state)[index], spec.get_current_epoch(state)
+    )
 
 
 def build_deposit_data(
     spec, pubkey, privkey, amount, withdrawal_credentials, fork_version=None, signed=False
 ):
+    if is_post_pq(spec):
+        return build_pq_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials)
     deposit_data = spec.DepositData(
         pubkey=pubkey,
         withdrawal_credentials=withdrawal_credentials,
@@ -60,6 +72,32 @@ def build_deposit_data(
     if signed:
         sign_deposit_data(spec, deposit_data, privkey, fork_version)
     return deposit_data
+
+
+def build_pq_deposit_data(spec, pubkey, privkey, amount, withdrawal_credentials):
+    """
+    The deposit data of a PQ deposit, which names the XMSS public key of the
+    validator that ``pubkey`` belongs to and carries its VRF root in place of a
+    signature.
+    """
+    privkey = pubkey_to_privkey.get(pubkey, privkey)
+    vrf_root = get_vrf_root(privkeys.index(privkey)) if privkey in privkeys else bytes(32)
+    return spec.DepositData(
+        pubkey=get_request_pubkey(spec, pubkey),
+        withdrawal_credentials=withdrawal_credentials,
+        amount=amount,
+        signature=spec.Bytes96(vrf_root + bytes(64)),
+    )
+
+
+def get_placeholder_deposit_signature(spec):
+    """
+    The signature field of a pending deposit that carries no signature, such
+    as the one ``queue_excess_active_balance`` queues.
+    """
+    if is_post_pq(spec):
+        return spec.Bytes96()
+    return spec.bls.G2_POINT_AT_INFINITY
 
 
 def sign_deposit_data(spec, deposit_data, privkey, fork_version=None):
@@ -281,7 +319,7 @@ def prepare_builder_deposit_request(
     if pubkey is None:
         # Find a pubkey that doesn't exist in state.builders
         existing_pubkeys = {builder.pubkey for builder in state.builders}
-        for pk in builder_pubkeys:
+        for pk in xmss_builder_pubkeys if is_post_pq(spec) else builder_pubkeys:
             if pk not in existing_pubkeys:
                 pubkey = pk
                 break
@@ -299,7 +337,7 @@ def prepare_builder_deposit_request(
         )
 
     request = spec.BuilderDepositRequest(
-        pubkey=pubkey,
+        pubkey=get_request_pubkey(spec, pubkey),
         withdrawal_credentials=withdrawal_credentials,
         amount=amount,
     )
@@ -374,8 +412,8 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
     # is a top-up
     if validator_index < pre_validator_count:
         is_top_up = True
-        pre_balance = get_balance(state, validator_index)
-        pre_effective_balance = state.validators[validator_index].effective_balance
+        pre_balance = get_balance(spec, state, validator_index)
+        pre_effective_balance = get_validators(spec, state)[validator_index].effective_balance
 
     if is_post_electra(spec):
         pre_pending_deposits_count = len(state.pending_deposits)
@@ -394,33 +432,42 @@ def run_deposit_processing(spec, state, deposit, validator_index, valid=True, ef
 
     if not effective or not bls.KeyValidate(deposit.data.pubkey):
         assert len(state.validators) == pre_validator_count
-        assert len(state.balances) == pre_validator_count
+        assert len(get_balances(spec, state)) == pre_validator_count
         if is_top_up:
-            assert get_balance(state, validator_index) == pre_balance
+            assert get_balance(spec, state, validator_index) == pre_balance
         if is_post_electra(spec):
             assert len(state.pending_deposits) == pre_pending_deposits_count
     else:
         if is_top_up:
             # Top-ups don't add validators
             assert len(state.validators) == pre_validator_count
-            assert len(state.balances) == pre_validator_count
+            assert len(get_balances(spec, state)) == pre_validator_count
         else:
             # new validator is added
             assert len(state.validators) == pre_validator_count + 1
-            assert len(state.balances) == pre_validator_count + 1
+            assert len(get_balances(spec, state)) == pre_validator_count + 1
         if not is_post_electra(spec):
             if is_top_up:
                 # Top-ups do not change effective balance
-                assert state.validators[validator_index].effective_balance == pre_effective_balance
+                assert (
+                    get_validators(spec, state)[validator_index].effective_balance
+                    == pre_effective_balance
+                )
             else:
                 effective_balance = min(spec.MAX_EFFECTIVE_BALANCE, deposit.data.amount)
                 effective_balance -= effective_balance % spec.EFFECTIVE_BALANCE_INCREMENT
-                assert state.validators[validator_index].effective_balance == effective_balance
-            assert get_balance(state, validator_index) == pre_balance + deposit.data.amount
+                assert (
+                    get_validators(spec, state)[validator_index].effective_balance
+                    == effective_balance
+                )
+            assert get_balance(spec, state, validator_index) == pre_balance + deposit.data.amount
         else:
             # no balance or effective balance changes on deposit processing post electra
-            assert get_balance(state, validator_index) == pre_balance
-            assert state.validators[validator_index].effective_balance == pre_effective_balance
+            assert get_balance(spec, state, validator_index) == pre_balance
+            assert (
+                get_validators(spec, state)[validator_index].effective_balance
+                == pre_effective_balance
+            )
             # new correct balance deposit queued up
             assert len(state.pending_deposits) == pre_pending_deposits_count + 1
             assert state.pending_deposits[pre_pending_deposits_count].pubkey == deposit.data.pubkey
@@ -484,8 +531,8 @@ def run_deposit_request_processing(spec, state, deposit_request, validator_index
     # is a top-up
     if validator_index < pre_validator_count:
         is_top_up = True
-        pre_balance = get_balance(state, validator_index)
-        pre_effective_balance = state.validators[validator_index].effective_balance
+        pre_balance = get_balance(spec, state, validator_index)
+        pre_effective_balance = get_validators(spec, state)[validator_index].effective_balance
 
     yield "pre", state
     yield "deposit_request", deposit_request
@@ -496,11 +543,13 @@ def run_deposit_request_processing(spec, state, deposit_request, validator_index
 
     # New validator is only created after the pending_deposits processing
     assert len(state.validators) == pre_validator_count
-    assert len(state.balances) == pre_validator_count
+    assert len(get_balances(spec, state)) == pre_validator_count
 
     if is_top_up:
-        assert state.validators[validator_index].effective_balance == pre_effective_balance
-        assert state.balances[validator_index] == pre_balance
+        assert (
+            get_validators(spec, state)[validator_index].effective_balance == pre_effective_balance
+        )
+        assert get_balances(spec, state)[validator_index] == pre_balance
 
     pending_deposit = spec.PendingDeposit(
         pubkey=deposit_request.pubkey,
@@ -543,8 +592,8 @@ def run_pending_deposit_applying(spec, state, pending_deposit, validator_index, 
     # is a top-up
     if validator_index < pre_validator_count:
         is_top_up = True
-        pre_balance = get_balance(state, validator_index)
-        pre_effective_balance = state.validators[validator_index].effective_balance
+        pre_balance = get_balance(spec, state, validator_index)
+        pre_effective_balance = get_validators(spec, state)[validator_index].effective_balance
 
     run_process_slots_up_to_epoch_boundary(spec, state)
     yield "pre_epoch", state
@@ -562,23 +611,30 @@ def run_pending_deposit_applying(spec, state, pending_deposit, validator_index, 
         if is_top_up:
             # Top-ups don't add validators
             assert len(state.validators) == pre_validator_count
-            assert len(state.balances) == pre_validator_count
+            assert len(get_balances(spec, state)) == pre_validator_count
             # Top-ups do not change effective balance
-            assert state.validators[validator_index].effective_balance == pre_effective_balance
+            assert (
+                get_validators(spec, state)[validator_index].effective_balance
+                == pre_effective_balance
+            )
         else:
             # new validator is added
             assert len(state.validators) == pre_validator_count + 1
-            assert len(state.balances) == pre_validator_count + 1
+            assert len(get_balances(spec, state)) == pre_validator_count + 1
             # effective balance is set correctly
-            max_effective_balace = spec.get_max_effective_balance(state.validators[validator_index])
+            max_effective_balace = spec.get_max_effective_balance(
+                get_validators(spec, state)[validator_index]
+            )
             effective_balance = min(max_effective_balace, pending_deposit.amount)
             effective_balance -= effective_balance % spec.EFFECTIVE_BALANCE_INCREMENT
-            assert state.validators[validator_index].effective_balance == effective_balance
-        assert get_balance(state, validator_index) == pre_balance + pending_deposit.amount
+            assert (
+                get_validators(spec, state)[validator_index].effective_balance == effective_balance
+            )
+        assert get_balance(spec, state, validator_index) == pre_balance + pending_deposit.amount
     else:
         assert len(state.validators) == pre_validator_count
-        assert len(state.balances) == pre_validator_count
+        assert len(get_balances(spec, state)) == pre_validator_count
         if is_top_up:
-            assert get_balance(state, validator_index) == pre_balance
+            assert get_balance(spec, state, validator_index) == pre_balance
 
     assert len(state.pending_deposits) == 0

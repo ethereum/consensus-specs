@@ -15,6 +15,7 @@ from eth_consensus_specs.test.helpers.random import (
     set_some_new_deposits,
     slash_random_validators,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
 )
@@ -59,7 +60,7 @@ def has_enough_for_reward(spec, state, index):
     but a zero base reward.
     """
     return (
-        state.validators[index].effective_balance * spec.BASE_REWARD_FACTOR
+        get_validators(spec, state)[index].effective_balance * spec.BASE_REWARD_FACTOR
         > spec.integer_squareroot(spec.get_total_active_balance(state))
         // spec.BASE_REWARDS_PER_EPOCH
     )
@@ -74,12 +75,13 @@ def has_enough_for_leak_penalty(spec, state, index):
     """
 
     if is_post_altair(spec):
-        return state.validators[index].effective_balance * state.inactivity_scores[
+        return get_validators(spec, state)[index].effective_balance * state.inactivity_scores[
             index
         ] > spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
     else:
         return (
-            state.validators[index].effective_balance * spec.Uint64(spec.get_finality_delay(state))
+            get_validators(spec, state)[index].effective_balance
+            * spec.Uint64(spec.get_finality_delay(state))
             > spec.INACTIVITY_PENALTY_QUOTIENT
         )
 
@@ -171,7 +173,7 @@ def run_attestation_component_deltas(spec, state, component_delta_fn, matching_a
             assert penalties[index] == 0
             continue
 
-        validator = state.validators[index]
+        validator = get_validators(spec, state)[index]
         enough_for_reward = has_enough_for_reward(spec, state, index)
         if index in matching_indices and not validator.slashed:
             if is_post_altair(spec):
@@ -315,7 +317,8 @@ def run_get_inactivity_penalty_deltas(spec, state):
         else:
             # copied from spec:
             penalty_numerator = (
-                state.validators[index].effective_balance * state.inactivity_scores[index]
+                get_validators(spec, state)[index].effective_balance
+                * state.inactivity_scores[index]
             )
             penalty_denominator = (
                 spec.config.INACTIVITY_SCORE_BIAS * get_inactivity_penalty_quotient(spec)
@@ -459,7 +462,7 @@ def run_test_some_very_low_effective_balances_that_attested(spec, state):
     # Set some balances to be very low (including 0)
     assert len(state.validators) >= 5
     for i, index in enumerate(range(5)):
-        state.validators[index].effective_balance = i
+        get_validators(spec, state)[index].effective_balance = i
 
     yield from run_deltas(spec, state)
 
@@ -476,10 +479,10 @@ def run_test_some_very_low_effective_balances_that_did_not_attest(spec, state):
         # Set removed indices effective balance to very low amount
         indices = spec.get_unslashed_attesting_indices(state, [attestation])
         for i, index in enumerate(indices):
-            state.validators[index].effective_balance = i
+            get_validators(spec, state)[index].effective_balance = i
     else:
         index = 0
-        state.validators[index].effective_balance = 1
+        get_validators(spec, state)[index].effective_balance = 1
         state.previous_epoch_participation[index] = spec.ParticipationFlags(0b0000_0000)
 
     yield from run_deltas(spec, state)
@@ -582,7 +585,7 @@ def run_test_all_balances_too_low_for_reward(spec, state):
     cached_prepare_state_with_attestations(spec, state)
 
     for index in range(len(state.validators)):
-        state.validators[index].effective_balance = 10
+        get_validators(spec, state)[index].effective_balance = 10
 
     yield from run_deltas(spec, state)
 

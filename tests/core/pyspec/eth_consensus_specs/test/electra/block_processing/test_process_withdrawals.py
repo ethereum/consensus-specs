@@ -8,6 +8,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
+from eth_consensus_specs.test.helpers.registry import get_balances, get_validators
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
 )
@@ -125,7 +126,7 @@ def test_pending_withdrawals_one_skipped_one_effective(spec, state):
     pending_withdrawal_1 = prepare_pending_withdrawal(spec, state, validator_index_1)
 
     # If validator doesn't have an excess balance pending withdrawal is skipped
-    state.balances[validator_index_0] = spec.MIN_ACTIVATION_BALANCE
+    get_balances(spec, state)[validator_index_0] = spec.MIN_ACTIVATION_BALANCE
 
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -265,7 +266,7 @@ def test_pending_withdrawals_low_effective_balance(spec, state):
     validator_index = len(state.validators) // 2
 
     pending_withdrawal = prepare_pending_withdrawal(spec, state, validator_index)
-    state.validators[pending_withdrawal.validator_index].effective_balance = (
+    get_validators(spec, state)[pending_withdrawal.validator_index].effective_balance = (
         spec.MIN_ACTIVATION_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
     )
 
@@ -297,7 +298,7 @@ def test_full_pending_withdrawals_but_first_skipped_low_effective_balance(spec, 
     )
 
     # For the first pending withdrawal, set the validator to insufficient effective balance
-    state.validators[0].effective_balance = (
+    get_validators(spec, state)[0].effective_balance = (
         spec.MIN_ACTIVATION_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
     )
 
@@ -324,7 +325,7 @@ def test_pending_withdrawals_no_excess_balance(spec, state):
     validator_index = len(state.validators) // 2
 
     pending_withdrawal = prepare_pending_withdrawal(spec, state, validator_index)
-    state.balances[pending_withdrawal.validator_index] = spec.MIN_ACTIVATION_BALANCE
+    get_balances(spec, state)[pending_withdrawal.validator_index] = spec.MIN_ACTIVATION_BALANCE
 
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -354,7 +355,7 @@ def test_full_pending_withdrawals_but_first_skipped_no_excess_balance(spec, stat
     )
 
     # For the first pending withdrawal, set the validator to have no excess balance
-    state.balances[0] = spec.MIN_ACTIVATION_BALANCE
+    get_balances(spec, state)[0] = spec.MIN_ACTIVATION_BALANCE
 
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -394,7 +395,7 @@ def test_pending_withdrawals_with_ineffective_sweep_on_top(spec, state):
         spec,
         state,
         validator_index,
-        balance=state.balances[validator_index] - pending_withdrawal.amount,
+        balance=get_balances(spec, state)[validator_index] - pending_withdrawal.amount,
     )
 
     next_slot(spec, state)
@@ -441,20 +442,20 @@ def test_pending_withdrawals_with_ineffective_sweep_on_top_2(spec, state):
 
     # Set excess balance in a way that validator
     # becomes not partially withdrawable only after the second pending withdrawal is processed
-    state.balances[validator_index] = (
+    get_balances(spec, state)[validator_index] = (
         spec.MAX_EFFECTIVE_BALANCE_ELECTRA + spec.EFFECTIVE_BALANCE_INCREMENT
     )
     assert check_is_partially_withdrawable_validator(
         spec,
         state,
         validator_index,
-        balance=state.balances[validator_index] - pending_withdrawal_0.amount,
+        balance=get_balances(spec, state)[validator_index] - pending_withdrawal_0.amount,
     )
     assert not check_is_partially_withdrawable_validator(
         spec,
         state,
         validator_index,
-        balance=state.balances[validator_index]
+        balance=get_balances(spec, state)[validator_index]
         - pending_withdrawal_0.amount
         - pending_withdrawal_1.amount,
     )
@@ -503,14 +504,14 @@ def test_pending_withdrawals_with_effective_sweep_on_top(spec, state):
 
     # Set excess balance to requested amount times three,
     # so the validator is partially withdrawable after pending withdrawal is processed
-    state.balances[validator_index] = (
+    get_balances(spec, state)[validator_index] = (
         spec.MAX_EFFECTIVE_BALANCE_ELECTRA + spec.EFFECTIVE_BALANCE_INCREMENT * 2
     )
     assert check_is_partially_withdrawable_validator(
         spec,
         state,
         validator_index,
-        balance=state.balances[validator_index]
+        balance=get_balances(spec, state)[validator_index]
         - pending_withdrawal_0.amount
         - pending_withdrawal_1.amount,
     )
@@ -903,7 +904,7 @@ def test_pending_withdrawals_two_partial_withdrawals_same_validator_1(spec, stat
     # Ensure our two pending withdrawals were processed
     assert len(state.pending_partial_withdrawals) == 0
     # Ensure the validator's balance is the minimum
-    assert state.balances[validator_index] == spec.MIN_ACTIVATION_BALANCE
+    assert get_balances(spec, state)[validator_index] == spec.MIN_ACTIVATION_BALANCE
 
 
 @with_electra_and_later
@@ -946,4 +947,4 @@ def test_pending_withdrawals_two_partial_withdrawals_same_validator_2(spec, stat
     # Ensure our two pending withdrawals were processed
     assert len(state.pending_partial_withdrawals) == 0
     # Ensure the validator's balance is the minimum
-    assert state.balances[validator_index] == spec.MIN_ACTIVATION_BALANCE
+    assert get_balances(spec, state)[validator_index] == spec.MIN_ACTIVATION_BALANCE

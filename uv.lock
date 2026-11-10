@@ -498,6 +498,7 @@ dependencies = [
     { name = "blake3" },
     { name = "eth-ssz-specs" },
     { name = "eth-utils" },
+    { name = "ethlib" },
     { name = "frozendict" },
     { name = "lru-dict" },
     { name = "marko" },
@@ -545,6 +546,7 @@ requires-dist = [
     { name = "eth-hash", extras = ["pycryptodome"], marker = "extra == 'test'", specifier = "==0.8.0" },
     { name = "eth-ssz-specs", specifier = "==0.1.0" },
     { name = "eth-utils", specifier = "==6.0.0" },
+    { name = "ethlib", specifier = "==0.3.0" },
     { name = "frozendict", specifier = "==2.5.1" },
     { name = "lru-dict", specifier = "==1.4.1" },
     { name = "marko", specifier = "==2.2.5" },
@@ -624,6 +626,26 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e9/1b/0b8548da7b31eba87ed58bca1d0de5dcb13a6c113e02c09019ec5a6716ed/eth_utils-6.0.0.tar.gz", hash = "sha256:eb54b2f82dd300d3142c49a89da195e823f5e5284d43203593f87c67bad92a96", size = 123457, upload-time = "2026-03-25T17:11:51.433Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/53/45/a20b907227b9d1aea2e36f7b12818d055629ca9bc65fc282b45738f28ca3/eth_utils-6.0.0-py3-none-any.whl", hash = "sha256:63cf48ee32c45541cb5748751909a8345c470432fb6f0fed4bd7c53fd6400469", size = 102473, upload-time = "2026-03-25T17:11:49.953Z" },
+]
+
+[[package]]
+name = "ethlib"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/30/68/15ac3a3397d8d3cfbb4cda2f632fb0ff7d1567e41e6b607214e44db29c25/ethlib-0.3.0.tar.gz", hash = "sha256:b58b2c36e3e0220f060b579d8eb3a4765dc332eb1ea0e5912d12bb87f7e68a85", size = 3886881, upload-time = "2026-11-06T23:48:23.846Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/6e/86/ec5d0f1ce17d6318428e67881d47ed0d48da2431b6ad8e21e6e674b151a7/ethlib-0.3.0-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:b1d0cf3b16743b591c51225024c90c88a1853e486e90a59575f884af5dbc6cf4", size = 50449701, upload-time = "2026-11-06T23:47:38.759Z" },
+    { url = "https://files.pythonhosted.org/packages/0e/5f/2ce334c4d678164d316f6d7b017a25ae87528c94404db0cbd26844ee6fb8/ethlib-0.3.0-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_34_x86_64.whl", hash = "sha256:68da7da9c130037bf4d59124cb2f8ae49fb8422cc7c3a7969e7f7b274451c093", size = 63428614, upload-time = "2026-11-06T23:47:41.978Z" },
+    { url = "https://files.pythonhosted.org/packages/19/1e/3d61df5084fd33de17cf237fabb70ef6c280e29b2bb1669a11677744c4af/ethlib-0.3.0-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_34_aarch64.whl", hash = "sha256:9bc4a53e8f5f77576cc6d65cb54781b757cf7b6423fb6eada6150ec15738eed9", size = 65493015, upload-time = "2026-11-06T23:47:45.626Z" },
+    { url = "https://files.pythonhosted.org/packages/c7/19/a64b6adc12046d6d44217ffb2d030156eb8b4d66070176df73407651d6f7/ethlib-0.3.0-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:e5133f4eab5996a814067e58f86f65640ff5525efebd556876bd68c66cff6f35", size = 50449691, upload-time = "2026-11-06T23:47:48.907Z" },
+    { url = "https://files.pythonhosted.org/packages/dc/b7/79a3421419f81710b36556e95c6e403e4df5313a766a9107dbc72357ce7d/ethlib-0.3.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_34_x86_64.whl", hash = "sha256:6312c8ea33c93ad6debdbded6c841af15b17f1c05453a62c329028cd1fda9a66", size = 63430533, upload-time = "2026-11-06T23:47:52.724Z" },
+    { url = "https://files.pythonhosted.org/packages/9e/df/821d148721378d11dea1d6b6ace92bdb0873c481762d96c030785b8284b5/ethlib-0.3.0-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_34_aarch64.whl", hash = "sha256:3ba3220e1b707c22f9fc591230afb84a4ac3874cb57e2cbf67c533821404d30d", size = 65495052, upload-time = "2026-11-06T23:47:56.856Z" },
+    { url = "https://files.pythonhosted.org/packages/a8/62/b629af4182163b4ba42a28417f4e99b925786058591a18cd383b59092296/ethlib-0.3.0-cp314-cp314-macosx_11_0_arm64.whl", hash = "sha256:d12f83b8b6509ad7a0378e46b475dc84ab46b0eb445648d06cd475c3056e7d56", size = 50449617, upload-time = "2026-11-06T23:48:00.833Z" },
+    { url = "https://files.pythonhosted.org/packages/e9/c3/316c98054f7999ee58b6db19e28901673914d5e2891c62f083403cc1b78a/ethlib-0.3.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_34_x86_64.whl", hash = "sha256:a5b5add6035ba7776bf711f33a0ba28fa2fc1ad193767a15144e58cc621af429", size = 63433355, upload-time = "2026-11-06T23:48:05.034Z" },
+    { url = "https://files.pythonhosted.org/packages/1f/64/8fcc5d044b7f33c81e428d2bf9b43a5b8566db931d5dab47565dd7b449a0/ethlib-0.3.0-cp314-cp314-manylinux_2_27_aarch64.manylinux_2_34_aarch64.whl", hash = "sha256:3a3337f0721a7e6b4a61f17d74f139a3ee6cf721170d2077561e011750f9ba24", size = 65497384, upload-time = "2026-11-06T23:48:09.224Z" },
+    { url = "https://files.pythonhosted.org/packages/b3/a1/26f4a2abb1b5fb7983a8798cf84405014d3912f581f85c620d7be4ec0a12/ethlib-0.3.0-cp314-cp314t-macosx_11_0_arm64.whl", hash = "sha256:4437df1f43538d21e1e532ed90fec5fc586e3814af19a6d6d4678c2c73594ff0", size = 50450769, upload-time = "2026-11-06T23:48:13.08Z" },
+    { url = "https://files.pythonhosted.org/packages/34/c9/598d9495cc980edb7db4ef66c7ac5197d148b2aac6f227f55b111f51f70e/ethlib-0.3.0-cp314-cp314t-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_34_x86_64.whl", hash = "sha256:e9ba134911bda17f81fd3f2e7ae51195e9b659857a5add7a4f5e73bd462ec01b", size = 63435457, upload-time = "2026-11-06T23:48:17.332Z" },
+    { url = "https://files.pythonhosted.org/packages/66/18/5883acaeb4b816895e1564b4b66dbe4a7f3a50e19e57f1408838ff1e7fc2/ethlib-0.3.0-cp314-cp314t-manylinux_2_27_aarch64.manylinux_2_34_aarch64.whl", hash = "sha256:9c49b9ca49da74a3c3bb20bf4934df28d9a1d4d07dfe6ebfa6f214aaae5faafc", size = 65498154, upload-time = "2026-11-06T23:48:21.294Z" },
 ]
 
 [[package]]

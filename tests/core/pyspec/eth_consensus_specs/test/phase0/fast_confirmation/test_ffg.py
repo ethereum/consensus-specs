@@ -21,6 +21,7 @@ from eth_consensus_specs.test.helpers.fast_confirmation import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     is_ancestor,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 
 """
 Test will_no_conflicting_checkpoint_be_justified
@@ -168,9 +169,9 @@ def test_will_no_conflicting_checkpoint_be_justified_fails_with_new_validator_ac
     # Run to the last slot of the BEFORE activation epoch with full participation
     while True:
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
-        activation_epoch = (
-            store.block_states[fcr.head_root()].validators[new_val_index].activation_epoch
-        )
+        activation_epoch = get_validators(spec, store.block_states[fcr.head_root()])[
+            new_val_index
+        ].activation_epoch
         if (
             activation_epoch != spec.FAR_FUTURE_EPOCH
             and fcr.current_slot() + 1 == spec.compute_start_slot_at_epoch(activation_epoch)
@@ -214,11 +215,11 @@ def test_will_no_conflicting_checkpoint_be_justified_fails_with_new_validator_ac
     head_state = spec.get_pulled_up_head_state(store)
     # New validator is not yet active in the balance source
     assert not spec.is_active_validator(
-        balance_source.validators[new_val_index], spec.get_current_epoch(balance_source)
+        get_validators(spec, balance_source)[new_val_index], spec.get_current_epoch(balance_source)
     )
     # But it is already active in the head state
     assert spec.is_active_validator(
-        head_state.validators[new_val_index], spec.get_current_epoch(head_state)
+        get_validators(spec, head_state)[new_val_index], spec.get_current_epoch(head_state)
     )
     # Ensure that is_one_confirmed passes
     assert spec.is_one_confirmed(store, balance_source, b_root)
@@ -354,7 +355,7 @@ def test_will_current_target_be_justified_fails_with_new_validator_activated_in_
     # Run to the activation epoch
     while (
         fcr.current_epoch()
-        < store.block_states[fcr.head_root()].validators[new_val_index].activation_epoch
+        < get_validators(spec, store.block_states[fcr.head_root()])[new_val_index].activation_epoch
     ):
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
 
@@ -381,11 +382,11 @@ def test_will_current_target_be_justified_fails_with_new_validator_activated_in_
     head_state = spec.get_pulled_up_head_state(store)
     # New validator is not yet active in the balance source
     assert not spec.is_active_validator(
-        balance_source.validators[new_val_index], spec.get_current_epoch(balance_source)
+        get_validators(spec, balance_source)[new_val_index], spec.get_current_epoch(balance_source)
     )
     # But it is already active in the head state
     assert spec.is_active_validator(
-        head_state.validators[new_val_index], spec.get_current_epoch(head_state)
+        get_validators(spec, head_state)[new_val_index], spec.get_current_epoch(head_state)
     )
     # Ensure that is_one_confirmed passes
     assert spec.is_one_confirmed(store, balance_source, b_root)

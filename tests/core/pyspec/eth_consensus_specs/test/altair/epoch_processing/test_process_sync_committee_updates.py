@@ -4,11 +4,11 @@ from eth_consensus_specs.test.context import (
     single_phase,
     spec_state_test,
     spec_test,
-    with_altair_and_later,
+    with_all_phases_from_except,
     with_custom_state,
     with_presets,
 )
-from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.constants import ALTAIR, MINIMAL, PQ
 from eth_consensus_specs.test.helpers.epoch_processing import (
     run_epoch_processing_with,
 )
@@ -54,7 +54,7 @@ def run_sync_committees_progress_test(spec, state):
     assert state.next_sync_committee == third_sync_committee
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 @with_presets([MINIMAL], reason="too slow")
@@ -65,7 +65,7 @@ def test_sync_committees_progress_genesis(spec, state):
     yield from run_sync_committees_progress_test(spec, state)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 @with_presets([MINIMAL], reason="too slow")
@@ -80,7 +80,7 @@ def test_sync_committees_progress_not_genesis(spec, state):
     yield from run_sync_committees_progress_test(spec, state)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @with_custom_state(
     balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
 )
@@ -95,7 +95,7 @@ def test_sync_committees_progress_misc_balances_genesis(spec, state):
     yield from run_sync_committees_progress_test(spec, state)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @with_custom_state(
     balances_fn=misc_balances, threshold_fn=lambda spec: spec.config.EJECTION_BALANCE
 )
@@ -114,7 +114,7 @@ def test_sync_committees_progress_misc_balances_not_genesis(spec, state):
     yield from run_sync_committees_progress_test(spec, state)
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 @with_presets([MINIMAL], reason="too slow")

@@ -27,6 +27,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 from eth_consensus_specs.test.helpers.forks import (
     is_post_gloas,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.utils import kzg
 
 # Helpers
@@ -266,7 +267,9 @@ def test_get_validators_custody_requirement__zero_validators(spec, state):
 def test_get_validators_custody_requirement__single_validator(spec, state):
     validator_indices = [0]
 
-    state.validators[0].effective_balance = spec.config.BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
+    get_validators(spec, state)[
+        0
+    ].effective_balance = spec.config.BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
 
     result = spec.get_validators_custody_requirement(state, validator_indices)
 
@@ -288,14 +291,14 @@ def test_get_validators_custody_requirement__multiple_validators(spec, state):
     validator_indices = range(10)
 
     for validator_index in validator_indices:
-        state.validators[
+        get_validators(spec, state)[
             validator_index
         ].effective_balance = spec.config.BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
 
     result = spec.get_validators_custody_requirement(state, validator_indices)
 
     # Calculate expected: total_balance // BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
-    total_balance = sum(state.validators[i].effective_balance for i in validator_indices)
+    total_balance = sum(get_validators(spec, state)[i].effective_balance for i in validator_indices)
     expected_count = total_balance // spec.config.BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
     expected = min(
         max(expected_count, spec.config.VALIDATOR_CUSTODY_REQUIREMENT),
@@ -308,7 +311,7 @@ def test_get_validators_custody_requirement__multiple_validators(spec, state):
 def _run_get_validators_custody_requirement__maximum(spec, state, validator_indices):
     # This will force count to be more than NUMBER_OF_CUSTODY_GROUPS
     for validator_index in validator_indices:
-        state.validators[validator_index].effective_balance = (
+        get_validators(spec, state)[validator_index].effective_balance = (
             (
                 (
                     spec.config.BALANCE_PER_ADDITIONAL_CUSTODY_GROUP
@@ -322,7 +325,7 @@ def _run_get_validators_custody_requirement__maximum(spec, state, validator_indi
 
     # Check here that it is
     total_node_balance = sum(
-        state.validators[index].effective_balance for index in validator_indices
+        get_validators(spec, state)[index].effective_balance for index in validator_indices
     )
     assert total_node_balance > (
         spec.config.BALANCE_PER_ADDITIONAL_CUSTODY_GROUP * spec.config.NUMBER_OF_CUSTODY_GROUPS
@@ -367,14 +370,14 @@ def test_get_validators_custody_requirement__maximum_all_validators(spec, state)
 def _run_get_validators_custody_requirement__minimum(spec, state, validator_indices):
     # This will force count to be more than NUMBER_OF_CUSTODY_GROUPS
     for validator_index in validator_indices:
-        state.validators[validator_index].effective_balance = (
+        get_validators(spec, state)[validator_index].effective_balance = (
             (spec.config.VALIDATOR_CUSTODY_REQUIREMENT * spec.config.NUMBER_OF_CUSTODY_GROUPS)
             // len(validator_indices)
         ) - 1
 
     # Check here that it is
     total_node_balance = sum(
-        state.validators[index].effective_balance for index in validator_indices
+        get_validators(spec, state)[index].effective_balance for index in validator_indices
     )
     assert total_node_balance < (
         spec.config.BALANCE_PER_ADDITIONAL_CUSTODY_GROUP * spec.config.VALIDATOR_CUSTODY_REQUIREMENT

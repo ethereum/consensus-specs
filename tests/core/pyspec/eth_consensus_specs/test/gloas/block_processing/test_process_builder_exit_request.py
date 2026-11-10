@@ -1,5 +1,12 @@
-from eth_consensus_specs.test.context import spec_state_test, with_gloas_and_later
-from eth_consensus_specs.test.helpers.keys import builder_pubkeys
+from eth_consensus_specs.test.context import (
+    spec_state_test,
+    with_gloas_and_later,
+)
+from eth_consensus_specs.test.helpers.keys import (
+    builder_pubkeys,
+    get_request_pubkey,
+)
+from eth_consensus_specs.test.helpers.registry import get_builders
 from eth_consensus_specs.test.helpers.state import next_slots
 
 
@@ -15,12 +22,12 @@ def prepare_builder_exit_request(spec, state, builder_index, source_address=None
     Create a builder exit request for the builder at the given index,
     authorized by its execution address unless source_address is provided.
     """
-    builder = state.builders[builder_index]
+    builder = get_builders(spec, state)[builder_index]
     if source_address is None:
         source_address = builder.execution_address
     return spec.BuilderExitRequest(
         source_address=source_address,
-        pubkey=builder.pubkey,
+        pubkey=get_request_pubkey(spec, state.builders[builder_index].pubkey),
     )
 
 
@@ -64,7 +71,7 @@ def test_process_builder_exit_request__success(spec, state):
 
     assert not spec.is_active_builder(state, builder_index)
     expected_withdrawable = current_epoch + spec.config.MIN_BUILDER_WITHDRAWABILITY_DELAY
-    assert state.builders[builder_index].withdrawable_epoch == expected_withdrawable
+    assert get_builders(spec, state)[builder_index].withdrawable_epoch == expected_withdrawable
 
 
 @with_gloas_and_later
@@ -97,10 +104,12 @@ def test_process_builder_exit_request__inactive_deposit_epoch(spec, state):
     builder_index = 0
 
     # Set builder's deposit epoch to a non-finalized epoch
-    state.builders[builder_index].deposit_epoch = spec.Epoch(1)
+    get_builders(spec, state)[builder_index].deposit_epoch = spec.Epoch(1)
 
     advance_past_finalization(spec, state)
-    assert state.finalized_checkpoint.epoch == state.builders[builder_index].deposit_epoch
+    assert (
+        state.finalized_checkpoint.epoch == get_builders(spec, state)[builder_index].deposit_epoch
+    )
     assert not spec.is_active_builder(state, builder_index)
 
     builder_exit_request = prepare_builder_exit_request(spec, state, builder_index)
@@ -115,7 +124,7 @@ def test_process_builder_exit_request__already_exited(spec, state):
     builder_index = 0
 
     # Set builder's withdrawable epoch which indicates it has initiated an exit
-    state.builders[builder_index].withdrawable_epoch = spec.get_current_epoch(state) + 10
+    get_builders(spec, state)[builder_index].withdrawable_epoch = spec.get_current_epoch(state) + 10
 
     advance_past_finalization(spec, state)
     assert not spec.is_active_builder(state, builder_index)
@@ -136,7 +145,7 @@ def test_process_builder_exit_request__wrong_source_address(spec, state):
 
     # Use a source address that differs from the builder's execution address
     wrong_address = spec.ExecutionAddress(b"\x42" * 20)
-    assert state.builders[builder_index].execution_address != wrong_address
+    assert get_builders(spec, state)[builder_index].execution_address != wrong_address
     builder_exit_request = prepare_builder_exit_request(
         spec, state, builder_index, source_address=wrong_address
     )

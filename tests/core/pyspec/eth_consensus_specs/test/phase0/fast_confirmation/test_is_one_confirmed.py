@@ -23,6 +23,7 @@ from eth_consensus_specs.test.helpers.fast_confirmation import (
 from eth_consensus_specs.test.helpers.forks import (
     is_post_gloas,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 
 """
 Test is_one_confirmed
@@ -261,7 +262,7 @@ def test_is_one_confirmed_slashing_non_supporters_helps(spec, state):
         i
         for i in block_b_committee
         if (i not in store.latest_messages or store.latest_messages[i].root != block_b)
-        and not state.validators[i].slashed
+        and not get_validators(spec, state)[i].slashed
         and i not in store.equivocating_indices
     ]
     assert len(non_supporters) > 0, "Need non-supporters to slash"
@@ -1173,11 +1174,12 @@ def test_is_one_confirmed_fails_recently_activated_validator_voting_in_empty_slo
     # Run to the activation epoch
     while (
         fcr.current_epoch()
-        < store.block_states[fcr.head_root()].validators[new_val_index].activation_epoch
+        < get_validators(spec, store.block_states[fcr.head_root()])[new_val_index].activation_epoch
     ):
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
     assert spec.is_active_validator(
-        store.block_states[fcr.head_root()].validators[new_val_index], fcr.current_epoch()
+        get_validators(spec, store.block_states[fcr.head_root()])[new_val_index],
+        fcr.current_epoch(),
     )
 
     # Run to a slot where new_val_index is assigned as attester
@@ -1197,7 +1199,7 @@ def test_is_one_confirmed_fails_recently_activated_validator_voting_in_empty_slo
     balance_source = spec.get_current_balance_source(fcr_store)
     # New validator is not yet active in the balance source
     assert not spec.is_active_validator(
-        balance_source.validators[new_val_index], spec.get_current_epoch(balance_source)
+        get_validators(spec, balance_source)[new_val_index], spec.get_current_epoch(balance_source)
     )
     # New validator has attested to the parent block
     for idx in attesters:
@@ -1242,7 +1244,7 @@ def test_is_one_confirmed_fails_recently_activated_validator_voting_in_empty_slo
     balance_source = spec.get_current_balance_source(fcr_store)
     # New validator is now active in the balance source
     assert spec.is_active_validator(
-        balance_source.validators[new_val_index], spec.get_current_epoch(balance_source)
+        get_validators(spec, balance_source)[new_val_index], spec.get_current_epoch(balance_source)
     )
     # New validator has attested to the parent block
     for idx in attesters:
@@ -1666,11 +1668,12 @@ def test_is_one_confirmed_fails_inactive_attester_not_in_balance_source(spec, st
     # Run to the activation epoch
     while (
         fcr.current_epoch()
-        < store.block_states[fcr.head_root()].validators[new_val_index].activation_epoch
+        < get_validators(spec, store.block_states[fcr.head_root()])[new_val_index].activation_epoch
     ):
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
     assert spec.is_active_validator(
-        store.block_states[fcr.head_root()].validators[new_val_index], fcr.current_epoch()
+        get_validators(spec, store.block_states[fcr.head_root()])[new_val_index],
+        fcr.current_epoch(),
     )
 
     # Find a slot in the current epoch where the new validator is in the committee
@@ -1697,10 +1700,10 @@ def test_is_one_confirmed_fails_inactive_attester_not_in_balance_source(spec, st
 
     # Preconditions: new validator is inactive in balance_source but active in head_state
     assert not spec.is_active_validator(
-        balance_source.validators[new_val_index], spec.get_current_epoch(balance_source)
+        get_validators(spec, balance_source)[new_val_index], spec.get_current_epoch(balance_source)
     )
     assert spec.is_active_validator(
-        head_state.validators[new_val_index], spec.get_current_epoch(head_state)
+        get_validators(spec, head_state)[new_val_index], spec.get_current_epoch(head_state)
     )
 
     # With real balance_source (inactive): FAILs
@@ -1766,11 +1769,12 @@ def test_is_one_confirmed_passes_inactive_non_attester_not_in_balance_source(spe
     # Run to the activation epoch
     while (
         fcr.current_epoch()
-        < store.block_states[fcr.head_root()].validators[new_val_index].activation_epoch
+        < get_validators(spec, store.block_states[fcr.head_root()])[new_val_index].activation_epoch
     ):
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
     assert spec.is_active_validator(
-        store.block_states[fcr.head_root()].validators[new_val_index], fcr.current_epoch()
+        get_validators(spec, store.block_states[fcr.head_root()])[new_val_index],
+        fcr.current_epoch(),
     )
 
     # Find a slot in the current epoch where the new validator is in the committee
@@ -1796,10 +1800,10 @@ def test_is_one_confirmed_passes_inactive_non_attester_not_in_balance_source(spe
 
     # Preconditions: new validator is inactive in balance_source but active in head_state
     assert not spec.is_active_validator(
-        balance_source.validators[new_val_index], spec.get_current_epoch(balance_source)
+        get_validators(spec, balance_source)[new_val_index], spec.get_current_epoch(balance_source)
     )
     assert spec.is_active_validator(
-        head_state.validators[new_val_index], spec.get_current_epoch(head_state)
+        get_validators(spec, head_state)[new_val_index], spec.get_current_epoch(head_state)
     )
 
     # With real balance_source (inactive): should PASS
@@ -1877,7 +1881,15 @@ def _run_committee_weight_matches_fork_choice_weight(
     ]
     participants = set().union(*committees)
     # Participants have different effective balances
-    assert len({balance_source.validators[index].effective_balance for index in participants}) > 1
+    assert (
+        len(
+            {
+                get_validators(spec, balance_source)[index].effective_balance
+                for index in participants
+            }
+        )
+        > 1
+    )
     # Some validators are assigned to more than one slot in the range
     if expect_repeated_assignments:
         assert sum(len(committee) for committee in committees) > len(participants)
@@ -2010,9 +2022,9 @@ def test_compute_committee_weight_between_slots_matches_fork_choice_weight_inact
     # Run to the last slot before the activation epoch
     while True:
         fcr.next_slot_with_block_and_fast_confirmation(participation_rate=100)
-        activation_epoch = (
-            store.block_states[fcr.head_root()].validators[new_val_index].activation_epoch
-        )
+        activation_epoch = get_validators(spec, store.block_states[fcr.head_root()])[
+            new_val_index
+        ].activation_epoch
         if (
             activation_epoch != spec.FAR_FUTURE_EPOCH
             and fcr.current_slot() + 1 == spec.compute_start_slot_at_epoch(activation_epoch)
@@ -2055,17 +2067,17 @@ def test_compute_committee_weight_between_slots_matches_fork_choice_weight_inact
     # New validator is active in the head state, but not in the balance source
     head_state = store.block_states[fcr.head_root()]
     assert spec.is_active_validator(
-        head_state.validators[new_val_index], spec.get_current_epoch(head_state)
+        get_validators(spec, head_state)[new_val_index], spec.get_current_epoch(head_state)
     )
     assert not spec.is_active_validator(
-        balance_source.validators[new_val_index], spec.get_current_epoch(balance_source)
+        get_validators(spec, balance_source)[new_val_index], spec.get_current_epoch(balance_source)
     )
     # Counting the new validator would make the committee weight exceed the fork choice weight
     committee_weight = spec.compute_committee_weight_between_slots(
         store, balance_source, start_slot, end_slot
     )
     assert spec.get_total_balance(balance_source, participants) == (
-        committee_weight + balance_source.validators[new_val_index].effective_balance
+        committee_weight + get_validators(spec, balance_source)[new_val_index].effective_balance
     )
 
     yield from fcr.get_test_artefacts()

@@ -4,6 +4,7 @@ from eth_consensus_specs.test.helpers.epoch_processing import (
     run_process_slots_up_to_epoch_boundary,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_electra
+from eth_consensus_specs.test.helpers.registry import get_balances, get_validators
 from eth_consensus_specs.test.helpers.withdrawals import (
     set_compounding_withdrawal_credential,
 )
@@ -86,15 +87,15 @@ def run_test_effective_balance_hysteresis(spec, state, with_compounding_credenti
 
     current_epoch = spec.get_current_epoch(state)
     for i, (pre_eff, bal, _, _) in enumerate(cases):
-        assert spec.is_active_validator(state.validators[i], current_epoch)
+        assert spec.is_active_validator(get_validators(spec, state)[i], current_epoch)
         if with_compounding_credentials:
             set_compounding_withdrawal_credential(spec, state, i)
-        state.validators[i].effective_balance = pre_eff
-        state.balances[i] = bal
+        get_validators(spec, state)[i].effective_balance = pre_eff
+        get_balances(spec, state)[i] = bal
 
     yield "pre", state
     spec.process_effective_balance_updates(state)
     yield "post", state
 
     for i, (_, _, post_eff, name) in enumerate(cases):
-        assert state.validators[i].effective_balance == post_eff, name
+        assert get_validators(spec, state)[i].effective_balance == post_eff, name

@@ -3,9 +3,15 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_all_phases,
 )
-from eth_consensus_specs.test.helpers.attestations import get_valid_attestation, sign_attestation
+from eth_consensus_specs.test.helpers.attestations import (
+    get_indexed_attestation,
+    get_valid_attestation,
+    sign_attestation,
+)
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
-from eth_consensus_specs.test.helpers.fork_choice import get_genesis_forkchoice_store
+from eth_consensus_specs.test.helpers.fork_choice import (
+    get_genesis_forkchoice_store,
+)
 from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_gloas
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
@@ -20,7 +26,7 @@ def run_on_attestation(spec, state, store, attestation, valid=True):
         expect_assertion_error(lambda: spec.on_attestation(store, attestation))
         return
 
-    indexed_attestation = spec.get_indexed_attestation(state, attestation)
+    indexed_attestation = get_indexed_attestation(spec, state, attestation)
     spec.on_attestation(store, attestation)
 
     sample_index = indexed_attestation.attesting_indices[0]

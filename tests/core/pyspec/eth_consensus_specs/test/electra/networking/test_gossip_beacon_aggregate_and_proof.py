@@ -5,6 +5,8 @@ from eth_consensus_specs.test.context import (
     with_presets,
 )
 from eth_consensus_specs.test.helpers.attestations import (
+    get_aggregate_and_proof,
+    get_aggregator_index,
     get_valid_attestation,
 )
 from eth_consensus_specs.test.helpers.constants import ELECTRA, GLOAS, MINIMAL
@@ -24,22 +26,10 @@ from eth_consensus_specs.test.helpers.state import next_slot
 
 def create_signed_aggregate_and_proof(spec, state, attestation):
     committee_index = spec.get_committee_indices(attestation.committee_bits)[0]
-    committee = spec.get_beacon_committee(state, attestation.data.slot, committee_index)
-
-    aggregator_index = None
-    for index in committee:
-        privkey = privkeys[index]
-        selection_proof = spec.get_slot_signature(state, attestation.data.slot, privkey)
-        if spec.is_aggregator(state, attestation.data.slot, committee_index, selection_proof):
-            aggregator_index = index
-            break
-
-    if aggregator_index is None:
-        aggregator_index = committee[0]
-
+    aggregator_index = get_aggregator_index(spec, state, attestation.data.slot, committee_index)
     privkey = privkeys[aggregator_index]
-    aggregate_and_proof = spec.get_aggregate_and_proof(
-        state, aggregator_index, attestation, privkey
+    aggregate_and_proof = get_aggregate_and_proof(
+        spec, state, aggregator_index, attestation, privkey
     )
     signature = spec.get_aggregate_and_proof_signature(state, aggregate_and_proof, privkey)
 

@@ -11,6 +11,10 @@ from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_deposit_request,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_pq
+from eth_consensus_specs.test.helpers.keys import get_deposit_pubkey
+from eth_consensus_specs.test.helpers.registry import get_balances, get_validators
+from eth_consensus_specs.test.helpers.signatures import get_placeholder_signature
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -43,7 +47,7 @@ def _setup_switch_to_compounding_validator(spec, state, validator_index):
     # Give the validator a balance above MIN_ACTIVATION_BALANCE so that
     # after switching to compounding, effective balance can increase.
     balance = spec.MIN_ACTIVATION_BALANCE + 3 * spec.EFFECTIVE_BALANCE_INCREMENT
-    state.balances[validator_index] = balance
+    get_balances(spec, state)[validator_index] = balance
 
     consolidation_request = prepare_switch_to_compounding_request(
         spec,
@@ -69,12 +73,12 @@ def _build_multi_request_execution_requests(
         spec, state, consolidation_validator_index
     )
 
-    deposit_validator = state.validators[deposit_validator_index]
+    deposit_validator = get_validators(spec, state)[deposit_validator_index]
     deposit_request = prepare_deposit_request(
         spec,
         validator_index=deposit_validator_index,
         amount=deposit_amount,
-        pubkey=deposit_validator.pubkey,
+        pubkey=state.validators[deposit_validator_index].pubkey,
         withdrawal_credentials=deposit_validator.withdrawal_credentials,
         signed=True,
     )
@@ -116,12 +120,12 @@ def _build_all_requests_execution_requests(
         for i, exit_index in enumerate(exit_validator_indices)
     ]
 
-    deposit_validator = state.validators[deposit_validator_index]
+    deposit_validator = get_validators(spec, state)[deposit_validator_index]
     deposit_request = prepare_deposit_request(
         spec,
         validator_index=deposit_validator_index,
         amount=deposit_amount,
-        pubkey=deposit_validator.pubkey,
+        pubkey=state.validators[deposit_validator_index].pubkey,
         withdrawal_credentials=deposit_validator.withdrawal_credentials,
         signed=True,
     )
@@ -140,12 +144,12 @@ def _assert_registry_integrity(spec, state, pre_state):
     validators are immutable, and every effective_balance respects its
     current credential cap and the EFFECTIVE_BALANCE_INCREMENT quantization.
     """
-    assert len(state.validators) == len(state.balances)
+    assert len(state.validators) == len(get_balances(spec, state))
     assert len(state.validators) >= len(pre_state.validators)
     for idx in range(len(pre_state.validators)):
-        pre_v = pre_state.validators[idx]
-        post_v = state.validators[idx]
-        assert post_v.pubkey == pre_v.pubkey
+        pre_v = get_validators(spec, pre_state)[idx]
+        post_v = get_validators(spec, state)[idx]
+        assert state.validators[idx].pubkey == pre_state.validators[idx].pubkey
         assert post_v.activation_epoch == pre_v.activation_epoch
         assert post_v.effective_balance <= spec.get_max_effective_balance(post_v)
         assert post_v.effective_balance % spec.EFFECTIVE_BALANCE_INCREMENT == 0
@@ -169,11 +173,11 @@ def _build_block_with_execution_requests(spec, state, slot, execution_requests, 
     if parent_full:
         bid.block_hash = spec.Hash32(b"\x42" * 32)
 
-    # Self-build uses G2_POINT_AT_INFINITY as the bid signature.
+    # Self-build uses the placeholder signature as the bid signature.
     if bid.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
         block.body.signed_execution_payload_bid = spec.SignedExecutionPayloadBid(
             message=bid,
-            signature=spec.G2_POINT_AT_INFINITY,
+            signature=get_placeholder_signature(spec),
         )
 
     return block
@@ -221,8 +225,13 @@ def _run_epoch_boundary_full_parent(spec, state, gap_epochs):
     deposit_target_pubkey = state.validators[deposit_validator_index].pubkey
     consolidation_pubkey = state.validators[consolidation_validator_index].pubkey
 
-    assert spec.has_eth1_withdrawal_credential(state.validators[consolidation_validator_index])
-    assert state.validators[consolidation_validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+    assert spec.has_eth1_withdrawal_credential(
+        get_validators(spec, state)[consolidation_validator_index]
+    )
+    assert (
+        get_validators(spec, state)[consolidation_validator_index].exit_epoch
+        == spec.FAR_FUTURE_EPOCH
+    )
 
     yield "pre", state
 
@@ -238,7 +247,9 @@ def _run_epoch_boundary_full_parent(spec, state, gap_epochs):
     signed_block_1 = state_transition_and_sign_block(spec, state, block_1)
 
     # Requests are processed by the child block, not by block_1.
-    assert spec.has_eth1_withdrawal_credential(state.validators[consolidation_validator_index])
+    assert spec.has_eth1_withdrawal_credential(
+        get_validators(spec, state)[consolidation_validator_index]
+    )
     assert len(state.pending_deposits) == pre_pending_deposits
 
     # Block 2: after gap_epochs of missed slots (including slot 0 of the
@@ -259,15 +270,18 @@ def _run_epoch_boundary_full_parent(spec, state, gap_epochs):
     # Switch-to-compounding applied in block_2. The credential changed but
     # no exit was initiated (switch-to-compounding is not an exit).
     assert spec.has_compounding_withdrawal_credential(
-        state.validators[consolidation_validator_index]
+        get_validators(spec, state)[consolidation_validator_index]
     )
-    assert state.validators[consolidation_validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
-    assert state.balances[consolidation_validator_index] <= spec.MIN_ACTIVATION_BALANCE
+    assert (
+        get_validators(spec, state)[consolidation_validator_index].exit_epoch
+        == spec.FAR_FUTURE_EPOCH
+    )
+    assert get_balances(spec, state)[consolidation_validator_index] <= spec.MIN_ACTIVATION_BALANCE
     # effective_balance must not jump to the compounding cap: the epoch
     # transition ran against 0x01 credentials before block_2 applied the
     # switch, so it stays at MIN_ACTIVATION_BALANCE.
     assert (
-        state.validators[consolidation_validator_index].effective_balance
+        get_validators(spec, state)[consolidation_validator_index].effective_balance
         == spec.MIN_ACTIVATION_BALANCE
     )
 
@@ -275,7 +289,7 @@ def _run_epoch_boundary_full_parent(spec, state, gap_epochs):
     # excess was drained by block_1's partial-withdrawal sweep, so
     # queue_excess_active_balance is a no-op and no consolidation entry is
     # appended.
-    pending_pubkeys = [pd.pubkey for pd in state.pending_deposits]
+    pending_pubkeys = [get_deposit_pubkey(spec, pd.pubkey) for pd in state.pending_deposits]
     assert deposit_target_pubkey in pending_pubkeys
     assert consolidation_pubkey not in pending_pubkeys
     assert len(state.pending_deposits) >= pre_pending_deposits + 1
@@ -318,10 +332,14 @@ def _run_epoch_boundary_empty_parent(spec, state, gap_epochs):
     pre_partial_withdrawals = len(state.pending_partial_withdrawals)
     consolidation_pubkey = state.validators[consolidation_validator_index].pubkey
     deposit_target_pubkey = state.validators[deposit_validator_index].pubkey
-    pre_consolidation_exit_epoch = state.validators[consolidation_validator_index].exit_epoch
-    pre_deposit_target_exit_epoch = state.validators[deposit_validator_index].exit_epoch
+    pre_consolidation_exit_epoch = get_validators(spec, state)[
+        consolidation_validator_index
+    ].exit_epoch
+    pre_deposit_target_exit_epoch = get_validators(spec, state)[deposit_validator_index].exit_epoch
 
-    assert spec.has_eth1_withdrawal_credential(state.validators[consolidation_validator_index])
+    assert spec.has_eth1_withdrawal_credential(
+        get_validators(spec, state)[consolidation_validator_index]
+    )
     assert pre_consolidation_exit_epoch == spec.FAR_FUTURE_EPOCH
 
     yield "pre", state
@@ -337,7 +355,9 @@ def _run_epoch_boundary_empty_parent(spec, state, gap_epochs):
     signed_block_1 = state_transition_and_sign_block(spec, state, block_1)
 
     # Payload is not delivered: credentials remain 0x01.
-    assert spec.has_eth1_withdrawal_credential(state.validators[consolidation_validator_index])
+    assert spec.has_eth1_withdrawal_credential(
+        get_validators(spec, state)[consolidation_validator_index]
+    )
 
     # Block 2: after the gap, with empty parent_execution_requests (parent
     # payload is empty).
@@ -351,13 +371,19 @@ def _run_epoch_boundary_empty_parent(spec, state, gap_epochs):
 
     # None of the committed requests were applied: the parent payload never
     # arrived, so process_parent_execution_requests is skipped.
-    assert spec.has_eth1_withdrawal_credential(state.validators[consolidation_validator_index])
-    assert (
-        state.validators[consolidation_validator_index].exit_epoch == pre_consolidation_exit_epoch
+    assert spec.has_eth1_withdrawal_credential(
+        get_validators(spec, state)[consolidation_validator_index]
     )
-    assert state.validators[deposit_validator_index].exit_epoch == pre_deposit_target_exit_epoch
+    assert (
+        get_validators(spec, state)[consolidation_validator_index].exit_epoch
+        == pre_consolidation_exit_epoch
+    )
+    assert (
+        get_validators(spec, state)[deposit_validator_index].exit_epoch
+        == pre_deposit_target_exit_epoch
+    )
 
-    pending_pubkeys = [pd.pubkey for pd in state.pending_deposits]
+    pending_pubkeys = [get_deposit_pubkey(spec, pd.pubkey) for pd in state.pending_deposits]
     assert consolidation_pubkey not in pending_pubkeys
     assert deposit_target_pubkey not in pending_pubkeys
     # Queues can only shrink (drained by epoch processing in the gap),
@@ -465,13 +491,17 @@ def test_switch_to_compounding_across_epoch_boundary(spec, state):
     )
 
     # 0x01 credentials cap effective balance at MIN_ACTIVATION_BALANCE.
-    assert spec.has_eth1_withdrawal_credential(state.validators[validator_index])
-    assert state.validators[validator_index].effective_balance == spec.MIN_ACTIVATION_BALANCE
-    assert state.balances[validator_index] > spec.MIN_ACTIVATION_BALANCE
+    assert spec.has_eth1_withdrawal_credential(get_validators(spec, state)[validator_index])
+    assert (
+        get_validators(spec, state)[validator_index].effective_balance
+        == spec.MIN_ACTIVATION_BALANCE
+    )
+    assert get_balances(spec, state)[validator_index] > spec.MIN_ACTIVATION_BALANCE
 
     # Snapshot balance-dependent assignments before the request is in flight.
-    pre_current_sync_root = spec.hash_tree_root(state.current_sync_committee)
-    pre_next_sync_root = spec.hash_tree_root(state.next_sync_committee)
+    if not is_post_pq(spec):
+        pre_current_sync_root = spec.hash_tree_root(state.current_sync_committee)
+        pre_next_sync_root = spec.hash_tree_root(state.next_sync_committee)
 
     yield "pre", state
 
@@ -487,8 +517,11 @@ def test_switch_to_compounding_across_epoch_boundary(spec, state):
     signed_block_1 = state_transition_and_sign_block(spec, state, block_1)
 
     # The switch is committed but not yet processed.
-    assert spec.has_eth1_withdrawal_credential(state.validators[validator_index])
-    assert state.validators[validator_index].effective_balance == spec.MIN_ACTIVATION_BALANCE
+    assert spec.has_eth1_withdrawal_credential(get_validators(spec, state)[validator_index])
+    assert (
+        get_validators(spec, state)[validator_index].effective_balance
+        == spec.MIN_ACTIVATION_BALANCE
+    )
 
     # Block 2: first slot of the next epoch, processes the parent's request.
     block_2 = _build_child_block_with_parent_requests(
@@ -503,15 +536,18 @@ def test_switch_to_compounding_across_epoch_boundary(spec, state):
     yield "post", state
 
     # The switch has now been applied.
-    assert spec.has_compounding_withdrawal_credential(state.validators[validator_index])
+    assert spec.has_compounding_withdrawal_credential(get_validators(spec, state)[validator_index])
     # Switch-to-compounding is not an exit.
-    assert state.validators[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
-    assert state.balances[validator_index] <= spec.MIN_ACTIVATION_BALANCE
+    assert get_validators(spec, state)[validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+    assert get_balances(spec, state)[validator_index] <= spec.MIN_ACTIVATION_BALANCE
 
     # effective_balance does not jump to the compounding cap.
     # process_effective_balance_updates ran against 0x01 credentials before
     # block_2 applied the switch, so it stays at MIN_ACTIVATION_BALANCE.
-    assert state.validators[validator_index].effective_balance == spec.MIN_ACTIVATION_BALANCE
+    assert (
+        get_validators(spec, state)[validator_index].effective_balance
+        == spec.MIN_ACTIVATION_BALANCE
+    )
 
     # No pending-deposit assertion here: with 0x01 credentials,
     # max_effective_balance == MIN_ACTIVATION_BALANCE, so the excess balance
@@ -538,10 +574,11 @@ def test_switch_to_compounding_across_epoch_boundary(spec, state):
     # With EPOCHS_PER_SYNC_COMMITTEE_PERIOD = 8 in minimal, the 0 -> 1 epoch
     # transition must not rotate the committees, and they must not have been
     # recomputed using a post-switch effective balance.
-    assert spec.hash_tree_root(state.current_sync_committee) == pre_current_sync_root
-    assert spec.hash_tree_root(state.next_sync_committee) == pre_next_sync_root
-    assert len(state.current_sync_committee.pubkeys) == spec.SYNC_COMMITTEE_SIZE
-    assert len(state.next_sync_committee.pubkeys) == spec.SYNC_COMMITTEE_SIZE
+    if not is_post_pq(spec):
+        assert spec.hash_tree_root(state.current_sync_committee) == pre_current_sync_root
+        assert spec.hash_tree_root(state.next_sync_committee) == pre_next_sync_root
+        assert len(state.current_sync_committee.pubkeys) == spec.SYNC_COMMITTEE_SIZE
+        assert len(state.next_sync_committee.pubkeys) == spec.SYNC_COMMITTEE_SIZE
 
     _assert_registry_integrity(spec, state, pre_state)
 
@@ -593,11 +630,16 @@ def test_epoch_boundary_full_parent_all_requests_gap_5_epochs(spec, state):
     deposit_target_pubkey = state.validators[deposit_validator_index].pubkey
     consolidation_pubkey = state.validators[consolidation_validator_index].pubkey
 
-    assert spec.has_eth1_withdrawal_credential(state.validators[consolidation_validator_index])
-    assert state.validators[consolidation_validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+    assert spec.has_eth1_withdrawal_credential(
+        get_validators(spec, state)[consolidation_validator_index]
+    )
+    assert (
+        get_validators(spec, state)[consolidation_validator_index].exit_epoch
+        == spec.FAR_FUTURE_EPOCH
+    )
     for exit_index in exit_validator_indices:
-        assert spec.has_eth1_withdrawal_credential(state.validators[exit_index])
-        assert state.validators[exit_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+        assert spec.has_eth1_withdrawal_credential(get_validators(spec, state)[exit_index])
+        assert get_validators(spec, state)[exit_index].exit_epoch == spec.FAR_FUTURE_EPOCH
 
     yield "pre", state
 
@@ -613,9 +655,11 @@ def test_epoch_boundary_full_parent_all_requests_gap_5_epochs(spec, state):
     signed_block_1 = state_transition_and_sign_block(spec, state, block_1)
 
     # None of the requests have been applied yet.
-    assert spec.has_eth1_withdrawal_credential(state.validators[consolidation_validator_index])
+    assert spec.has_eth1_withdrawal_credential(
+        get_validators(spec, state)[consolidation_validator_index]
+    )
     for exit_index in exit_validator_indices:
-        assert state.validators[exit_index].exit_epoch == spec.FAR_FUTURE_EPOCH
+        assert get_validators(spec, state)[exit_index].exit_epoch == spec.FAR_FUTURE_EPOCH
     assert len(state.pending_deposits) == pre_pending_deposits
 
     # Block 2: after 5 full epochs of missed slots (including slot 0 of the
@@ -636,14 +680,17 @@ def test_epoch_boundary_full_parent_all_requests_gap_5_epochs(spec, state):
 
     # Switch-to-compounding applied in block_2. The switch is not an exit.
     assert spec.has_compounding_withdrawal_credential(
-        state.validators[consolidation_validator_index]
+        get_validators(spec, state)[consolidation_validator_index]
     )
-    assert state.validators[consolidation_validator_index].exit_epoch == spec.FAR_FUTURE_EPOCH
-    assert state.balances[consolidation_validator_index] <= spec.MIN_ACTIVATION_BALANCE
+    assert (
+        get_validators(spec, state)[consolidation_validator_index].exit_epoch
+        == spec.FAR_FUTURE_EPOCH
+    )
+    assert get_balances(spec, state)[consolidation_validator_index] <= spec.MIN_ACTIVATION_BALANCE
     # effective_balance must not jump to the compounding cap across the
     # epoch boundary.
     assert (
-        state.validators[consolidation_validator_index].effective_balance
+        get_validators(spec, state)[consolidation_validator_index].effective_balance
         == spec.MIN_ACTIVATION_BALANCE
     )
 
@@ -652,15 +699,15 @@ def test_epoch_boundary_full_parent_all_requests_gap_5_epochs(spec, state):
     current_epoch = spec.get_current_epoch(state)
     exit_epochs = []
     for exit_index in exit_validator_indices:
-        post_exit_epoch = state.validators[exit_index].exit_epoch
-        post_withdrawable_epoch = state.validators[exit_index].withdrawable_epoch
+        post_exit_epoch = get_validators(spec, state)[exit_index].exit_epoch
+        post_withdrawable_epoch = get_validators(spec, state)[exit_index].withdrawable_epoch
         assert post_exit_epoch < spec.FAR_FUTURE_EPOCH
         assert post_exit_epoch >= current_epoch
         assert (
             post_withdrawable_epoch
             == post_exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
         )
-        assert state.balances[exit_index] > 0
+        assert get_balances(spec, state)[exit_index] > 0
         exit_epochs.append(post_exit_epoch)
 
     # Exit-churn progression: the three initiate_validator_exit calls share
@@ -679,7 +726,7 @@ def test_epoch_boundary_full_parent_all_requests_gap_5_epochs(spec, state):
     # excess was drained by block_1's partial-withdrawal sweep, so
     # queue_excess_active_balance is a no-op and no consolidation entry is
     # appended.
-    pending_pubkeys = [pd.pubkey for pd in state.pending_deposits]
+    pending_pubkeys = [get_deposit_pubkey(spec, pd.pubkey) for pd in state.pending_deposits]
     assert deposit_target_pubkey in pending_pubkeys
     assert consolidation_pubkey not in pending_pubkeys
     assert len(state.pending_deposits) >= pre_pending_deposits + 1

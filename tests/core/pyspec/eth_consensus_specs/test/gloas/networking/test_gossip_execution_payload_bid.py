@@ -1,4 +1,5 @@
 from eth_consensus_specs.test.context import (
+    always_bls,
     spec_state_test_with_matching_config,
     with_gloas_and_later,
 )
@@ -27,6 +28,8 @@ from eth_consensus_specs.test.helpers.gossip import (
     get_seen,
     run_validate_gossip,
 )
+from eth_consensus_specs.test.helpers.keys import get_request_pubkey
+from eth_consensus_specs.test.helpers.registry import get_builders
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -1212,7 +1215,7 @@ def test_gossip_execution_payload_bid__ignore_builder_cannot_cover(spec, state):
     # Builder activity does not depend on balance, so this is the only
     # failing condition.
     builder_index = spec.BuilderIndex(0)
-    state.builders[builder_index].balance = spec.Gwei(0)
+    get_builders(spec, state)[builder_index].balance = spec.Gwei(0)
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
 
@@ -1410,8 +1413,8 @@ def test_gossip_execution_payload_bid__reject_builder_not_payload_version(spec, 
     """
     # Mark builder 0 as a non-payload-version builder.
     builder_index = spec.BuilderIndex(0)
-    state.builders[builder_index].version = spec.Uint8(spec.PAYLOAD_BUILDER_VERSION + 1)
-    assert state.builders[builder_index].version != spec.PAYLOAD_BUILDER_VERSION
+    get_builders(spec, state)[builder_index].version = spec.Uint8(spec.PAYLOAD_BUILDER_VERSION + 1)
+    assert get_builders(spec, state)[builder_index].version != spec.PAYLOAD_BUILDER_VERSION
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
 
@@ -1485,12 +1488,12 @@ def test_gossip_execution_payload_bid__ignore_builder_exit_in_parent_payload(spe
 
     builder_index = spec.BuilderIndex(0)
     store, blocks, _ = setup_store_advanced_for_bid(spec, state)
-    builder = state.builders[builder_index]
+    builder = get_builders(spec, state)[builder_index]
     requests = spec.ExecutionRequests(
         builder_exits=spec.BuilderExitRequests.of(
             spec.BuilderExitRequest(
                 source_address=builder.execution_address,
-                pubkey=builder.pubkey,
+                pubkey=get_request_pubkey(spec, state.builders[builder_index].pubkey),
             )
         ),
     )
@@ -1563,7 +1566,7 @@ def test_gossip_execution_payload_bid__valid_parent_exit_unknown_pubkey(spec, st
 
     builder_index = spec.BuilderIndex(0)
     store, blocks, _ = setup_store_advanced_for_bid(spec, state)
-    builder = state.builders[builder_index]
+    builder = get_builders(spec, state)[builder_index]
     unknown_pubkey = spec.BLSPubkey(b"\xab" * 48)
     assert unknown_pubkey not in [b.pubkey for b in state.builders]
     requests = spec.ExecutionRequests(
@@ -1642,14 +1645,14 @@ def test_gossip_execution_payload_bid__valid_parent_exit_wrong_source_address(sp
 
     builder_index = spec.BuilderIndex(0)
     store, blocks, _ = setup_store_advanced_for_bid(spec, state)
-    builder = state.builders[builder_index]
+    builder = get_builders(spec, state)[builder_index]
     wrong_address = spec.ExecutionAddress(b"\xff" * 20)
     assert builder.execution_address != wrong_address
     requests = spec.ExecutionRequests(
         builder_exits=spec.BuilderExitRequests.of(
             spec.BuilderExitRequest(
                 source_address=wrong_address,
-                pubkey=builder.pubkey,
+                pubkey=get_request_pubkey(spec, state.builders[builder_index].pubkey),
             )
         ),
     )
@@ -1723,12 +1726,12 @@ def test_gossip_execution_payload_bid__ignore_builder_exit_with_pending_balance(
     yield "topic", "meta", "execution_payload_bid"
 
     builder_index = spec.BuilderIndex(0)
-    builder = state.builders[builder_index]
+    builder = get_builders(spec, state)[builder_index]
     requests = spec.ExecutionRequests(
         builder_exits=spec.BuilderExitRequests.of(
             spec.BuilderExitRequest(
                 source_address=builder.execution_address,
-                pubkey=builder.pubkey,
+                pubkey=get_request_pubkey(spec, state.builders[builder_index].pubkey),
             )
         ),
     )
@@ -2834,6 +2837,7 @@ def test_gossip_execution_payload_bid__reject_block_hash_equals_parent_block_has
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
+@always_bls
 def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
     """A bid with an invalid signature is rejected once all other checks pass."""
     anchor_state = state.copy()
@@ -3342,7 +3346,9 @@ def test_gossip_execution_payload_bid__valid_requires_state_advanced_across_epoc
 
     # The bid claims the builder's entire coverable balance: coverable only
     # once the pending payment is dropped at the epoch transition.
-    bid_value = spec.Gwei(state.builders[builder_index].balance - spec.MIN_DEPOSIT_AMOUNT)
+    bid_value = spec.Gwei(
+        get_builders(spec, state)[builder_index].balance - spec.MIN_DEPOSIT_AMOUNT
+    )
     assert pending_value > 0
     assert not spec.can_builder_cover_bid(state, builder_index, bid_value)
     advanced_state = state.copy()

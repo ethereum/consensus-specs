@@ -7,9 +7,12 @@ from eth_consensus_specs.test.helpers.execution_payload import (
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_execution_payload,
+    add_payload_attestation_message,
     setup_one_block_store,
     tick_and_add_block,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_pq
+from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 
@@ -89,22 +92,39 @@ def vote_via_child_block(
     blob_data_available=True,
 ):
     """
-    Deliver PTC votes for parent_root through a child block at parent_state.slot + 1
-    that carries a PayloadAttestation aggregate.
+    Deliver PTC votes for parent_root and add a child block at parent_state.slot + 1.
+    Before PQ the child block carries the votes as a PayloadAttestation aggregate.
+    From PQ onwards blocks carry no payload attestations, so the votes are delivered
+    from the wire before the child block.
     """
-    aggregate = prepare_signed_payload_attestation(
-        spec,
-        parent_state,
-        slot=parent_state.slot,
-        beacon_block_root=parent_root,
-        payload_present=payload_present,
-        blob_data_available=blob_data_available,
-        attesting_indices=[spec.ValidatorIndex(p) for p in positions],
-    )
-
     child_state = parent_state.copy()
     child_block = build_empty_block_for_next_slot(spec, child_state)
-    child_block.body.payload_attestations.append(aggregate)
+    if is_post_pq(spec):
+        data = spec.PayloadAttestationData(
+            beacon_block_root=parent_root,
+            slot=parent_state.slot,
+            payload_present=payload_present,
+            blob_data_available=blob_data_available,
+        )
+        for position in positions:
+            ptc_message = spec.PayloadAttestationMessage(
+                validator_index=spec.ValidatorIndex(position), data=data
+            )
+            ptc_message.signature = spec.get_payload_attestation_message_signature(
+                parent_state, ptc_message, privkeys[position]
+            )
+            yield from add_payload_attestation_message(spec, store, ptc_message, test_steps)
+    else:
+        aggregate = prepare_signed_payload_attestation(
+            spec,
+            parent_state,
+            slot=parent_state.slot,
+            beacon_block_root=parent_root,
+            payload_present=payload_present,
+            blob_data_available=blob_data_available,
+            attesting_indices=[spec.ValidatorIndex(p) for p in positions],
+        )
+        child_block.body.payload_attestations.append(aggregate)
     signed_child = state_transition_and_sign_block(spec, child_state, child_block)
     yield from tick_and_add_block(spec, store, signed_child, test_steps)
     return signed_child.message.hash_tree_root()

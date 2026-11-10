@@ -8,7 +8,8 @@ from eth_consensus_specs.test.helpers.block import (
 )
 from eth_consensus_specs.test.helpers.block_processing import run_block_processing_to
 from eth_consensus_specs.test.helpers.keys import privkeys
-from eth_consensus_specs.utils import bls
+from eth_consensus_specs.test.helpers.registry import get_balances
+from eth_consensus_specs.test.helpers.signatures import aggregate, get_empty_aggregate, sign
 
 
 def compute_sync_committee_signature(spec, state, slot, privkey, block_root=None, domain_type=None):
@@ -21,14 +22,14 @@ def compute_sync_committee_signature(spec, state, slot, privkey, block_root=None
         else:
             block_root = spec.get_block_root_at_slot(state, slot)
     signing_root = spec.compute_signing_root(block_root, domain)
-    return bls.Sign(privkey, signing_root)
+    return sign(spec, privkey, signing_root, slot, "LEAF_OFFSET_SYNC_COMMITTEE")
 
 
 def compute_aggregate_sync_committee_signature(
     spec, state, slot, participants, block_root=None, domain_type=None
 ):
     if len(participants) == 0:
-        return spec.G2_POINT_AT_INFINITY
+        return get_empty_aggregate(spec)
 
     signatures = []
     for validator_index in participants:
@@ -43,7 +44,7 @@ def compute_aggregate_sync_committee_signature(
                 domain_type=domain_type,
             )
         )
-    return bls.Aggregate(signatures)
+    return aggregate(spec, signatures)
 
 
 def compute_sync_committee_inclusion_reward(spec, state):
@@ -122,8 +123,10 @@ def validate_sync_committee_rewards(
                 committee_bits,
             )
 
-        balance = pre_state.balances[index] + reward
-        assert post_state.balances[index] == (0 if balance < penalty else balance - penalty)
+        balance = get_balances(spec, pre_state)[index] + reward
+        assert get_balances(spec, post_state)[index] == (
+            0 if balance < penalty else balance - penalty
+        )
 
 
 def run_sync_committee_processing(
@@ -145,7 +148,7 @@ def run_sync_committee_processing(
         call(state, block)
         yield "post", state
     if expect_exception:
-        assert pre_state.balances == state.balances
+        assert get_balances(spec, pre_state) == get_balances(spec, state)
     else:
         committee_indices = compute_committee_indices(state, state.current_sync_committee)
         committee_bits = block.body.sync_aggregate.sync_committee_bits

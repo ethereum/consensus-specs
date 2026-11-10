@@ -22,6 +22,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     on_tick_and_append_step,
     tick_and_add_block,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -127,7 +128,7 @@ def _get_greater_than_proposer_boost_score(spec, store, state, proposer_boost_ro
         proposer_score = (committee_weight * spec.config.PROPOSER_SCORE_BOOST) // 100
 
     # calculate minimum participant count such that attestation_score > proposer_score
-    base_effective_balance = state.validators[0].effective_balance
+    base_effective_balance = get_validators(spec, state)[0].effective_balance
 
     return proposer_score // base_effective_balance + 1
 

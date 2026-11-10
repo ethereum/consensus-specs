@@ -1,11 +1,16 @@
 from random import Random
 
 from eth_consensus_specs.test.helpers.attestations import cached_prepare_state_with_attestations
-from eth_consensus_specs.test.helpers.deposits import mock_deposit
+from eth_consensus_specs.test.helpers.deposits import (
+    get_placeholder_deposit_signature,
+    mock_deposit,
+)
 from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
     is_post_electra,
 )
+from eth_consensus_specs.test.helpers.keys import get_request_pubkey
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import next_epoch
 from eth_consensus_specs.test.helpers.withdrawals import (
     set_compounding_withdrawal_credential_with_balance,
@@ -20,17 +25,17 @@ def set_some_activations(spec, state, rng, activation_epoch=None):
     for index in range(num_validators):
         # If is slashed or exiting, skip
         if (
-            state.validators[index].slashed
-            or state.validators[index].exit_epoch != spec.FAR_FUTURE_EPOCH
+            get_validators(spec, state)[index].slashed
+            or get_validators(spec, state)[index].exit_epoch != spec.FAR_FUTURE_EPOCH
         ):
             continue
         # Set ~1/10 validators' activation_eligibility_epoch and activation_epoch
         if rng.randrange(num_validators) < num_validators // 10:
-            state.validators[index].activation_eligibility_epoch = max(
+            get_validators(spec, state)[index].activation_eligibility_epoch = max(
                 int(activation_epoch) - int(spec.MAX_SEED_LOOKAHEAD) - 1,
                 spec.GENESIS_EPOCH,
             )
-            state.validators[index].activation_epoch = activation_epoch
+            get_validators(spec, state)[index].activation_epoch = activation_epoch
             selected_indices.append(index)
     return selected_indices
 
@@ -41,13 +46,17 @@ def set_some_new_deposits(spec, state, rng):
     # Set ~1/10 to just recently deposited
     for index in range(num_validators):
         # If not already active, skip
-        if not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state)):
+        if not spec.is_active_validator(
+            get_validators(spec, state)[index], spec.get_current_epoch(state)
+        ):
             continue
         if rng.randrange(num_validators) < num_validators // 10:
             mock_deposit(spec, state, index)
             if rng.choice([True, False]):
                 # Set ~half of selected to eligible for activation
-                state.validators[index].activation_eligibility_epoch = spec.get_current_epoch(state)
+                get_validators(spec, state)[
+                    index
+                ].activation_eligibility_epoch = spec.get_current_epoch(state)
             else:
                 # The validators that just made a deposit
                 deposited_indices.append(index)
@@ -77,7 +86,7 @@ def exit_random_validators(
             continue
 
         exited_indices.append(index)
-        validator = state.validators[index]
+        validator = get_validators(spec, state)[index]
         if exit_epoch is None:
             assert withdrawable_epoch is None
             validator.exit_epoch = rng.choice(
@@ -191,19 +200,21 @@ def set_some_pending_deposits(spec, state, rng):
 
     for index in range(num_validators):
         # Skip if not active
-        if not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state)):
+        if not spec.is_active_validator(
+            get_validators(spec, state)[index], spec.get_current_epoch(state)
+        ):
             continue
 
         # Set ~1/10 validators to have pending deposits
         if rng.randrange(num_validators) < num_validators // 10:
-            validator = state.validators[index]
+            validator = get_validators(spec, state)[index]
             amount = spec.EFFECTIVE_BALANCE_INCREMENT * rng.randint(1, 4)
 
             pending_deposit = spec.PendingDeposit(
-                pubkey=validator.pubkey,
+                pubkey=get_request_pubkey(spec, state.validators[index].pubkey),
                 withdrawal_credentials=validator.withdrawal_credentials,
                 amount=amount,
-                signature=spec.bls.G2_POINT_AT_INFINITY,
+                signature=get_placeholder_deposit_signature(spec),
                 slot=spec.GENESIS_SLOT,
             )
             state.pending_deposits.append(pending_deposit)
@@ -220,7 +231,7 @@ def set_some_pending_partial_withdrawals(spec, state, rng):
 
     for index in range(num_validators):
         # Skip if not active
-        if not spec.is_active_validator(state.validators[index], current_epoch):
+        if not spec.is_active_validator(get_validators(spec, state)[index], current_epoch):
             continue
 
         # Set ~1/10 validators to have pending partial withdrawals

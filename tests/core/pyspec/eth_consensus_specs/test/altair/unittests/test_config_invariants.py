@@ -1,11 +1,13 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
+    with_all_phases_from_except,
     with_altair_and_later,
 )
+from eth_consensus_specs.test.helpers.constants import ALTAIR, PQ
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_time(spec, state):
     if is_post_gloas(spec):

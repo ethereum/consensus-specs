@@ -6,14 +6,16 @@ from eth_consensus_specs.test.context import (
     single_phase,
     spec_state_test_with_matching_config,
     spec_test,
+    with_all_phases_from_except,
     with_custom_state,
-    with_gloas_and_later,
     with_matching_spec_config,
     with_presets,
 )
-from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.constants import GLOAS, MINIMAL, PQ
 from eth_consensus_specs.test.helpers.gloas.state import initialize_ptc_window
 from eth_consensus_specs.test.helpers.keys import privkeys
+from eth_consensus_specs.test.helpers.registry import get_validators
+from eth_consensus_specs.test.helpers.signatures import aggregate, sign
 from eth_consensus_specs.test.helpers.state import next_epoch
 
 
@@ -90,7 +92,6 @@ def prepare_signed_payload_attestation(
     payload_attestation = spec.PayloadAttestation(
         aggregation_bits=spec.PayloadTimelinessCommitteeBits(data=aggregation_bits),
         data=data,
-        signature=spec.BLSSignature(),
     )
 
     if valid_signature and attesting_indices:
@@ -102,11 +103,13 @@ def prepare_signed_payload_attestation(
         signatures = []
         for validator_index in attesting_indices:
             if validator_index < len(privkeys):
-                signature = spec.bls.Sign(privkeys[validator_index], signing_root)
+                signature = sign(
+                    spec, privkeys[validator_index], signing_root, slot, "LEAF_OFFSET_PTC_ATTESTER"
+                )
                 signatures.append(signature)
 
         if signatures:
-            payload_attestation.signature = spec.bls.Aggregate(signatures)
+            payload_attestation.signature = aggregate(spec, signatures)
 
     return payload_attestation
 
@@ -133,7 +136,7 @@ def _compute_selection_with_acceptance_iterations(spec, state, indices, seed, si
         if offset == 0:
             random_bytes = spec.sha256(seed + spec.uint_to_bytes(spec.Uint64(i // 16)))
         candidate_index = indices[i % total]
-        effective_balance = state.validators[candidate_index].effective_balance
+        effective_balance = get_validators(spec, state)[candidate_index].effective_balance
         random_value = spec.bytes_to_uint64(random_bytes[offset : offset + 2])
         weight = effective_balance * MAX_RANDOM_VALUE
         threshold = spec.MAX_EFFECTIVE_BALANCE_ELECTRA * random_value
@@ -149,7 +152,7 @@ def _compute_selection_with_acceptance_iterations(spec, state, indices, seed, si
 #
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 @always_bls
 def test_process_payload_attestation_payload_present(spec, state):
@@ -163,7 +166,7 @@ def test_process_payload_attestation_payload_present(spec, state):
     yield from run_payload_attestation_processing(spec, state, payload_attestation)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 @always_bls
 def test_process_payload_attestation_payload_not_present(spec, state):
@@ -177,7 +180,7 @@ def test_process_payload_attestation_payload_not_present(spec, state):
     yield from run_payload_attestation_processing(spec, state, payload_attestation)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 @always_bls
 def test_process_payload_attestation_partial_participation(spec, state):
@@ -202,7 +205,7 @@ def test_process_payload_attestation_partial_participation(spec, state):
 #
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_process_payload_attestation_invalid_beacon_block_root(spec, state):
     """
@@ -223,7 +226,7 @@ def test_process_payload_attestation_invalid_beacon_block_root(spec, state):
 #
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_process_payload_attestation_future_slot(spec, state):
     """
@@ -237,7 +240,7 @@ def test_process_payload_attestation_future_slot(spec, state):
     yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_process_payload_attestation_too_old_slot(spec, state):
     """
@@ -252,8 +255,9 @@ def test_process_payload_attestation_too_old_slot(spec, state):
     yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
+@always_bls
 def test_process_payload_attestation_invalid_signature(spec, state):
     """
     Test payload attestation with invalid signature fails
@@ -266,7 +270,7 @@ def test_process_payload_attestation_invalid_signature(spec, state):
     yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 def test_process_payload_attestation_no_attesting_indices(spec, state):
     """
@@ -280,7 +284,7 @@ def test_process_payload_attestation_no_attesting_indices(spec, state):
     yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test_with_matching_config
 @always_bls
 def test_process_payload_attestation_cross_epoch_wrong_domain(spec, state):
@@ -315,7 +319,7 @@ def test_process_payload_attestation_cross_epoch_wrong_domain(spec, state):
     yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @with_presets([MINIMAL], reason="mainnet preset requires a much larger validator set")
 @with_custom_state(balances_fn=large_validator_set, threshold_fn=default_activation_threshold)
 @spec_test
@@ -366,7 +370,7 @@ def test_process_payload_attestation_uses_multiple_committees(spec, state):
     yield from run_payload_attestation_processing(spec, state, payload_attestation)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @with_presets([MINIMAL], reason="mainnet preset requires a much larger validator set")
 @with_custom_state(balances_fn=large_validator_set, threshold_fn=default_activation_threshold)
 @spec_test
@@ -386,7 +390,7 @@ def test_process_payload_attestation_sampling_not_capped(spec, state):
     assert limit > 0
 
     low_balance = spec.EFFECTIVE_BALANCE_INCREMENT
-    for validator in state.validators:
+    for validator in get_validators(spec, state):
         validator.effective_balance = low_balance
     # Direct balance mutations bypass epoch processing, so refresh the cached current-epoch PTC.
     state.ptc_window = initialize_ptc_window(spec, state)

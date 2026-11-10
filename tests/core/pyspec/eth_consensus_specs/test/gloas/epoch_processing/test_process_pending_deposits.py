@@ -1,10 +1,15 @@
-from eth_consensus_specs.test.context import always_bls, spec_state_test, with_gloas_and_later
+from eth_consensus_specs.test.context import (
+    always_bls,
+    spec_state_test,
+    with_gloas_and_later,
+)
 from eth_consensus_specs.test.helpers.deposits import prepare_pending_deposit
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
 from eth_consensus_specs.test.helpers.keys import (
     builder_pubkey_to_privkey,
     privkeys,
 )
+from eth_consensus_specs.test.helpers.registry import get_balances, get_builders, get_validators
 from eth_consensus_specs.utils import bls
 
 
@@ -64,18 +69,18 @@ def test_process_pending_deposits__existing_validator_valid_non_builder_topup(sp
         signed=True,
     )
     state.pending_deposits = spec.PendingDeposits.of(validator_topup)
-    pre_builders = [builder.copy() for builder in state.builders]
+    pre_builders = [builder.copy() for builder in get_builders(spec, state)]
     pre_validator_count = len(state.validators)
-    pre_balance = state.balances[0]
-    pre_credentials = state.validators[0].withdrawal_credentials
+    pre_balance = get_balances(spec, state)[0]
+    pre_credentials = get_validators(spec, state)[0].withdrawal_credentials
 
     yield from run_epoch_processing_with(spec, state, "process_pending_deposits")
 
     assert list(state.pending_deposits) == []
-    assert list(state.builders) == pre_builders
+    assert list(get_builders(spec, state)) == pre_builders
     assert len(state.validators) == pre_validator_count
-    assert state.validators[0].withdrawal_credentials == pre_credentials
-    assert state.balances[0] == pre_balance + validator_topup.amount
+    assert get_validators(spec, state)[0].withdrawal_credentials == pre_credentials
+    assert get_balances(spec, state)[0] == pre_balance + validator_topup.amount
 
 
 @with_gloas_and_later
@@ -106,17 +111,17 @@ def test_process_pending_deposits__pending_validator_invalid_non_builder_topup(s
         signed=False,
     )
     state.pending_deposits = spec.PendingDeposits.of(validator_deposit, invalid_topup)
-    pre_builders = [builder.copy() for builder in state.builders]
+    pre_builders = [builder.copy() for builder in get_builders(spec, state)]
     pre_validator_count = len(state.validators)
 
     yield from run_epoch_processing_with(spec, state, "process_pending_deposits")
 
     assert list(state.pending_deposits) == []
-    assert list(state.builders) == pre_builders
+    assert list(get_builders(spec, state)) == pre_builders
     assert len(state.validators) == pre_validator_count + 1
     assert state.validators[-1].pubkey == pubkey
-    assert state.validators[-1].withdrawal_credentials == validator_credentials
-    assert state.balances[-1] == validator_deposit.amount + invalid_topup.amount
+    assert get_validators(spec, state)[-1].withdrawal_credentials == validator_credentials
+    assert get_balances(spec, state)[-1] == validator_deposit.amount + invalid_topup.amount
 
 
 @with_gloas_and_later
@@ -143,15 +148,15 @@ def test_process_pending_deposits__invalid_builder_topup_with_existing_validator
         signed=False,
     )
     state.pending_deposits = spec.PendingDeposits.of(invalid_topup)
-    pre_builders = [builder.copy() for builder in state.builders]
+    pre_builders = [builder.copy() for builder in get_builders(spec, state)]
     pre_validator_count = len(state.validators)
-    pre_balance = state.balances[0]
-    pre_credentials = state.validators[0].withdrawal_credentials
+    pre_balance = get_balances(spec, state)[0]
+    pre_credentials = get_validators(spec, state)[0].withdrawal_credentials
 
     yield from run_epoch_processing_with(spec, state, "process_pending_deposits")
 
     assert list(state.pending_deposits) == []
-    assert list(state.builders) == pre_builders
+    assert list(get_builders(spec, state)) == pre_builders
     assert len(state.validators) == pre_validator_count
-    assert state.validators[0].withdrawal_credentials == pre_credentials
-    assert state.balances[0] == pre_balance + invalid_topup.amount
+    assert get_validators(spec, state)[0].withdrawal_credentials == pre_credentials
+    assert get_balances(spec, state)[0] == pre_balance + invalid_topup.amount

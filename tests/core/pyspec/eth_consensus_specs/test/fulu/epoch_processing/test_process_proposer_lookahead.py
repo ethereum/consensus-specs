@@ -1,5 +1,6 @@
 from eth_consensus_specs.test.context import spec_state_test, with_fulu_and_later
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import next_epoch
 
 
@@ -45,7 +46,7 @@ def test_proposer_lookahead_does_not_contain_exited_validators(spec, state):
         spec.initiate_validator_exit(state, validator_index)
 
     # Check when these validators are scheduled to exit
-    exit_epochs = [state.validators[i].exit_epoch for i in validators_to_exit]
+    exit_epochs = [get_validators(spec, state)[i].exit_epoch for i in validators_to_exit]
     min_exit_epoch = min(exit_epochs)
 
     # Progress epoch until we reach the epoch with the first validator exit
@@ -61,5 +62,5 @@ def test_proposer_lookahead_does_not_contain_exited_validators(spec, state):
     # Check that the proposer lookahead does not contain exited validators
     for validator_index in state.proposer_lookahead:
         assert spec.is_active_validator(
-            state.validators[validator_index], spec.get_current_epoch(state)
+            get_validators(spec, state)[validator_index], spec.get_current_epoch(state)
         ), f"Validator {validator_index} in lookahead should be active"

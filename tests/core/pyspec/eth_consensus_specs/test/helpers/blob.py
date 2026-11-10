@@ -16,6 +16,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_gloas,
 )
 from eth_consensus_specs.test.helpers.keys import builder_privkeys
+from eth_consensus_specs.test.helpers.signatures import get_placeholder_signature
 from eth_consensus_specs.utils import kzg
 
 # Scalar field modulus of BLS12-381; a canonical field element is in [0, BLS_MODULUS).
@@ -130,7 +131,7 @@ def add_blobs_to_block(spec, state, block, rng: Random | None = None, blob_count
             block.body.signed_execution_payload_bid.message.builder_index
             == spec.BUILDER_INDEX_SELF_BUILD
         ):
-            block.body.signed_execution_payload_bid.signature = spec.G2_POINT_AT_INFINITY
+            block.body.signed_execution_payload_bid.signature = get_placeholder_signature(spec)
         else:
             block.body.signed_execution_payload_bid.signature = (
                 spec.get_execution_payload_bid_signature(

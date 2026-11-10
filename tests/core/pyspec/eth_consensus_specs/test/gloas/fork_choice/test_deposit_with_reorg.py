@@ -6,7 +6,9 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
-from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.constants import (
+    MINIMAL,
+)
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_deposit_request,
 )
@@ -20,6 +22,8 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     tick_and_add_block,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_heze
+from eth_consensus_specs.test.helpers.keys import get_deposit_pubkey
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
     state_transition_and_sign_block,
@@ -101,8 +105,10 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
 
     # check new validator has been created
     assert post_state.pending_deposits == spec.PendingDeposits()
-    new_validator = post_state.validators[len(post_state.validators) - 1]
-    assert new_validator.pubkey == pending_deposit.pubkey
+    new_validator = get_validators(spec, post_state)[len(post_state.validators) - 1]
+    assert post_state.validators[len(post_state.validators) - 1].pubkey == get_deposit_pubkey(
+        spec, pending_deposit.pubkey
+    )
     assert new_validator.withdrawal_credentials == pending_deposit.withdrawal_credentials
 
     # (3) create a conflicting block that triggers deposit processing on another fork
@@ -128,8 +134,10 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
 
     # check new validator has been created on another fork
     assert post_state.pending_deposits == spec.PendingDeposits()
-    new_validator = post_state.validators[len(post_state.validators) - 1]
-    assert new_validator.pubkey == pending_deposit.pubkey
+    new_validator = get_validators(spec, post_state)[len(post_state.validators) - 1]
+    assert post_state.validators[len(post_state.validators) - 1].pubkey == get_deposit_pubkey(
+        spec, pending_deposit.pubkey
+    )
     assert new_validator.withdrawal_credentials == pending_deposit.withdrawal_credentials
 
     yield "steps", test_steps

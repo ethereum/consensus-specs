@@ -1,0 +1,20 @@
+# Minimal preset - PQ
+
+# XMSS
+# ---------------------------------------------------------------
+# 2**20 (= 1,048,576)
+MAX_STARK_PROOF_SIZE: 1048576
+
+# Max operations per block
+# ---------------------------------------------------------------
+# 2**4 (= 16)
+MAX_ATTESTATIONS_PQ: 16
+
+# Type-specific SSZ bounds
+# ---------------------------------------------------------------
+# [customized] 1,053,182 bytes, ~1 MiB
+MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE_PQ: 1053182
+# [customized] 2,228,504 bytes, ~2 MiB
+MAX_ATTESTER_SLASHING_SIZE_PQ: 2228504
+# 199,240 bytes, ~195 KiB
+MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_PQ: 199240

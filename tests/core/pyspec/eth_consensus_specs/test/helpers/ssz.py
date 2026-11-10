@@ -12,7 +12,12 @@ from eth_consensus_specs.test.helpers.execution_requests import (
     get_max_builder_exit_requests,
     get_max_withdrawal_requests,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_capella, is_post_electra, is_post_gloas
+from eth_consensus_specs.test.helpers.forks import (
+    is_post_capella,
+    is_post_electra,
+    is_post_gloas,
+    is_post_pq,
+)
 from eth_consensus_specs.test.helpers.payload_attestation import get_max_payload_attestations
 from eth_consensus_specs.test.helpers.proposer_slashings import get_max_proposer_slashings
 from eth_consensus_specs.test.helpers.voluntary_exits import get_max_voluntary_exits
@@ -32,13 +37,15 @@ def get_soft_list_length_limits(spec):
         spec.VoluntaryExits: get_max_voluntary_exits(spec),
     }
     if is_post_capella(spec):
-        limits[spec.BLSToExecutionChanges] = get_max_bls_to_execution_changes(spec)
+        if not is_post_pq(spec):
+            limits[spec.BLSToExecutionChanges] = get_max_bls_to_execution_changes(spec)
         limits[spec.Withdrawals] = get_max_withdrawals(spec)
     if is_post_electra(spec):
         limits[spec.WithdrawalRequests] = get_max_withdrawal_requests(spec)
         limits[spec.ConsolidationRequests] = get_max_consolidation_requests(spec)
     if is_post_gloas(spec):
-        limits[spec.PayloadAttestations] = get_max_payload_attestations(spec)
+        if not is_post_pq(spec):
+            limits[spec.PayloadAttestations] = get_max_payload_attestations(spec)
         limits[spec.BuilderDepositRequests] = get_max_builder_deposit_requests(spec)
         limits[spec.BuilderExitRequests] = get_max_builder_exit_requests(spec)
     return limits

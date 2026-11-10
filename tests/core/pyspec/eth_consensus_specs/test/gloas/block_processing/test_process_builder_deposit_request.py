@@ -1,11 +1,22 @@
-from eth_consensus_specs.test.context import always_bls, spec_state_test, with_gloas_and_later
+from eth_consensus_specs.test.context import (
+    always_bls,
+    spec_state_test,
+    with_gloas_and_later,
+)
 from eth_consensus_specs.test.helpers.builder_deposit_requests import (
     assert_process_builder_deposit_request,
     prepare_process_builder_deposit_request,
     run_builder_deposit_request_processing,
 )
 from eth_consensus_specs.test.helpers.deposits import prepare_builder_deposit_request
-from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, privkeys, pubkeys
+from eth_consensus_specs.test.helpers.forks import is_post_pq
+from eth_consensus_specs.test.helpers.keys import (
+    builder_pubkey_to_privkey,
+    privkeys,
+    pubkeys,
+    xmss_pubkeys,
+)
+from eth_consensus_specs.test.helpers.registry import get_builders
 from eth_consensus_specs.utils import bls
 
 
@@ -192,7 +203,7 @@ def test_process_builder_deposit_request__new_builder_max_minus_one(spec, state)
 @spec_state_test
 def test_process_builder_deposit_request__new_builder_empty_registry(spec, state):
     """
-    Test new builder deposit when state.builders is empty.
+    Test new builder deposit when get_builders(spec, state) is empty.
 
     Input State Configured:
         - Empty builders registry
@@ -231,7 +242,7 @@ def test_process_builder_deposit_request__new_builder_pubkey_is_validator(spec, 
     registries are keyed independently, so one pubkey may be both.
     """
     validator_pubkey = state.validators[0].pubkey
-    assert validator_pubkey == pubkeys[0]
+    assert validator_pubkey == (xmss_pubkeys[0] if is_post_pq(spec) else pubkeys[0])
     amount = spec.MIN_DEPOSIT_AMOUNT
     pre_builder_count = len(state.builders)
 
@@ -273,7 +284,7 @@ def test_process_builder_deposit_request__top_up(spec, state):
     """
     builder_pubkey = state.builders[0].pubkey
     amount = spec.MIN_DEPOSIT_AMOUNT
-    pre_balance = state.builders[0].balance
+    pre_balance = get_builders(spec, state)[0].balance
     pre_builder_count = len(state.builders)
 
     builder_deposit_request = prepare_builder_deposit_request(
@@ -324,7 +335,7 @@ def test_process_builder_deposit_request__top_up_single_builder(spec, state):
     """
     # Keep only one builder
     first_builder = state.builders[0]
-    pre_balance = first_builder.balance
+    pre_balance = get_builders(spec, state)[0].balance
     amount = spec.MIN_DEPOSIT_AMOUNT
 
     # Top-up existing builder at index 0, keeping only one builder
@@ -366,7 +377,7 @@ def test_process_builder_deposit_request__top_up_last_index(spec, state):
     """
     last_index = len(state.builders) - 1
     pubkey = state.builders[last_index].pubkey
-    pre_balance = state.builders[last_index].balance
+    pre_balance = get_builders(spec, state)[last_index].balance
     pre_builder_count = len(state.builders)
     amount = spec.MIN_DEPOSIT_AMOUNT
 
@@ -398,13 +409,15 @@ def test_process_builder_deposit_request__top_up_ignores_request_fields(spec, st
     """
     builder_pubkey = state.builders[0].pubkey
     amount = spec.MIN_DEPOSIT_AMOUNT
-    pre_balance = state.builders[0].balance
+    pre_balance = get_builders(spec, state)[0].balance
     pre_builder_count = len(state.builders)
 
     # Use withdrawal credentials that differ from the registration
     withdrawal_credentials = spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x42" * 20
-    assert state.builders[0].version != spec.Uint8(withdrawal_credentials[0])
-    assert state.builders[0].execution_address != spec.ExecutionAddress(withdrawal_credentials[12:])
+    assert get_builders(spec, state)[0].version != spec.Uint8(withdrawal_credentials[0])
+    assert get_builders(spec, state)[0].execution_address != spec.ExecutionAddress(
+        withdrawal_credentials[12:]
+    )
 
     builder_deposit_request = prepare_builder_deposit_request(
         spec,
@@ -427,8 +440,11 @@ def test_process_builder_deposit_request__top_up_ignores_request_fields(spec, st
         expected_builder_count=pre_builder_count,
         expected_builder_balance=pre_balance + amount,
     )
-    assert state.builders[0].version == pre_state.builders[0].version
-    assert state.builders[0].execution_address == pre_state.builders[0].execution_address
+    assert get_builders(spec, state)[0].version == get_builders(spec, pre_state)[0].version
+    assert (
+        get_builders(spec, state)[0].execution_address
+        == get_builders(spec, pre_state)[0].execution_address
+    )
 
 
 @with_gloas_and_later
@@ -866,8 +882,8 @@ def test_process_builder_deposit_request__exited_builder_top_up_zero_balance(spe
         spec.get_current_epoch(state) + spec.config.MIN_BUILDER_WITHDRAWABILITY_DELAY
     )
     # Sanity check: the exited epoch differs from the expected reset value
-    assert pre_state.builders[0].withdrawable_epoch != expected_withdrawable_epoch
-    assert pre_state.builders[0].balance == 0
+    assert get_builders(spec, pre_state)[0].withdrawable_epoch != expected_withdrawable_epoch
+    assert get_builders(spec, pre_state)[0].balance == 0
 
     yield from run_builder_deposit_request_processing(spec, state, deposit_request)
 
@@ -916,8 +932,8 @@ def test_process_builder_deposit_request__exited_builder_top_up_nonzero_balance(
     )
     pre_state = state.copy()
     # Sanity check: the builder is exited but still holds a balance
-    assert pre_state.builders[0].withdrawable_epoch != spec.FAR_FUTURE_EPOCH
-    assert pre_state.builders[0].balance > 0
+    assert get_builders(spec, pre_state)[0].withdrawable_epoch != spec.FAR_FUTURE_EPOCH
+    assert get_builders(spec, pre_state)[0].balance > 0
 
     yield from run_builder_deposit_request_processing(spec, state, deposit_request)
 
@@ -929,5 +945,5 @@ def test_process_builder_deposit_request__exited_builder_top_up_nonzero_balance(
         expected_builder_count=pre_builder_count,
         expected_builder_index=0,
         expected_builder_balance_delta=amount,
-        expected_builder_withdrawable_epoch=pre_state.builders[0].withdrawable_epoch,
+        expected_builder_withdrawable_epoch=get_builders(spec, pre_state)[0].withdrawable_epoch,
     )

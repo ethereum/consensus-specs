@@ -1,4 +1,5 @@
 from eth_consensus_specs.test.context import (
+    always_bls,
     spec_state_test_with_matching_config,
     with_gloas_and_later,
 )
@@ -14,6 +15,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     wrap_genesis_block,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
+from eth_consensus_specs.test.helpers.signatures import get_unsigned_signature, sign
 from eth_consensus_specs.test.helpers.state import next_slot, state_transition_and_sign_block
 
 
@@ -51,12 +53,14 @@ def build_payload_attestation_message(
     message = spec.PayloadAttestationMessage(
         validator_index=validator_index,
         data=data,
-        signature=spec.BLSSignature(),
+        signature=get_unsigned_signature(spec),
     )
     if valid_signature:
         domain = spec.get_domain(state, spec.DOMAIN_PTC_ATTESTER, spec.compute_epoch_at_slot(slot))
         signing_root = spec.compute_signing_root(data, domain)
-        message.signature = spec.bls.Sign(privkeys[validator_index], signing_root)
+        message.signature = sign(
+            spec, privkeys[validator_index], signing_root, slot, "LEAF_OFFSET_PTC_ATTESTER"
+        )
     return message
 
 
@@ -506,6 +510,7 @@ def test_gossip_payload_attestation_message__reject_validator_not_in_ptc(spec, s
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
+@always_bls
 def test_gossip_payload_attestation_message__reject_invalid_signature(spec, state):
     """A message with an invalid signature is rejected."""
     anchor_state = state.copy()
@@ -630,7 +635,7 @@ def test_gossip_payload_attestation_message__reject_validator_index_out_of_range
     message = spec.PayloadAttestationMessage(
         validator_index=out_of_range_index,
         data=data,
-        signature=spec.BLSSignature(),
+        signature=get_unsigned_signature(spec),
     )
     yield get_filename(message), message
 

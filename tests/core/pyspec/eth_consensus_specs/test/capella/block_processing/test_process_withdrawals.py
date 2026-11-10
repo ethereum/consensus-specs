@@ -20,6 +20,7 @@ from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.random import (
     randomize_state,
 )
+from eth_consensus_specs.test.helpers.registry import get_balances, get_validators
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
     next_slot,
@@ -76,7 +77,7 @@ def test_success_one_partial_withdrawal(spec, state):
     assert len(fully_withdrawable_indices) == 0
     assert len(partial_withdrawals_indices) == 1
     for index in partial_withdrawals_indices:
-        assert state.balances[index] > spec.MAX_EFFECTIVE_BALANCE
+        assert get_balances(spec, state)[index] > spec.MAX_EFFECTIVE_BALANCE
 
     next_slot(spec, state)
     execution_payload = build_empty_execution_payload(spec, state)
@@ -543,8 +544,8 @@ def test_withdrawable_epoch_but_0_balance(spec, state):
     current_epoch = spec.get_current_epoch(state)
     set_validator_fully_withdrawable(spec, state, 0, current_epoch)
 
-    state.validators[0].effective_balance = 10000000000
-    state.balances[0] = 0
+    get_validators(spec, state)[0].effective_balance = 10000000000
+    get_balances(spec, state)[0] = 0
 
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -559,8 +560,8 @@ def test_withdrawable_epoch_but_0_effective_balance_0_balance(spec, state):
     current_epoch = spec.get_current_epoch(state)
     set_validator_fully_withdrawable(spec, state, 0, current_epoch)
 
-    state.validators[0].effective_balance = 0
-    state.balances[0] = 0
+    get_validators(spec, state)[0].effective_balance = 0
+    get_balances(spec, state)[0] = 0
 
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -575,8 +576,8 @@ def test_withdrawable_epoch_but_0_effective_balance_nonzero_balance(spec, state)
     current_epoch = spec.get_current_epoch(state)
     set_validator_fully_withdrawable(spec, state, 0, current_epoch)
 
-    state.validators[0].effective_balance = 0
-    state.balances[0] = 100000000
+    get_validators(spec, state)[0].effective_balance = 0
+    get_balances(spec, state)[0] = 100000000
 
     execution_payload = build_empty_execution_payload(spec, state)
 
@@ -621,7 +622,7 @@ def run_random_full_withdrawals_test(spec, state, rng):
         # 50% withdrawable
         if rng.choice([True, False]):
             set_validator_fully_withdrawable(spec, state, index)
-            validator = state.validators[index]
+            validator = get_validators(spec, state)[index]
             # 12.5% unset credentials
             if rng.randint(0, 7) == 0:
                 validator.withdrawal_credentials = (
@@ -629,7 +630,7 @@ def run_random_full_withdrawals_test(spec, state, rng):
                 )
             # 12.5% not enough balance
             if rng.randint(0, 7) == 0:
-                state.balances[index] = 0
+                get_balances(spec, state)[index] = 0
             # 12.5% not close enough epoch
             if rng.randint(0, 7) == 0:
                 validator.withdrawable_epoch += 1
@@ -682,7 +683,7 @@ def test_success_no_max_effective_balance(spec, state):
         # Give the validator an excess balance, so this isn't the reason it fails
         balance=spec.MAX_EFFECTIVE_BALANCE + 1,
     )
-    validator = state.validators[validator_index]
+    validator = get_validators(spec, state)[validator_index]
 
     assert (
         validator.effective_balance == spec.MAX_EFFECTIVE_BALANCE - spec.EFFECTIVE_BALANCE_INCREMENT
@@ -710,7 +711,7 @@ def test_success_no_excess_balance(spec, state):
         # Remove validator's excess balance to make it ineligible for withdrawals
         balance=spec.MAX_EFFECTIVE_BALANCE,
     )
-    validator = state.validators[validator_index]
+    validator = get_validators(spec, state)[validator_index]
 
     assert validator.effective_balance == spec.MAX_EFFECTIVE_BALANCE
     assert not check_is_partially_withdrawable_validator(spec, state, validator_index)
@@ -727,7 +728,7 @@ def test_success_no_excess_balance(spec, state):
 def test_success_excess_balance_but_no_max_effective_balance(spec, state):
     validator_index = len(state.validators) // 2
     set_validator_partially_withdrawable(spec, state, validator_index)
-    validator = state.validators[validator_index]
+    validator = get_validators(spec, state)[validator_index]
 
     # To be partially withdrawable, the validator needs both a maxed out effective balance and an excess balance
     validator.effective_balance = spec.MAX_EFFECTIVE_BALANCE - 1
@@ -745,11 +746,11 @@ def test_success_excess_balance_but_no_max_effective_balance(spec, state):
 @spec_state_test
 def test_success_one_partial_withdrawable_not_yet_active(spec, state):
     validator_index = min(len(state.validators) // 2, spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP - 1)
-    state.validators[validator_index].activation_epoch += 4
+    get_validators(spec, state)[validator_index].activation_epoch += 4
     set_validator_partially_withdrawable(spec, state, validator_index)
 
     assert not spec.is_active_validator(
-        state.validators[validator_index], spec.get_current_epoch(state)
+        get_validators(spec, state)[validator_index], spec.get_current_epoch(state)
     )
 
     execution_payload = build_empty_execution_payload(spec, state)
@@ -763,14 +764,14 @@ def test_success_one_partial_withdrawable_not_yet_active(spec, state):
 @spec_state_test
 def test_success_one_partial_withdrawable_in_exit_queue(spec, state):
     validator_index = min(len(state.validators) // 2, spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP - 1)
-    state.validators[validator_index].exit_epoch = spec.get_current_epoch(state) + 1
+    get_validators(spec, state)[validator_index].exit_epoch = spec.get_current_epoch(state) + 1
     set_validator_partially_withdrawable(spec, state, validator_index)
 
     assert spec.is_active_validator(
-        state.validators[validator_index], spec.get_current_epoch(state)
+        get_validators(spec, state)[validator_index], spec.get_current_epoch(state)
     )
     assert not spec.is_active_validator(
-        state.validators[validator_index], spec.get_current_epoch(state) + 1
+        get_validators(spec, state)[validator_index], spec.get_current_epoch(state) + 1
     )
 
     execution_payload = build_empty_execution_payload(spec, state)
@@ -784,11 +785,11 @@ def test_success_one_partial_withdrawable_in_exit_queue(spec, state):
 @spec_state_test
 def test_success_one_partial_withdrawable_exited(spec, state):
     validator_index = min(len(state.validators) // 2, spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP - 1)
-    state.validators[validator_index].exit_epoch = spec.get_current_epoch(state)
+    get_validators(spec, state)[validator_index].exit_epoch = spec.get_current_epoch(state)
     set_validator_partially_withdrawable(spec, state, validator_index)
 
     assert not spec.is_active_validator(
-        state.validators[validator_index], spec.get_current_epoch(state)
+        get_validators(spec, state)[validator_index], spec.get_current_epoch(state)
     )
 
     execution_payload = build_empty_execution_payload(spec, state)
@@ -802,11 +803,11 @@ def test_success_one_partial_withdrawable_exited(spec, state):
 @spec_state_test
 def test_success_one_partial_withdrawable_active_and_slashed(spec, state):
     validator_index = min(len(state.validators) // 2, spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP - 1)
-    state.validators[validator_index].slashed = True
+    get_validators(spec, state)[validator_index].slashed = True
     set_validator_partially_withdrawable(spec, state, validator_index)
 
     assert spec.is_active_validator(
-        state.validators[validator_index], spec.get_current_epoch(state)
+        get_validators(spec, state)[validator_index], spec.get_current_epoch(state)
     )
 
     execution_payload = build_empty_execution_payload(spec, state)
@@ -820,12 +821,12 @@ def test_success_one_partial_withdrawable_active_and_slashed(spec, state):
 @spec_state_test
 def test_success_one_partial_withdrawable_exited_and_slashed(spec, state):
     validator_index = min(len(state.validators) // 2, spec.MAX_VALIDATORS_PER_WITHDRAWALS_SWEEP - 1)
-    state.validators[validator_index].slashed = True
-    state.validators[validator_index].exit_epoch = spec.get_current_epoch(state)
+    get_validators(spec, state)[validator_index].slashed = True
+    get_validators(spec, state)[validator_index].exit_epoch = spec.get_current_epoch(state)
     set_validator_partially_withdrawable(spec, state, validator_index)
 
     assert not spec.is_active_validator(
-        state.validators[validator_index], spec.get_current_epoch(state)
+        get_validators(spec, state)[validator_index], spec.get_current_epoch(state)
     )
 
     execution_payload = build_empty_execution_payload(spec, state)

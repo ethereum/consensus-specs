@@ -1,16 +1,27 @@
-from eth_consensus_specs.test.helpers.forks import is_post_heze
+from eth_consensus_specs.test.helpers.forks import is_post_heze, is_post_pq
+from eth_consensus_specs.test.helpers.signatures import get_unsigned_signature
+
+
+def build_max_size_aggregate_signature(spec):
+    return spec.BLSSignature()
+
+
+def build_max_size_attestation_proof(spec):
+    return spec.AttestationProof(data=b"\x00" * spec.MAX_STARK_PROOF_SIZE)
 
 
 def build_max_size_attestation(spec):
     aggregation_bits = spec.AggregationBits(
         data=[True] * (spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT)
     )
-    return spec.Attestation(
+    attestation = spec.Attestation(
         aggregation_bits=spec.AggregationBits(data=aggregation_bits),
         data=spec.AttestationData(),
-        signature=spec.BLSSignature(),
         committee_bits=spec.CommitteeBits(),
     )
+    if not is_post_pq(spec):
+        attestation.signature = build_max_size_aggregate_signature(spec)
+    return attestation
 
 
 def build_max_size_indexed_attestation(spec):
@@ -18,10 +29,16 @@ def build_max_size_indexed_attestation(spec):
         data=[spec.ValidatorIndex(0)]
         * (spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT)
     )
+    if is_post_pq(spec):
+        return spec.IndexedAttestation(
+            attesting_indices=spec.AttestingIndices(data=attesting_indices),
+            data=spec.AttestationData(),
+            proof=build_max_size_attestation_proof(spec),
+        )
     return spec.IndexedAttestation(
         attesting_indices=spec.AttestingIndices(data=attesting_indices),
         data=spec.AttestationData(),
-        signature=spec.BLSSignature(),
+        signature=build_max_size_aggregate_signature(spec),
     )
 
 
@@ -29,7 +46,7 @@ def build_max_size_payload_attestation(spec):
     return spec.PayloadAttestation(
         aggregation_bits=spec.PayloadTimelinessCommitteeBits(data=[True] * spec.PTC_SIZE),
         data=spec.PayloadAttestationData(),
-        signature=spec.BLSSignature(),
+        signature=build_max_size_aggregate_signature(spec),
     )
 
 
@@ -44,11 +61,14 @@ def build_max_size_signed_aggregate_and_proof(spec):
     aggregate_and_proof = spec.AggregateAndProof(
         aggregator_index=spec.ValidatorIndex(0),
         aggregate=build_max_size_attestation(spec),
-        selection_proof=spec.BLSSignature(),
     )
+    if is_post_pq(spec):
+        aggregate_and_proof.proof = spec.AttestationProof(data=b"\x00" * spec.MAX_STARK_PROOF_SIZE)
+    else:
+        aggregate_and_proof.selection_proof = get_unsigned_signature(spec)
     return spec.SignedAggregateAndProof(
         message=aggregate_and_proof,
-        signature=spec.BLSSignature(),
+        signature=get_unsigned_signature(spec),
     )
 
 
@@ -59,7 +79,7 @@ def build_max_size_signed_execution_payload_bid(spec):
     bid = spec.ExecutionPayloadBid(
         blob_kzg_commitments=spec.BlobKZGCommitments(data=blob_kzg_commitments)
     )
-    return spec.SignedExecutionPayloadBid(message=bid, signature=spec.BLSSignature())
+    return spec.SignedExecutionPayloadBid(message=bid, signature=get_unsigned_signature(spec))
 
 
 def build_max_size_signed_inclusion_list(spec):
@@ -91,10 +111,14 @@ def build_max_size_signed_execution_proof_envelope(spec):
 
 
 def get_max_signed_aggregate_and_proof_size(spec):
+    if is_post_pq(spec):
+        return spec.MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE_PQ
     return spec.MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE
 
 
 def get_max_attester_slashing_size(spec):
+    if is_post_pq(spec):
+        return spec.MAX_ATTESTER_SLASHING_SIZE_PQ
     return spec.MAX_ATTESTER_SLASHING_SIZE
 
 
@@ -102,6 +126,8 @@ def get_max_signed_execution_payload_bid_size(spec):
     size = spec.MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE
     if is_post_heze(spec):
         size = spec.MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE
+    if is_post_pq(spec):
+        size = spec.MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_PQ
     return size
 
 

@@ -15,6 +15,7 @@ from eth_consensus_specs.test.helpers.random import (
     randomize_attestation_participation,
     randomize_state,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import has_active_balance_differential, next_epoch
 from eth_consensus_specs.test.helpers.voluntary_exits import get_unslashed_exited_validators
 
@@ -122,7 +123,7 @@ def test_full_random_without_leak_and_current_exit_0(spec, state):
     current_epoch = spec.get_current_epoch(state)
     for index in target_validators:
         # patch exited validators to exit in the current epoch
-        validator = state.validators[index]
+        validator = get_validators(spec, state)[index]
         validator.exit_epoch = current_epoch
         validator.withdrawable_epoch = (
             current_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY

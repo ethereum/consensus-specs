@@ -12,6 +12,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
     compute_el_block_hash_for_block,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_bellatrix, is_post_gloas
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import next_slot
 
 
@@ -122,7 +123,7 @@ def test_invalid_proposer_slashed(spec, state):
     proposer_index = spec.get_beacon_proposer_index(stub_state)
 
     # set proposer to slashed
-    state.validators[proposer_index].slashed = True
+    get_validators(spec, state)[proposer_index].slashed = True
 
     block = build_empty_block_for_next_slot(spec, state)
 

@@ -11,6 +11,7 @@ from eth_consensus_specs.test.helpers.random import (
     randomize_previous_epoch_participation,
     randomize_state,
 )
+from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.rewards import leaking
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
@@ -292,7 +293,7 @@ def test_some_slashed_zero_scores_full_participation_leaking(spec, state):
     assert spec.is_in_inactivity_leak(state)
 
     # Ensure some zero scores (non-slashed values) and non-zero scores (slashed vals) in there
-    for score, validator in zip(state.inactivity_scores, state.validators, strict=False):
+    for score, validator in zip(state.inactivity_scores, get_validators(spec, state), strict=False):
         if validator.slashed:
             assert score > 0
         else:
@@ -348,7 +349,7 @@ def test_some_exited_full_random_leaking(spec, state):
     assert not any(get_exited_validators(spec, state))
 
     # advance the state to effect the exits
-    target_epoch = max(state.validators[index].exit_epoch for index in exited_indices)
+    target_epoch = max(get_validators(spec, state)[index].exit_epoch for index in exited_indices)
     # validators that have exited in the previous epoch or earlier will not
     # have their inactivity scores modified, the test advances the state past this point
     # to confirm this invariant:
@@ -392,7 +393,7 @@ def _run_randomized_state_test_for_inactivity_updates(spec, state, rng=None):
     exited_validators = get_exited_validators(spec, state)
     exited_but_not_slashed = []
     for index in exited_validators:
-        validator = state.validators[index]
+        validator = get_validators(spec, state)[index]
         if validator.slashed:
             continue
         exited_but_not_slashed.append(index)

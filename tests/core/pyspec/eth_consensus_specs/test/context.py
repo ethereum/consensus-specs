@@ -10,7 +10,7 @@ from frozendict import frozendict
 from lru import LRU
 
 from eth_consensus_specs.test.utils.yield_generator import MultiPhaseResult, vector_test
-from eth_consensus_specs.utils import bls
+from eth_consensus_specs.utils import bls, xmss
 
 from .exceptions import SkippedTest
 from .helpers.constants import (
@@ -24,6 +24,7 @@ from .helpers.constants import (
     EIP8148,
     EIP8205,
     EIP8321,
+    EIP8483,
     ELECTRA,
     FULU,
     GLOAS,
@@ -32,8 +33,9 @@ from .helpers.constants import (
     MINIMAL,
     PHASE0,
     POST_FORK_OF,
+    PQ,
 )
-from .helpers.forks import is_post_electra, is_post_fork, is_post_gloas
+from .helpers.forks import is_post_electra, is_post_fork, is_post_gloas, is_post_pq
 from .helpers.genesis import create_genesis_state
 from .helpers.specs import (
     spec_targets,
@@ -51,6 +53,9 @@ DEFAULT_TEST_PRESET = MINIMAL
 
 # Without pytest CLI arg or pyspec-test-generator 'run-phase' argument, this will be the config to apply.
 DEFAULT_PYTEST_FORKS = ALL_PHASES
+
+# XMSS key generation and signing take minutes, so tests use stubbed signatures.
+xmss.xmss_active = False
 
 
 @dataclass(frozen=True)
@@ -485,6 +490,8 @@ def always_bls(fn):
     """
 
     def entry(*args, **kw):
+        if "spec" in kw and is_post_pq(kw["spec"]):
+            dump_skipping_message("XMSS signing is too slow to run with real signatures")
         # override bls setting
         kw["bls_active"] = True
         return bls_switch(fn)(*args, **kw)
@@ -760,6 +767,8 @@ with_eip8025_and_later = with_all_phases_from(EIP8025, all_phases=ALLOWED_TEST_R
 with_eip8148_and_later = with_all_phases_from(EIP8148, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip8205_and_later = with_all_phases_from(EIP8205, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 with_eip8321_and_later = with_all_phases_from(EIP8321, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_eip8483_and_later = with_all_phases_from(EIP8483, all_phases=ALLOWED_TEST_RUNNER_FORKS)
+with_pq_and_later = with_all_phases_from(PQ, all_phases=ALLOWED_TEST_RUNNER_FORKS)
 
 with_bellatrix_only = with_phases([BELLATRIX])
 with_electra_only = with_phases([ELECTRA])

@@ -1,11 +1,12 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_configured_state_test,
-    with_capella_and_later,
+    with_all_phases_from_except,
 )
 from eth_consensus_specs.test.helpers.bls_to_execution_changes import (
     get_signed_address_change as get_signed_bls_to_execution_change,
 )
+from eth_consensus_specs.test.helpers.constants import CAPELLA, PQ
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
@@ -13,6 +14,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     run_validate_gossip,
 )
 from eth_consensus_specs.test.helpers.keys import pubkeys
+from eth_consensus_specs.test.helpers.registry import get_validators
 
 
 def get_capella_fork_time_ms(spec, store):
@@ -23,7 +25,7 @@ def get_capella_fork_time_ms(spec, store):
     return spec.compute_time_at_slot_ms(store.genesis_time_ms, capella_slot)
 
 
-@with_capella_and_later
+@with_all_phases_from_except(CAPELLA, [PQ])
 @spec_configured_state_test({"CAPELLA_FORK_EPOCH": 0}, activate_at_genesis=True)
 def test_gossip_bls_to_execution_change__valid(spec, state):
     """
@@ -65,7 +67,7 @@ def test_gossip_bls_to_execution_change__valid(spec, state):
     )
 
 
-@with_capella_and_later
+@with_all_phases_from_except(CAPELLA, [PQ])
 @spec_configured_state_test({"CAPELLA_FORK_EPOCH": 0}, activate_at_genesis=True)
 def test_gossip_bls_to_execution_change__ignore_already_seen(spec, state):
     """
@@ -123,7 +125,7 @@ def test_gossip_bls_to_execution_change__ignore_already_seen(spec, state):
     yield "messages", "meta", messages
 
 
-@with_capella_and_later
+@with_all_phases_from_except(CAPELLA, [PQ])
 @spec_configured_state_test({"CAPELLA_FORK_EPOCH": 0}, activate_at_genesis=True)
 def test_gossip_bls_to_execution_change__reject_validator_index_out_of_range(spec, state):
     """
@@ -168,7 +170,7 @@ def test_gossip_bls_to_execution_change__reject_validator_index_out_of_range(spe
     )
 
 
-@with_capella_and_later
+@with_all_phases_from_except(CAPELLA, [PQ])
 @spec_configured_state_test({"CAPELLA_FORK_EPOCH": 0}, activate_at_genesis=True)
 def test_gossip_bls_to_execution_change__reject_not_bls_credentials(spec, state):
     """
@@ -178,7 +180,9 @@ def test_gossip_bls_to_execution_change__reject_not_bls_credentials(spec, state)
 
     seen = get_seen(spec)
     validator_index = len(state.validators) // 2
-    state.validators[validator_index].withdrawal_credentials = b"\x01" + b"\x00" * 11 + b"\x23" * 20
+    get_validators(spec, state)[validator_index].withdrawal_credentials = (
+        b"\x01" + b"\x00" * 11 + b"\x23" * 20
+    )
     yield "state", state
 
     store, signed_anchor = get_store_from_state(spec, state)
@@ -216,7 +220,7 @@ def test_gossip_bls_to_execution_change__reject_not_bls_credentials(spec, state)
     )
 
 
-@with_capella_and_later
+@with_all_phases_from_except(CAPELLA, [PQ])
 @spec_configured_state_test({"CAPELLA_FORK_EPOCH": 0}, activate_at_genesis=True)
 def test_gossip_bls_to_execution_change__reject_pubkey_mismatch(spec, state):
     """
@@ -265,7 +269,7 @@ def test_gossip_bls_to_execution_change__reject_pubkey_mismatch(spec, state):
     )
 
 
-@with_capella_and_later
+@with_all_phases_from_except(CAPELLA, [PQ])
 @spec_configured_state_test({"CAPELLA_FORK_EPOCH": 0}, activate_at_genesis=True)
 @always_bls
 def test_gossip_bls_to_execution_change__reject_bad_signature(spec, state):

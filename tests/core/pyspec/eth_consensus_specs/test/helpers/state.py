@@ -9,12 +9,13 @@ from eth_consensus_specs.test.helpers.block import (
     transition_unsigned_block,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_altair
+from eth_consensus_specs.test.helpers.registry import get_balances, get_validators
 from eth_consensus_specs.test.helpers.voluntary_exits import get_unslashed_exited_validators
 from eth_consensus_specs.utils.ssz.bytes import Bytes32
 
 
-def get_balance(state, index):
-    return state.balances[index]
+def get_balance(spec, state, index):
+    return get_balances(spec, state)[index]
 
 
 def next_slot(spec, state):
@@ -156,14 +157,16 @@ def ensure_state_has_validators_across_lifecycle(spec, state):
         3. Exited (but not slashed)
         4. Slashed
     """
-    has_pending = any(filter(spec.is_eligible_for_activation_queue, state.validators))
+    has_pending = any(filter(spec.is_eligible_for_activation_queue, get_validators(spec, state)))
 
     current_epoch = spec.get_current_epoch(state)
-    has_active = any(filter(lambda v: spec.is_active_validator(v, current_epoch), state.validators))
+    has_active = any(
+        filter(lambda v: spec.is_active_validator(v, current_epoch), get_validators(spec, state))
+    )
 
     has_exited = any(get_unslashed_exited_validators(spec, state))
 
-    has_slashed = any(filter(lambda v: v.slashed, state.validators))
+    has_slashed = any(filter(lambda v: v.slashed, get_validators(spec, state)))
 
     return has_pending and has_active and has_exited and has_slashed
 
@@ -216,8 +219,12 @@ def cause_effective_balance_decrease_below_threshold(
     """
     HYSTERESIS_INCREMENT = Uint64(spec.EFFECTIVE_BALANCE_INCREMENT // spec.HYSTERESIS_QUOTIENT)
     DOWNWARD_THRESHOLD = HYSTERESIS_INCREMENT * spec.HYSTERESIS_DOWNWARD_MULTIPLIER
-    state.balances[validator_index] = (
-        min(threshold, state.validators[validator_index].effective_balance - DOWNWARD_THRESHOLD) - 1
+    get_balances(spec, state)[validator_index] = (
+        min(
+            threshold,
+            get_validators(spec, state)[validator_index].effective_balance - DOWNWARD_THRESHOLD,
+        )
+        - 1
     )
 
 
@@ -265,7 +272,7 @@ def electra_compute_proposer_index_and_threshold(
         random_bytes = spec.sha256(seed + spec.uint_to_bytes(i // 16))
         offset = i % 16 * 2
         random_value = spec.bytes_to_uint64(random_bytes[offset : offset + 2])
-        effective_balance = state.validators[candidate_index].effective_balance
+        effective_balance = get_validators(spec, state)[candidate_index].effective_balance
         # [Modified in Electra:EIP7251]
         if (
             effective_balance * MAX_RANDOM_VALUE

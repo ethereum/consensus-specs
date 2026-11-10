@@ -1,10 +1,10 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
-    with_altair_and_later,
+    with_all_phases_from_except,
     with_presets,
 )
-from eth_consensus_specs.test.helpers.constants import MAINNET
+from eth_consensus_specs.test.helpers.constants import ALTAIR, MAINNET, PQ
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
@@ -128,7 +128,7 @@ def create_valid_signed_contribution_and_proof(
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_gossip_sync_committee_contribution_and_proof__valid(spec, state):
@@ -181,7 +181,7 @@ def test_gossip_sync_committee_contribution_and_proof__valid(spec, state):
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_gossip_sync_committee_contribution_and_proof__valid_at_period_boundary(spec, state):
@@ -241,7 +241,7 @@ def test_gossip_sync_committee_contribution_and_proof__valid_at_period_boundary(
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_gossip_sync_committee_contribution_and_proof__ignore_future_slot(spec, state):
     """Test that a contribution from a future slot is ignored."""
@@ -295,7 +295,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_future_slot(spec, 
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_gossip_sync_committee_contribution_and_proof__ignore_past_slot(spec, state):
     """Test that a contribution from a past slot is ignored."""
@@ -354,7 +354,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_past_slot(spec, st
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_gossip_sync_committee_contribution_and_proof__reject_invalid_subcommittee_index(
     spec, state
@@ -412,7 +412,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_subcommitt
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_gossip_sync_committee_contribution_and_proof__reject_no_participants(spec, state):
     """Test that a contribution with no participants is rejected."""
@@ -471,7 +471,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_no_participants(sp
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @with_presets([MAINNET], reason="minimal preset has modulo=1, so everyone is an aggregator")
 @spec_state_test
 def test_gossip_sync_committee_contribution_and_proof__reject_not_aggregator(spec, state):
@@ -545,7 +545,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_not_aggregator(spe
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_gossip_sync_committee_contribution_and_proof__reject_aggregator_not_in_subcommittee(
     spec, state
@@ -606,7 +606,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_aggregator_not_in_
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 def test_gossip_sync_committee_contribution_and_proof__reject_aggregator_index_out_of_range(
     spec, state
@@ -663,7 +663,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_aggregator_index_o
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_gossip_sync_committee_contribution_and_proof__ignore_superset_contribution(spec, state):
@@ -795,7 +795,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_superset_contribut
     yield "messages", "meta", messages
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_gossip_sync_committee_contribution_and_proof__valid_non_superset_contribution(spec, state):
@@ -928,7 +928,7 @@ def test_gossip_sync_committee_contribution_and_proof__valid_non_superset_contri
     yield "messages", "meta", messages
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_gossip_sync_committee_contribution_and_proof__ignore_duplicate_aggregator(spec, state):
@@ -1015,7 +1015,7 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_duplicate_aggregat
     yield "messages", "meta", messages
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_gossip_sync_committee_contribution_and_proof__reject_invalid_selection_proof(spec, state):
@@ -1079,7 +1079,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_selection_
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_gossip_sync_committee_contribution_and_proof__reject_invalid_aggregator_signature(
@@ -1142,7 +1142,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_invalid_aggregator
     )
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @always_bls
 def test_gossip_sync_committee_contribution_and_proof__reject_invalid_aggregate_signature(

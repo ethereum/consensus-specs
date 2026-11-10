@@ -3,7 +3,8 @@ from random import Random
 from eth_consensus_specs.test.context import expect_assertion_error
 from eth_consensus_specs.test.helpers.forks import is_post_deneb
 from eth_consensus_specs.test.helpers.keys import privkeys
-from eth_consensus_specs.utils import bls
+from eth_consensus_specs.test.helpers.registry import get_validators
+from eth_consensus_specs.test.helpers.signatures import sign
 
 
 def get_max_voluntary_exits(spec):
@@ -40,7 +41,8 @@ def sign_voluntary_exit(spec, state, voluntary_exit, privkey, fork_version=None)
 
     signing_root = spec.compute_signing_root(voluntary_exit, domain)
     return spec.SignedVoluntaryExit(
-        message=voluntary_exit, signature=bls.Sign(privkey, signing_root)
+        message=voluntary_exit,
+        signature=sign(spec, privkey, signing_root, None, "RESERVED_LEAF_VOLUNTARY_EXIT"),
     )
 
 
@@ -51,14 +53,16 @@ def get_exited_validators(spec, state):
     current_epoch = spec.get_current_epoch(state)
     return [
         index
-        for (index, validator) in enumerate(state.validators)
+        for (index, validator) in enumerate(get_validators(spec, state))
         if validator.exit_epoch <= current_epoch
     ]
 
 
 def get_unslashed_exited_validators(spec, state):
     return [
-        index for index in get_exited_validators(spec, state) if not state.validators[index].slashed
+        index
+        for index in get_exited_validators(spec, state)
+        if not get_validators(spec, state)[index].slashed
     ]
 
 
@@ -95,11 +99,11 @@ def run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=True
         yield "post", None
         return
 
-    pre_exit_epoch = state.validators[validator_index].exit_epoch
+    pre_exit_epoch = get_validators(spec, state)[validator_index].exit_epoch
 
     spec.process_voluntary_exit(state, signed_voluntary_exit)
 
     yield "post", state
 
     assert pre_exit_epoch == spec.FAR_FUTURE_EPOCH
-    assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
+    assert get_validators(spec, state)[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH

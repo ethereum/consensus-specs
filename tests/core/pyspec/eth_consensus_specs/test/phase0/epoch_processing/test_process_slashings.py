@@ -11,6 +11,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_electra,
 )
 from eth_consensus_specs.test.helpers.random import randomize_state
+from eth_consensus_specs.test.helpers.registry import get_balances, get_validators
 from eth_consensus_specs.test.helpers.state import has_active_balance_differential, next_epoch
 from eth_consensus_specs.test.helpers.voluntary_exits import get_unslashed_exited_validators
 
@@ -22,7 +23,7 @@ def run_process_slashings(spec, state):
 def slash_validators(spec, state, indices, out_epochs):
     total_slashed_balance = 0
     for i, out_epoch in zip(indices, out_epochs, strict=False):
-        v = state.validators[i]
+        v = get_validators(spec, state)[i]
         v.slashed = True
         spec.initiate_validator_exit(state, i)
         v.withdrawable_epoch = out_epoch
@@ -95,7 +96,7 @@ def test_max_penalties(spec, state):
     yield from run_process_slashings(spec, state)
 
     for i in slashed_indices:
-        assert state.balances[i] == 0
+        assert get_balances(spec, state)[i] == 0
 
 
 @with_all_phases
@@ -113,7 +114,7 @@ def test_low_penalty(spec, state):
     yield from run_process_slashings(spec, state)
 
     for i in slashed_indices:
-        assert 0 < state.balances[i] < pre_state.balances[i]
+        assert 0 < get_balances(spec, state)[i] < get_balances(spec, pre_state)[i]
 
 
 @with_all_phases
@@ -125,12 +126,14 @@ def test_minimal_penalty(spec, state):
     #
 
     # Just the bare minimum for this one validator
-    state.balances[0] = state.validators[0].effective_balance = (
+    get_balances(spec, state)[0] = get_validators(spec, state)[0].effective_balance = (
         spec.config.EJECTION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT
     )
     # All the other validators get the maximum.
     for i in range(1, len(state.validators)):
-        state.validators[i].effective_balance = state.balances[i] = spec.MAX_EFFECTIVE_BALANCE
+        get_validators(spec, state)[i].effective_balance = get_balances(spec, state)[i] = (
+            spec.MAX_EFFECTIVE_BALANCE
+        )
 
     out_epoch = spec.get_current_epoch(state) + (spec.EPOCHS_PER_SLASHINGS_VECTOR // 2)
 
@@ -142,16 +145,16 @@ def test_minimal_penalty(spec, state):
     assert total_balance // 3 > total_penalties
 
     run_epoch_processing_to(spec, state, "process_slashings")
-    pre_slash_balances = list(state.balances)
+    pre_slash_balances = list(get_balances(spec, state))
     yield "pre", state
     spec.process_slashings(state)
     yield "post", state
 
     expected_penalty = _compute_expected_correlation_penalty(
-        spec, state.validators[0].effective_balance, total_penalties, total_balance
+        spec, get_validators(spec, state)[0].effective_balance, total_penalties, total_balance
     )
 
-    assert state.balances[0] == pre_slash_balances[0] - expected_penalty
+    assert get_balances(spec, state)[0] == pre_slash_balances[0] - expected_penalty
 
 
 @with_all_phases
@@ -178,10 +181,10 @@ def test_scaled_penalties(spec, state):
     diff = spec.MAX_EFFECTIVE_BALANCE - base
     increments = diff // incr
     for i in range(10):
-        state.validators[i].effective_balance = base + (incr * (i % increments))
-        assert state.validators[i].effective_balance <= spec.MAX_EFFECTIVE_BALANCE
+        get_validators(spec, state)[i].effective_balance = base + (incr * (i % increments))
+        assert get_validators(spec, state)[i].effective_balance <= spec.MAX_EFFECTIVE_BALANCE
         # add/remove some, see if balances different than the effective balances are picked up
-        state.balances[i] = state.validators[i].effective_balance + i - 5
+        get_balances(spec, state)[i] = get_validators(spec, state)[i].effective_balance + i - 5
 
     total_balance = spec.get_total_active_balance(state)
 
@@ -193,7 +196,7 @@ def test_scaled_penalties(spec, state):
     # We just want to test the slashings.
     # But we are not interested in the other balance changes during the same epoch transition.
     run_epoch_processing_to(spec, state, "process_slashings")
-    pre_slash_balances = list(state.balances)
+    pre_slash_balances = list(get_balances(spec, state))
 
     slash_validators(spec, state, slashed_indices, [out_epoch] * slashed_count)
 
@@ -204,11 +207,11 @@ def test_scaled_penalties(spec, state):
     total_penalties = sum(state.slashings)
 
     for i in slashed_indices:
-        v = state.validators[i]
+        v = get_validators(spec, state)[i]
         expected_penalty = _compute_expected_correlation_penalty(
             spec, v.effective_balance, total_penalties, total_balance
         )
-        assert state.balances[i] == pre_slash_balances[i] - expected_penalty
+        assert get_balances(spec, state)[i] == pre_slash_balances[i] - expected_penalty
 
 
 @with_all_phases
@@ -217,7 +220,7 @@ def test_slashings_with_random_state(spec, state):
     rng = Random(9998)
     randomize_state(spec, state, rng)
 
-    pre_balances = state.balances.copy()
+    pre_balances = get_balances(spec, state).copy()
 
     target_validators = get_unslashed_exited_validators(spec, state)
     assert len(target_validators) != 0
@@ -235,4 +238,4 @@ def test_slashings_with_random_state(spec, state):
     yield from run_process_slashings(spec, state)
 
     for i in slashed_indices:
-        assert state.balances[i] < pre_balances[i]
+        assert get_balances(spec, state)[i] < pre_balances[i]

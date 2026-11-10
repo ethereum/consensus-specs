@@ -19,6 +19,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_fulu,
     is_post_gloas,
     is_post_heze,
+    is_post_pq,
 )
 from eth_consensus_specs.test.helpers.fulu.state import (
     initialize_proposer_lookahead,
@@ -26,14 +27,20 @@ from eth_consensus_specs.test.helpers.fulu.state import (
 from eth_consensus_specs.test.helpers.gloas.state import (
     initialize_ptc_window,
 )
-from eth_consensus_specs.test.helpers.keys import builder_pubkeys, pubkeys
+from eth_consensus_specs.test.helpers.keys import (
+    builder_pubkeys,
+    get_vrf_root,
+    pubkeys,
+    xmss_builder_pubkeys,
+    xmss_pubkeys,
+)
 
 GENESIS_ETH1_BLOCK_HASH = b"\xda" * 32
 
 
 def build_mock_builder(spec, i: int, balance: int):
     return spec.Builder(
-        pubkey=builder_pubkeys[i],
+        pubkey=xmss_builder_pubkeys[i] if is_post_pq(spec) else builder_pubkeys[i],
         execution_address=spec.ExecutionAddress(spec.sha256(builder_pubkeys[i])[12:]),
         balance=balance,
         deposit_epoch=0,
@@ -62,7 +69,7 @@ def build_mock_validator(spec, i: int, balance: int):
         max_effective_balance = spec.MAX_EFFECTIVE_BALANCE
 
     validator = spec.Validator(
-        pubkey=active_pubkey,
+        pubkey=xmss_pubkeys[i] if is_post_pq(spec) else active_pubkey,
         withdrawal_credentials=withdrawal_credentials,
         activation_eligibility_epoch=spec.FAR_FUTURE_EPOCH,
         activation_epoch=spec.FAR_FUTURE_EPOCH,
@@ -72,6 +79,8 @@ def build_mock_validator(spec, i: int, balance: int):
             balance - balance % spec.EFFECTIVE_BALANCE_INCREMENT, max_effective_balance
         ),
     )
+    if is_post_pq(spec):
+        validator.vrf_root = get_vrf_root(i)
 
     return validator
 
@@ -145,16 +154,13 @@ def create_genesis_state(spec, validator_balances, activation_threshold, builder
 
     # We "hack" in the initial validators,
     #  as it is much faster than creating and processing genesis deposits for every single test case.
-    state.balances = spec.Balances(data=validator_balances)
-
-    state.validators = spec.Validators(
-        data=[
-            build_mock_validator(spec, i, state.balances[i]) for i in range(len(validator_balances))
-        ]
+    balances = spec.Balances(data=validator_balances)
+    validators = spec.Validators(
+        data=[build_mock_validator(spec, i, balances[i]) for i in range(len(validator_balances))]
     )
 
     # Process genesis activations
-    for validator in state.validators:
+    for validator in validators:
         if validator.effective_balance >= activation_threshold:
             validator.activation_eligibility_epoch = spec.GENESIS_EPOCH
             validator.activation_epoch = spec.GENESIS_EPOCH
@@ -164,9 +170,12 @@ def create_genesis_state(spec, validator_balances, activation_threshold, builder
             state.inactivity_scores.append(spec.Uint64(0))
 
     # Set genesis validators root for domain separation and chain versioning
-    state.genesis_validators_root = spec.hash_tree_root(state.validators)
+    state.genesis_validators_root = spec.hash_tree_root(validators)
 
-    if is_post_altair(spec):
+    state.validators = validators
+    state.balances = balances
+
+    if is_post_altair(spec) and not is_post_pq(spec):
         # Fill in sync committees
         # Note: A duplicate committee is assigned for the current and next committee at genesis
         state.current_sync_committee = spec.get_next_sync_committee(state)

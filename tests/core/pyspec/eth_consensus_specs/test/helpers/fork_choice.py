@@ -12,7 +12,8 @@ from eth_consensus_specs.test.helpers.attestations import (
     state_transition_with_full_block,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
-from eth_consensus_specs.test.helpers.forks import is_post_fulu, is_post_gloas
+from eth_consensus_specs.test.helpers.forks import is_post_fulu, is_post_gloas, is_post_pq
+from eth_consensus_specs.test.helpers.signatures import get_unsigned_signature
 from eth_consensus_specs.test.helpers.state import next_epoch, state_transition_and_sign_block
 
 
@@ -399,7 +400,7 @@ def add_block(
     for attester_slashing in signed_block.message.body.attester_slashings:
         run_on_attester_slashing(spec, store, attester_slashing, valid=True)
 
-    if is_post_gloas(spec):
+    if is_post_gloas(spec) and not is_post_pq(spec):
         # An on_block step implies receiving block's payload attestations (post GLOAS)
         state = store.block_states[signed_block.message.hash_tree_root()]
         for payload_attestation in signed_block.message.body.payload_attestations:
@@ -411,7 +412,7 @@ def add_block(
                 ptc_message = spec.PayloadAttestationMessage(
                     validator_index=validator_index,
                     data=payload_attestation.data,
-                    signature=spec.BLSSignature(),
+                    signature=get_unsigned_signature(spec),
                 )
                 run_on_payload_attestation_message(
                     spec, store, ptc_message, is_from_block=True, valid=True
@@ -484,15 +485,14 @@ def add_attester_slashing(spec, store, attester_slashing, test_steps, valid=True
 
 
 def run_on_payload_attestation_message(spec, store, ptc_message, is_from_block=False, valid=True):
+    kwargs = {} if is_post_pq(spec) else {"is_from_block": is_from_block}
     if not valid:
         expect_assertion_error(
-            lambda: spec.on_payload_attestation_message(
-                store, ptc_message, is_from_block=is_from_block
-            )
+            lambda: spec.on_payload_attestation_message(store, ptc_message, **kwargs)
         )
         return
 
-    spec.on_payload_attestation_message(store, ptc_message, is_from_block=is_from_block)
+    spec.on_payload_attestation_message(store, ptc_message, **kwargs)
 
 
 def add_payload_attestation_message(spec, store, ptc_message, test_steps, valid=True):

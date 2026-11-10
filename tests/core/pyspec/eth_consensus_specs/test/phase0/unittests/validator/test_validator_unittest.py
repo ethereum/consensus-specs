@@ -12,11 +12,17 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.attestations import (
     build_attestation_data,
+    get_attestation_subnet_count,
     get_valid_attestation,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block
-from eth_consensus_specs.test.helpers.constants import FULU, HEZE, PHASE0
-from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
+from eth_consensus_specs.test.helpers.constants import (
+    FULU,
+    HEZE,
+    PHASE0,
+)
+from eth_consensus_specs.test.helpers.forks import is_post_pq
+from eth_consensus_specs.test.helpers.keys import get_vrf_root, privkeys, pubkeys, xmss_pubkeys
 from eth_consensus_specs.test.helpers.state import next_epoch
 from eth_consensus_specs.utils import bls
 
@@ -79,7 +85,16 @@ def test_check_if_validator_active(spec, state):
     assert spec.check_if_validator_active(state, active_validator_index)
     new_validator_index = len(state.validators)
     amount = spec.MAX_EFFECTIVE_BALANCE
-    spec.add_validator_to_registry(state, pubkeys[new_validator_index], b"\x00" * 32, amount)
+    if is_post_pq(spec):
+        spec.add_validator_to_registry(
+            state,
+            xmss_pubkeys[new_validator_index],
+            get_vrf_root(new_validator_index),
+            b"\x00" * 32,
+            amount,
+        )
+    else:
+        spec.add_validator_to_registry(state, pubkeys[new_validator_index], b"\x00" * 32, amount)
     assert not spec.check_if_validator_active(state, new_validator_index)
 
 
@@ -132,6 +147,7 @@ def test_is_proposer(spec, state):
 
 @with_all_phases
 @spec_state_test
+@always_bls
 def test_get_epoch_signature(spec, state):
     block = spec.BeaconBlock()
     privkey = privkeys[0]
@@ -398,8 +414,7 @@ def test_compute_subnet_for_attestation(spec, state):
             slots_since_epoch_start = slot % spec.SLOTS_PER_EPOCH
             committees_since_epoch_start = committees_per_slot * slots_since_epoch_start
             expected_subnet_id = spec.SubnetID(
-                (committees_since_epoch_start + committee_idx)
-                % spec.config.ATTESTATION_SUBNET_COUNT
+                (committees_since_epoch_start + committee_idx) % get_attestation_subnet_count(spec)
             )
 
             assert actual_subnet_id == expected_subnet_id

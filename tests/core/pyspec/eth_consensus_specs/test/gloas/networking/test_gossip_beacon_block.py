@@ -1,13 +1,15 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
+    with_all_phases_from_except,
     with_all_phases_from_to,
     with_gloas_and_later,
 )
+from eth_consensus_specs.test.helpers.attestations import get_max_attestations
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
     sign_block,
 )
-from eth_consensus_specs.test.helpers.constants import GLOAS, HEZE
+from eth_consensus_specs.test.helpers.constants import GLOAS, HEZE, PQ
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
 )
@@ -626,7 +628,7 @@ def test_gossip_beacon_block__valid_max_attestations(spec, state):
 
     def mutate(spec, block):
         block.body.attestations = make_progressive_list(
-            spec.Attestations, spec.MAX_ATTESTATIONS_ELECTRA
+            spec.Attestations, get_max_attestations(spec)
         )
 
     yield from _assert_beacon_block_gossip(spec, state, mutate, "valid")
@@ -639,7 +641,7 @@ def test_gossip_beacon_block__reject_too_many_attestations(spec, state):
 
     def mutate(spec, block):
         block.body.attestations = make_progressive_list(
-            spec.Attestations, spec.MAX_ATTESTATIONS_ELECTRA + 1
+            spec.Attestations, get_max_attestations(spec) + 1
         )
 
     yield from _assert_beacon_block_gossip(spec, state, mutate, "reject", "too many attestations")
@@ -697,7 +699,7 @@ def test_gossip_beacon_block__reject_too_many_voluntary_exits(spec, state):
     )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_gossip_beacon_block__valid_max_bls_to_execution_changes(spec, state):
     """A block with the maximum number of BLS to execution changes is valid."""
@@ -710,7 +712,7 @@ def test_gossip_beacon_block__valid_max_bls_to_execution_changes(spec, state):
     yield from _assert_beacon_block_gossip(spec, state, mutate, "valid")
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_gossip_beacon_block__reject_too_many_bls_to_execution_changes(spec, state):
     """A block with more BLS to execution changes than the limit is rejected."""
@@ -725,7 +727,7 @@ def test_gossip_beacon_block__reject_too_many_bls_to_execution_changes(spec, sta
     )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_gossip_beacon_block__valid_max_payload_attestations(spec, state):
     """A block with the maximum number of payload attestations is valid."""
@@ -738,7 +740,7 @@ def test_gossip_beacon_block__valid_max_payload_attestations(spec, state):
     yield from _assert_beacon_block_gossip(spec, state, mutate, "valid")
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_gossip_beacon_block__reject_too_many_payload_attestations(spec, state):
     """A block with more payload attestations than the limit is rejected."""

@@ -1,5 +1,11 @@
 from eth_consensus_specs.test.helpers.deposits import sign_builder_deposit_request
-from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, builder_pubkeys
+from eth_consensus_specs.test.helpers.keys import (
+    builder_pubkey_to_privkey,
+    builder_pubkeys,
+    get_deposit_pubkey,
+    get_request_pubkey,
+)
+from eth_consensus_specs.test.helpers.registry import get_builders, set_builders
 from eth_consensus_specs.test.helpers.state import next_epoch
 
 
@@ -50,7 +56,7 @@ def prepare_process_builder_deposit_request(
             BUILDER_WITHDRAWAL_PREFIX followed by an eth1 address derived from the pubkey.
         amount: Deposit amount in Gwei. Default: MIN_ACTIVATION_BALANCE.
         signed: If True, sign with a valid builder deposit signature.
-        builders: Override state.builders list entirely. Use [] for empty registry.
+        builders: Override get_builders(spec, state) list entirely. Use [] for empty registry.
         builder_modifications: Dict mapping builder index to dict of field modifications.
             Supported fields: "withdrawable_epoch", "balance".
             Example: {0: {"withdrawable_epoch": 5, "balance": 0}} sets builder[0]
@@ -69,7 +75,9 @@ def prepare_process_builder_deposit_request(
     # Phase 2: Derive effective values
     index = builder_index if builder_index is not None else len(state.builders)
     effective_pubkey = pubkey if pubkey is not None else builder_pubkeys[index]
-    effective_privkey = builder_pubkey_to_privkey[effective_pubkey]
+    effective_privkey = builder_pubkey_to_privkey.get(effective_pubkey)
+    if effective_privkey is None:
+        effective_privkey = builder_pubkey_to_privkey[get_deposit_pubkey(spec, effective_pubkey)]
     effective_amount = amount if amount is not None else spec.MIN_ACTIVATION_BALANCE
     if withdrawal_credentials is not None:
         effective_withdrawal_credentials = withdrawal_credentials
@@ -81,7 +89,7 @@ def prepare_process_builder_deposit_request(
 
     # Phase 3: Apply state overrides (before creating request)
     if builders is not None:
-        state.builders = spec.Builders(data=builders)
+        set_builders(spec, state, builders)
 
     if builder_modifications is not None:
         current_epoch = spec.get_current_epoch(state)
@@ -95,13 +103,13 @@ def prepare_process_builder_deposit_request(
                     epoch_value = current_epoch - 1
                 elif epoch_value == "current_epoch+1":
                     epoch_value = current_epoch + 1
-                state.builders[idx].withdrawable_epoch = epoch_value
+                get_builders(spec, state)[idx].withdrawable_epoch = epoch_value
             if "balance" in mods:
-                state.builders[idx].balance = spec.Gwei(mods["balance"])
+                get_builders(spec, state)[idx].balance = spec.Gwei(mods["balance"])
 
     # Phase 4: Build the request and optionally sign
     request = spec.BuilderDepositRequest(
-        pubkey=effective_pubkey,
+        pubkey=get_request_pubkey(spec, effective_pubkey),
         withdrawal_credentials=effective_withdrawal_credentials,
         amount=effective_amount,
     )
@@ -154,7 +162,7 @@ def assert_process_builder_deposit_request(
     # Find the builder by pubkey
     builder_index = None
     for i, builder in enumerate(state.builders):
-        if builder.pubkey == builder_deposit_request.pubkey:
+        if builder.pubkey == get_deposit_pubkey(spec, builder_deposit_request.pubkey):
             builder_index = i
             break
 
@@ -165,7 +173,7 @@ def assert_process_builder_deposit_request(
     # Check if this was a new builder or top-up
     pre_builder_index = None
     for i, builder in enumerate(pre_state.builders):
-        if builder.pubkey == builder_deposit_request.pubkey:
+        if builder.pubkey == get_deposit_pubkey(spec, builder_deposit_request.pubkey):
             pre_builder_index = i
             break
 
@@ -184,8 +192,8 @@ def assert_process_builder_deposit_request(
             "Builder count should not change for top-up deposit"
         )
         # Balance should increase
-        pre_balance = pre_state.builders[pre_builder_index].balance
-        post_balance = state.builders[builder_index].balance
+        pre_balance = get_builders(spec, pre_state)[pre_builder_index].balance
+        post_balance = get_builders(spec, state)[builder_index].balance
         assert post_balance == pre_balance + builder_deposit_request.amount, (
             f"Builder balance should increase by deposit amount: "
             f"pre={pre_balance}, post={post_balance}, amount={builder_deposit_request.amount}"
@@ -193,20 +201,23 @@ def assert_process_builder_deposit_request(
         # All other builders should remain unchanged
         for i in range(len(pre_state.builders)):
             if i != pre_builder_index:
-                assert state.builders[i] == pre_state.builders[i], (
+                assert get_builders(spec, state)[i] == get_builders(spec, pre_state)[i], (
                     f"Builder at index {i} should be unchanged during top-up"
                 )
 
     # Test-specific checks
     if expected_builder_balance is not None:
-        assert state.builders[builder_index].balance == expected_builder_balance
+        assert get_builders(spec, state)[builder_index].balance == expected_builder_balance
 
     if expected_builder_balance_delta is not None:
         if pre_builder_index is not None:
-            pre_balance = pre_state.builders[pre_builder_index].balance
+            pre_balance = get_builders(spec, pre_state)[pre_builder_index].balance
         else:
             pre_balance = 0
-        assert state.builders[builder_index].balance == pre_balance + expected_builder_balance_delta
+        assert (
+            get_builders(spec, state)[builder_index].balance
+            == pre_balance + expected_builder_balance_delta
+        )
 
     if expected_builder_count is not None:
         assert len(state.builders) == expected_builder_count, (
@@ -219,17 +230,20 @@ def assert_process_builder_deposit_request(
         )
 
     if expected_execution_address is not None:
-        assert state.builders[builder_index].execution_address == expected_execution_address, (
+        assert (
+            get_builders(spec, state)[builder_index].execution_address == expected_execution_address
+        ), (
             f"expected_execution_address: expected={expected_execution_address}, "
-            f"got={state.builders[builder_index].execution_address}"
+            f"got={get_builders(spec, state)[builder_index].execution_address}"
         )
 
     if expected_builder_withdrawable_epoch is not None:
         assert (
-            state.builders[builder_index].withdrawable_epoch == expected_builder_withdrawable_epoch
+            get_builders(spec, state)[builder_index].withdrawable_epoch
+            == expected_builder_withdrawable_epoch
         ), (
             f"expected_builder_withdrawable_epoch: expected={expected_builder_withdrawable_epoch}, "
-            f"got={state.builders[builder_index].withdrawable_epoch}"
+            f"got={get_builders(spec, state)[builder_index].withdrawable_epoch}"
         )
 
     if slot_reused is True:
@@ -239,14 +253,16 @@ def assert_process_builder_deposit_request(
         )
         # Verify exactly one original builder was replaced and it met reuse criteria
         changed_indices = [
-            i for i in range(len(pre_state.builders)) if state.builders[i] != pre_state.builders[i]
+            i
+            for i in range(len(pre_state.builders))
+            if get_builders(spec, state)[i] != get_builders(spec, pre_state)[i]
         ]
         assert len(changed_indices) == 1, (
             f"slot_reused=True: exactly one builder should change: "
             f"changed_indices={changed_indices}"
         )
         reused_idx = changed_indices[0]
-        pre_builder = pre_state.builders[reused_idx]
+        pre_builder = get_builders(spec, pre_state)[reused_idx]
         current_epoch = spec.get_current_epoch(pre_state)
         assert pre_builder.withdrawable_epoch <= current_epoch, (
             f"slot_reused=True: reused builder at index {reused_idx} must have "
@@ -264,6 +280,6 @@ def assert_process_builder_deposit_request(
         )
         # Verify original builders are unchanged when new builder is appended
         for i in range(len(pre_state.builders)):
-            assert state.builders[i] == pre_state.builders[i], (
+            assert get_builders(spec, state)[i] == get_builders(spec, pre_state)[i], (
                 f"slot_reused=False: original builder at index {i} should be unchanged"
             )

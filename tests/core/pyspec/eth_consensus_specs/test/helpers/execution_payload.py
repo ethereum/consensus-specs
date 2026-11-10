@@ -13,6 +13,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_gloas,
 )
 from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
+from eth_consensus_specs.test.helpers.signatures import get_placeholder_signature
 from eth_consensus_specs.test.helpers.withdrawals import get_expected_withdrawals
 
 
@@ -324,7 +325,7 @@ def sign_execution_payload_bid(spec, state, bid):
 
     # For self-builds, use point at infinity signature as per spec
     if bid.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
-        signature = spec.G2_POINT_AT_INFINITY
+        signature = get_placeholder_signature(spec)
     else:
         privkey = builder_privkeys[bid.builder_index]
         signature = spec.get_execution_payload_bid_signature(state, bid, privkey)

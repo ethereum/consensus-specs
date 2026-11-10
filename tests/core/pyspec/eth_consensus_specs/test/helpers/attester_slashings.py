@@ -1,4 +1,5 @@
 from eth_consensus_specs.test.helpers.attestations import (
+    get_indexed_attestation,
     get_valid_attestation,
     sign_attestation,
     sign_indexed_attestation,
@@ -20,8 +21,8 @@ def get_valid_attester_slashing(
         sign_attestation(spec, state, attestation_2)
 
     return spec.AttesterSlashing(
-        attestation_1=spec.get_indexed_attestation(state, attestation_1),
-        attestation_2=spec.get_indexed_attestation(state, attestation_2),
+        attestation_1=get_indexed_attestation(spec, state, attestation_1, signed=signed_1),
+        attestation_2=get_indexed_attestation(spec, state, attestation_2, signed=signed_2),
     )
 
 
