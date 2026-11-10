@@ -195,6 +195,9 @@ def get_data_column_sidecars(
     in the corresponding payload, assemble the sidecars which can be
     distributed to peers.
     """
+    if len(cells_and_kzg_proofs) == 0:
+        return []
+
     sidecars = []
     for column_index in range(NUMBER_OF_COLUMNS):
         column_cells = DataColumn()

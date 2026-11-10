@@ -164,7 +164,7 @@ def prepare_execution_payload(
     execution_engine: ExecutionEngine,
 ) -> PayloadId | None:
     parent_bid = state.latest_execution_payload_bid
-    if should_build_on_full(store, head, get_current_slot(store)):
+    if should_build_on_full(store, head, state.slot):
         envelope = store.payloads[head.root]
         # Make a copy of the state to avoid mutability issues
         state = state.copy()
