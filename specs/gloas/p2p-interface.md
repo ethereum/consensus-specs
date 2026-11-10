@@ -31,6 +31,9 @@
   - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
   - [New `verify_block_body_operation_limits`](#new-verify_block_body_operation_limits)
   - [New `verify_execution_requests_limits`](#new-verify_execution_requests_limits)
+  - [New `keccak256`](#new-keccak256)
+  - [New `compute_ordered_trie_root`](#new-compute_ordered_trie_root)
+  - [New `compute_execution_block_hash`](#new-compute_execution_block_hash)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
@@ -528,6 +531,91 @@ def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> N
         raise GossipReject("too many builder exit requests")
 ```
 
+### New `keccak256`
+
+```python
+def keccak256(data: Sequence[int]) -> Bytes32:
+    """
+    Return the Keccak-256 hash of ``data``.
+    """
+    return Bytes32(keccak256_hash(bytes(data)))
+```
+
+### New `compute_ordered_trie_root`
+
+```python
+def compute_ordered_trie_root(values: Sequence[Sequence[int]]) -> Bytes32:
+    """
+    Return the root of the Merkle Patricia Trie that maps ``rlp_encode(index)``
+    to the value at each index of ``values``.
+    """
+    trie = HexaryTrie(db={})
+    for index, value in enumerate(values):
+        trie.set(rlp_encode(index), bytes(value))
+    return Bytes32(trie.root_hash)
+```
+
+### New `compute_execution_block_hash`
+
+```python
+def compute_execution_block_hash(
+    payload: ExecutionPayload,
+    parent_beacon_block_root: Root,
+    execution_requests: ExecutionRequests,
+) -> Hash32:
+    """
+    Return the hash of the execution block header described by ``payload``.
+    """
+    ommers_hash = keccak256(rlp_encode([]))
+    transactions_root = compute_ordered_trie_root(payload.transactions)
+    withdrawals_root = compute_ordered_trie_root([
+        rlp_encode([
+            withdrawal.index,
+            withdrawal.validator_index,
+            withdrawal.address,
+            withdrawal.amount,
+        ])
+        for withdrawal in payload.withdrawals
+    ])
+    request_hashes = b""
+    for request in get_execution_requests_list(execution_requests):
+        request_hashes += sha256(request)
+    requests_hash = sha256(request_hashes)
+    block_access_list_hash = keccak256(payload.block_access_list)
+
+    return Hash32(
+        keccak256(
+            rlp_encode([
+                payload.parent_hash,
+                ommers_hash,
+                payload.fee_recipient,
+                payload.state_root,
+                transactions_root,
+                payload.receipts_root,
+                payload.logs_bloom,
+                # Difficulty
+                0,
+                payload.block_number,
+                payload.gas_limit,
+                payload.gas_used,
+                payload.timestamp,
+                payload.extra_data,
+                payload.prev_randao,
+                # Nonce
+                Bytes8(),
+                payload.base_fee_per_gas,
+                withdrawals_root,
+                payload.blob_gas_used,
+                payload.excess_blob_gas,
+                parent_beacon_block_root,
+                requests_hash,
+                block_access_list_hash,
+                payload.slot_number,
+            ])
+        )
+    )
+```
+
 ## The gossip domain: gossipsub
 
 Some gossip meshes are upgraded in Gloas to support upgraded types.
@@ -813,11 +901,6 @@ def validate_beacon_aggregate_and_proof_gossip(
 This topic is used to propagate execution payload messages as
 `SignedExecutionPayloadEnvelope`.
 
-*Note*: Clients SHOULD ignore an envelope whose `payload.block_hash` is not
-computed correctly. The block hash is computed as the `keccak256` hash of the
-RLP-encoded execution block header derived from `payload`,
-`envelope.parent_beacon_block_root`, and `envelope.execution_requests`.
-
 ```python
 def validate_execution_payload_envelope_gossip(
     seen: Seen,
@@ -906,6 +989,15 @@ def validate_execution_payload_envelope_gossip(
     # [REJECT] The payload's withdrawals match the withdrawals expected by the block's post-state
     if hash_tree_root(payload.withdrawals) != hash_tree_root(state.payload_expected_withdrawals):
         raise GossipReject("payload's withdrawals do not match the expected withdrawals")
+
+    # [REJECT] The payload's block hash is computed correctly
+    block_hagsh = compute_execution_block_hash(
+        payload,
+        envelope.parent_beacon_block_root,
+        envelope.execution_requests,
+    )
+    if payload.block_hash != block_hash:
+        raise GossipReject("payload's block hash is not computed correctly")
 
     # [REJECT] The envelope signature is valid
     if not verify_execution_payload_envelope_signature(state, signed_execution_payload_envelope):

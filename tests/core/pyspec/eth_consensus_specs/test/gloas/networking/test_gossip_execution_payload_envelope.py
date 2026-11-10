@@ -850,3 +850,40 @@ def test_gossip_execution_payload_envelope__reject_withdrawals_mismatch(spec, st
         update_envelope,
         "payload's withdrawals do not match the expected withdrawals",
     )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__reject_invalid_block_hash(spec, state):
+    """An envelope whose payload.block_hash is not computed correctly is rejected."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload"
+
+    store, blocks, signed_envelope = setup_store_with_block(spec, state)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    seen = get_seen(spec)
+    envelope = signed_envelope.message
+    envelope.payload.transactions.append(spec.Transaction(data=list(b"\x99" * 128)))
+    signed_envelope = sign_execution_payload_envelope(spec, state, blocks[-1], envelope)
+    yield get_filename(signed_envelope), signed_envelope
+
+    messages = []
+
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
+    )
+    assert result == "reject"
+    assert reason == "payload's block hash is not computed correctly"
+    messages.append(
+        {
+            "message": get_filename(signed_envelope),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
