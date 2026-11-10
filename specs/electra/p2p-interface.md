@@ -13,6 +13,7 @@
     - [Global topics](#global-topics)
       - [Modified `beacon_block`](#modified-beacon_block)
       - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
+      - [Modified `voluntary_exit`](#modified-voluntary_exit)
       - [Modified `attester_slashing`](#modified-attester_slashing)
     - [Attestation subnets](#attestation-subnets)
       - [Modified `beacon_attestation_{subnet_id}`](#modified-beacon_attestation_subnet_id)
@@ -355,6 +356,72 @@ def validate_beacon_aggregate_and_proof_gossip(
     seen.aggregate_data_roots[aggregate_cache_key].add(aggregate_bits)
 ```
 
+##### Modified `voluntary_exit`
+
+*Note*: This function is modified per EIP-7251. A voluntary exit is no longer
+valid while the validator has pending partial withdrawals (see
+`process_voluntary_exit`), so such an exit is ignored rather than forwarded.
+
+```python
+def validate_voluntary_exit_gossip(
+    seen: Seen,
+    store: Store,
+    signed_voluntary_exit: SignedVoluntaryExit,
+    current_time_ms: Uint64,
+) -> None:
+    """
+    Validate a SignedVoluntaryExit for gossip propagation.
+    Raises GossipIgnore or GossipReject on validation failure.
+    """
+    voluntary_exit = signed_voluntary_exit.message
+    validator_index = voluntary_exit.validator_index
+
+    # [IGNORE] The voluntary exit is the first valid voluntary exit received for the validator
+    if validator_index in seen.voluntary_exit_indices:
+        raise GossipIgnore("already seen voluntary exit for this validator")
+
+    # [IGNORE] The voluntary exit epoch is not in the future
+    if is_future_epoch(store, voluntary_exit.epoch, current_time_ms):
+        raise GossipIgnore("voluntary exit epoch is in the future")
+
+    state = store.block_states[get_head(store).root]
+
+    # [REJECT] The validator index is valid
+    if validator_index >= len(state.validators):
+        raise GossipReject("validator index out of range")
+
+    validator = state.validators[validator_index]
+    current_epoch = get_current_epoch(state)
+
+    # [IGNORE] The validator has not already initiated exit
+    if validator.exit_epoch != FAR_FUTURE_EPOCH:
+        raise GossipIgnore("validator has already initiated exit")
+
+    # [REJECT] The validator is active
+    if not is_active_validator(validator, current_epoch):
+        raise GossipReject("validator is not active")
+
+    # [REJECT] The validator has been active long enough
+    if current_epoch < validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
+        raise GossipReject("validator has not been active long enough")
+
+    # [New in Electra:EIP7251]
+    # [IGNORE] The validator has no pending partial withdrawals
+    if get_pending_balance_to_withdraw(state, validator_index) != 0:
+        raise GossipIgnore("validator has pending partial withdrawals")
+
+    # [REJECT] The signature is valid
+    domain = compute_domain(
+        DOMAIN_VOLUNTARY_EXIT, CAPELLA_FORK_VERSION, state.genesis_validators_root
+    )
+    signing_root = compute_signing_root(voluntary_exit, domain)
+    if not bls.Verify(validator.pubkey, signing_root, signed_voluntary_exit.signature):
+        raise GossipReject("invalid voluntary exit signature")
+
+    # Mark this voluntary exit as seen
+    seen.voluntary_exit_indices.add(validator_index)
+```
+
 ##### Modified `attester_slashing`
 
 *Note*: This function is modified per EIP-7549. The new `AttesterSlashing` type
@@ -363,6 +430,9 @@ wraps an `IndexedAttestation` payload sized for
 validation logic is otherwise unchanged.
 
 #### Attestation subnets
+
+Unaggregated attestations are sent as `SingleAttestation`s to the subnet topic
+`beacon_attestation_{compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.committee_index)}`.
 
 ##### Modified `beacon_attestation_{subnet_id}`
 

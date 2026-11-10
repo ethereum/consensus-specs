@@ -352,3 +352,38 @@ def test_on_block_peerdas__invalid_wrong_proof_2(spec, state):
         return sidecars
 
     yield from run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_proof)
+
+
+@with_all_phases_from_to(FULU, GLOAS)
+@spec_state_test
+def test_on_block_peerdas__invalid_wrong_block(spec, state):
+    """
+    Test a sidecar of a different block for negative PeerDAS on_block test.
+    """
+    alt_sidecars = get_alt_sidecars(spec, state)
+
+    def invalid_wrong_block(sidecars, alt_sidecars=alt_sidecars):
+        # A well-formed sidecar whose header does not hash to the block root
+        sidecars[0] = alt_sidecars[0]
+        return sidecars
+
+    yield from run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_block)
+
+
+@with_all_phases_from_to(FULU, GLOAS)
+@spec_state_test
+def test_on_block_peerdas__invalid_wrong_commitments_with_proofs(spec, state):
+    """
+    Test commitments not included in the block for negative PeerDAS on_block test.
+    """
+    alt_sidecars = get_alt_sidecars(spec, state)
+
+    def invalid_wrong_commitments_with_proofs(sidecars, alt_sidecars=alt_sidecars):
+        # The column, commitments and proofs are consistent with each other,
+        # but the commitments are not the ones included in the block
+        sidecars[0].column = alt_sidecars[0].column
+        sidecars[0].kzg_commitments = alt_sidecars[0].kzg_commitments
+        sidecars[0].kzg_proofs = alt_sidecars[0].kzg_proofs
+        return sidecars
+
+    yield from run_on_block_peerdas_invalid_test(spec, state, invalid_wrong_commitments_with_proofs)
