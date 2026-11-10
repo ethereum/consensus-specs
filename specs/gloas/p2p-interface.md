@@ -991,7 +991,7 @@ def validate_execution_payload_envelope_gossip(
         raise GossipReject("payload's withdrawals do not match the expected withdrawals")
 
     # [REJECT] The payload's block hash is computed correctly
-    block_hagsh = compute_execution_block_hash(
+    block_hash = compute_execution_block_hash(
         payload,
         envelope.parent_beacon_block_root,
         envelope.execution_requests,
