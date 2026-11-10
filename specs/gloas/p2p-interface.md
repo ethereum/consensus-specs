@@ -813,6 +813,11 @@ def validate_beacon_aggregate_and_proof_gossip(
 This topic is used to propagate execution payload messages as
 `SignedExecutionPayloadEnvelope`.
 
+*Note*: Clients SHOULD ignore an envelope whose `payload.block_hash` is not
+computed correctly. The block hash is computed as the `keccak256` hash of the
+RLP-encoded execution block header derived from `payload`,
+`envelope.parent_beacon_block_root`, and `envelope.execution_requests`.
+
 ```python
 def validate_execution_payload_envelope_gossip(
     seen: Seen,
@@ -901,14 +906,6 @@ def validate_execution_payload_envelope_gossip(
     # [REJECT] The payload's withdrawals match the withdrawals expected by the block's post-state
     if hash_tree_root(payload.withdrawals) != hash_tree_root(state.payload_expected_withdrawals):
         raise GossipReject("payload's withdrawals do not match the expected withdrawals")
-
-    # [REJECT] The payload's block hash is computed correctly
-    if not EXECUTION_ENGINE.is_valid_block_hash(
-        payload,
-        envelope.parent_beacon_block_root,
-        get_execution_requests_list(envelope.execution_requests),
-    ):
-        raise GossipReject("payload's block hash is not computed correctly")
 
     # [REJECT] The envelope signature is valid
     if not verify_execution_payload_envelope_signature(state, signed_execution_payload_envelope):
