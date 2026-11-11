@@ -377,7 +377,7 @@ def spec_test(fn):
 
 # shorthand for decorating @spec_test @with_state @single_phase
 def spec_state_test(fn):
-    return spec_test(with_state(single_phase(fn)))
+    return spec_test(with_state(with_matching_spec_config()(single_phase(fn))))
 
 
 def spec_configured_state_test(conf, *, activate_at_genesis: bool = False):

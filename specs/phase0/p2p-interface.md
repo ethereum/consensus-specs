@@ -443,6 +443,9 @@ def is_non_strict_superset(
     superset of ``new_bits`` (every bit set in new is also set in that prior).
     """
     for prior_bits in seen_bits_set:
+        # A bitset of a different length cannot be a superset
+        if len(prior_bits) != len(new_bits):
+            continue
         is_superset = True
         for prior_bit, new_bit in zip(prior_bits, new_bits, strict=True):
             if new_bit and not prior_bit:
