@@ -276,6 +276,10 @@ def process_validator_pq_registration_request(
     validator_index = ValidatorIndex(validator_pubkeys.index(request.validator_pubkey))
     validator = state.validators[validator_index]
 
+    # Verify the validator has execution withdrawal credentials
+    if not has_execution_withdrawal_credential(validator):
+        return
+
     # Verify the request comes from the validator's withdrawal address
     if validator.withdrawal_credentials[12:] != request.source_address:
         return
