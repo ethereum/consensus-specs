@@ -144,6 +144,21 @@ def test_process_validator_pq_registration_request__bls_withdrawal_credentials(s
 
 @with_phases([EIP8483])
 @spec_state_test
+def test_process_validator_pq_registration_request__bls_credentials_matching_source_address(
+    spec, state
+):
+    # The source address matches, so only the credential prefix check applies
+    state.validators[0].withdrawal_credentials = (
+        spec.BLS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
+    )
+    request = prepare_validator_pq_registration_request(spec, state, 0, b"\x22" * 64)
+    assert request.source_address == b"\x11" * 20
+
+    yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
+
+
+@with_phases([EIP8483])
+@spec_state_test
 def test_process_validator_pq_registration_request__wrong_source_address(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
     request = prepare_validator_pq_registration_request(
