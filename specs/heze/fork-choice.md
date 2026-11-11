@@ -321,6 +321,12 @@ def on_execution_payload_envelope(
     Run ``on_execution_payload_envelope`` upon receiving a new execution payload envelope.
     """
     envelope = signed_envelope.message
+
+    # [New in Heze:EIP7805]
+    # Return early if the payload is already known
+    if is_payload_verified(store, envelope.beacon_block_root):
+        return
+
     # The corresponding beacon block root needs to be known
     assert envelope.beacon_block_root in store.block_states
 
