@@ -50,6 +50,8 @@
     - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
     - [ExecutionPayloadEnvelopesByRange v1](#executionpayloadenvelopesbyrange-v1)
     - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
+- [Broadcasting retrieved blocks](#broadcasting-retrieved-blocks)
+- [Broadcasting retrieved payload envelopes](#broadcasting-retrieved-payload-envelopes)
 
 <!-- mdformat-toc end -->
 
@@ -1505,3 +1507,45 @@ Per `fork_version = compute_fork_version(epoch)`:
 | `fork_version`       | Chunk SSZ type                         |
 | -------------------- | -------------------------------------- |
 | `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
+
+## Broadcasting retrieved blocks
+
+Extend the definitions of the *required* beacon block that has not been received
+with:
+
+- `signed_execution_payload_envelope.message.beacon_block_root` for an execution
+  payload envelope queued for processing.
+- `payload_attestation_message.data.beacon_block_root` for a payload attestation
+  queued for processing.
+- `signed_execution_payload_bid.message.parent_block_root` for an execution
+  payload bid queued for processing.
+
+Replace the definitions of the *required* beacon block for queued data column
+sidecars with:
+
+- `sidecar.beacon_block_root` for a data column sidecar queued for processing.
+- `group_id.beacon_block_root` for a partial data column sidecar queued for
+  processing.
+
+## Broadcasting retrieved payload envelopes
+
+When a message is queued for processing because a required execution payload
+envelope has not been received, the beacon node MUST process that envelope, once
+retrieved, as if it had been received via Gossipsub. Specifically, the node MUST
+run
+`validate_execution_payload_envelope_gossip(seen, store, retrieved_execution_payload_envelope)`,
+where `retrieved_execution_payload_envelope` is the retrieved signed execution
+payload envelope. If validation completes without raising an exception, the node
+MUST publish the envelope on the `execution_payload` Gossipsub topic.
+
+The beacon block corresponding to the required payload envelope that has not
+been received is identified by:
+
+- `aggregate.data.beacon_block_root` for an aggregate queued for processing when
+  `aggregate.data.index == 1`, where
+  `aggregate = signed_aggregate_and_proof.message.aggregate`.
+- `attestation.data.beacon_block_root` for an attestation queued for processing
+  when `attestation.data.index == 1`.
+- `signed_beacon_block.message.parent_root` for a beacon block queued for
+  processing when `is_parent_node_full(store, signed_beacon_block.message)`
+  returns `True`.
