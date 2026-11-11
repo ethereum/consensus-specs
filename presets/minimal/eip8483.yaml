@@ -1,0 +1,8 @@
+# Minimal preset - EIP8483
+
+# Execution
+# ---------------------------------------------------------------
+# 2**10 (= 1,024)
+MAX_VALIDATOR_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD: 1024
+# 2**4 (= 16)
+MAX_BUILDER_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD: 16
