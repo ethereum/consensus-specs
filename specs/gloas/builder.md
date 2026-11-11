@@ -172,6 +172,11 @@ Then the builder assembles
 `signed_execution_payload_bid = SignedExecutionPayloadBid(message=bid, signature=signature)`
 and broadcasts it on the `execution_payload_bid` global gossip topic.
 
+A builder may broadcast multiple bids for the same slot and parent, for example
+to raise its bid value. Nodes forward at most
+`get_builder_bid_limit(state, bid.builder_index)` such bids per builder and
+ignore the rest.
+
 ### Constructing the `DataColumnSidecar`s
 
 #### Modified `get_data_column_sidecars`
