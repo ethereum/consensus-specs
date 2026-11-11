@@ -422,10 +422,10 @@ def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
 
     if builds_on_parent_block and builds_on_parent_payload:
         # A proposer only builds on the head's parent to re-org the head
-        current_time_ok = head_block.slot + 1 == bid.slot
+        bid_slot_ok = head_block.slot + 1 == bid.slot
         head_late = is_head_late(store, head_node.root)
         proposer_equivocation = is_proposer_equivocation(store, head_node.root)
-        return current_time_ok and (head_late or proposer_equivocation)
+        return bid_slot_ok and (head_late or proposer_equivocation)
 
     if bid.parent_block_root != head_node.root:
         return False
