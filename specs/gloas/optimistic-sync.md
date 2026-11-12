@@ -42,6 +42,8 @@ optimistically imported execution payloads which have only received a
 @dataclass
 class OptimisticStore:
     # [Modified in Gloas:EIP7732]
+    # Removed `optimistic_roots`
+    # [New in Gloas:EIP7732]
     optimistic_payloads: set[Hash32]
     head_block_root: Root
     blocks: dict[Root, BeaconBlock]
