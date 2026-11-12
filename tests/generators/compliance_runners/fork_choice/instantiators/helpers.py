@@ -531,7 +531,7 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
         elif event_kind == "attestation":
             return data.data.slot + 1
         elif event_kind == "attester_slashing":
-            return max(data.attestation_1.data.slot, data.attestation_1.data.slot) + 1
+            return max(data.attestation_1.data.slot, data.attestation_2.data.slot) + 1
         elif event_kind == "execution_payload":
             return data.message.payload.slot_number
         elif event_kind == "payload_attestation":

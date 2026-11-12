@@ -523,7 +523,7 @@ def _assert_envelope_withdrawals(spec, state, count, expected, reason=None):
     signed_anchor = wrap_genesis_block(spec, anchor_block)
     anchor_root = anchor_block.hash_tree_root()
     # The anchor's payload has been received and verified, recorded in the
-    # store as `on_execution_payload_envelope` would.
+    # store as ``on_execution_payload_envelope`` would.
     signed_anchor_envelope = build_signed_execution_payload_envelope(
         spec, state, anchor_root, signed_anchor
     )

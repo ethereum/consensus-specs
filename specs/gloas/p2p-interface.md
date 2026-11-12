@@ -24,6 +24,7 @@
   - [Modified `verify_data_column_sidecar_kzg_proofs`](#modified-verify_data_column_sidecar_kzg_proofs)
   - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
   - [New `compute_max_data_column_sidecar_size`](#new-compute_max_data_column_sidecar_size)
+  - [New `get_builder_bid_limit`](#new-get_builder_bid_limit)
   - [New `is_current_or_next_slot`](#new-is_current_or_next_slot)
   - [New `is_past_slot`](#new-is_past_slot)
   - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
@@ -215,7 +216,7 @@ class Seen:
     # [New in Gloas:EIP7732]
     payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
     # [New in Gloas:EIP7732]
-    execution_payload_bids: set[tuple[Slot, Hash32, Root, BuilderIndex]]
+    execution_payload_bid_counts: Counter[tuple[Slot, Hash32, Root, BuilderIndex]]
     # [New in Gloas:EIP7732]
     best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
     # [New in Gloas:EIP7732]
@@ -342,6 +343,16 @@ def compute_max_data_column_sidecar_size() -> Uint64:
         beacon_block_root=Root(),
     )
     return Uint64(len(ssz_serialize(sidecar)))
+```
+
+### New `get_builder_bid_limit`
+
+```python
+def get_builder_bid_limit(state: BeaconState, builder_index: BuilderIndex) -> Uint64:
+    """
+    Return the number of bids the builder may submit for each slot and parent.
+    """
+    return Uint64(state.builders[builder_index].balance // ETH_TO_GWEI)
 ```
 
 ### New `is_current_or_next_slot`
@@ -1077,6 +1088,14 @@ def validate_payload_attestation_message_gossip(
 
 This topic is used to propagate signed bids as `SignedExecutionPayloadBid`.
 
+*Note*: The proposer for `bid.slot` SHOULD accept higher-value bids from a
+builder regardless of how many bids it has already seen from that builder for
+the same slot and parent. Otherwise, a builder could send low-value bids to the
+proposer and a high-value bid to the rest of the network. Nodes that accepted
+the high-value bid would not forward competing bids with lower values, and the
+proposer would ignore the high-value bid, leaving it with only the low-value
+bids.
+
 ```python
 def validate_execution_payload_bid_gossip(
     seen: Seen,
@@ -1089,11 +1108,6 @@ def validate_execution_payload_bid_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     bid = signed_execution_payload_bid.message
-
-    # [IGNORE] This is the first bid for this slot, parent, and builder
-    bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
-    if bid_key in seen.execution_payload_bids:
-        raise GossipIgnore("already seen valid bid for this slot, parent, and builder")
 
     # [IGNORE] This is the highest value bid seen for the slot and parent
     best_bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root)
@@ -1187,6 +1201,12 @@ def validate_execution_payload_bid_gossip(
     if not is_active_builder(state, bid.builder_index):
         raise GossipReject("builder is not active")
 
+    # [IGNORE] The builder has not reached its bid limit for this slot and parent
+    bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
+    bid_limit = get_builder_bid_limit(state, bid.builder_index)
+    if seen.execution_payload_bid_counts[bid_key] >= bid_limit:
+        raise GossipIgnore("builder has reached its bid limit for this slot and parent")
+
     # [IGNORE] The builder can cover the bid
     if not can_builder_cover_bid(state, bid.builder_index, bid.value):
         raise GossipIgnore("builder cannot cover bid value")
@@ -1203,8 +1223,8 @@ def validate_execution_payload_bid_gossip(
     if not verify_execution_payload_bid_signature(state, signed_execution_payload_bid):
         raise GossipReject("invalid bid signature")
 
-    # Mark this bid as seen and update the highest-value bid for this slot/parent
-    seen.execution_payload_bids.add(bid_key)
+    # Count this bid and update the highest-value bid for this slot/parent
+    seen.execution_payload_bid_counts[bid_key] += 1
     seen.best_execution_payload_bid[best_bid_key] = bid.value
 ```
 
