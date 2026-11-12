@@ -630,7 +630,11 @@ def validate_beacon_block_gossip(
 
     # [REJECT] The proposer signature is valid
     proposer = state.validators[block.proposer_index]
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
+    domain = compute_domain(
+        DOMAIN_BEACON_PROPOSER,
+        compute_fork_version(compute_epoch_at_slot(block.slot)),
+        state.genesis_validators_root,
+    )
     signing_root = compute_signing_root(block, domain)
     if not bls.Verify(proposer.pubkey, signing_root, signed_beacon_block.signature):
         raise GossipReject("invalid proposer signature")
@@ -782,13 +786,21 @@ def validate_beacon_aggregate_and_proof_gossip(
 
     # [REJECT] The selection proof signature is valid
     aggregator = state.validators[aggregator_index]
-    domain = get_domain(state, DOMAIN_SELECTION_PROOF, target_epoch)
+    domain = compute_domain(
+        DOMAIN_SELECTION_PROOF,
+        compute_fork_version(target_epoch),
+        state.genesis_validators_root,
+    )
     signing_root = compute_signing_root(aggregate.data.slot, domain)
     if not bls.Verify(aggregator.pubkey, signing_root, aggregate_and_proof.selection_proof):
         raise GossipReject("invalid selection proof signature")
 
     # [REJECT] The aggregator signature is valid
-    domain = get_domain(state, DOMAIN_AGGREGATE_AND_PROOF, target_epoch)
+    domain = compute_domain(
+        DOMAIN_AGGREGATE_AND_PROOF,
+        compute_fork_version(target_epoch),
+        state.genesis_validators_root,
+    )
     signing_root = compute_signing_root(aggregate_and_proof, domain)
     if not bls.Verify(aggregator.pubkey, signing_root, signed_aggregate_and_proof.signature):
         raise GossipReject("invalid aggregator signature")
@@ -950,7 +962,11 @@ def validate_payload_attestation_message_gossip(
 
     # [REJECT] The signature is valid
     validator = state.validators[validator_index]
-    domain = get_domain(state, DOMAIN_PTC_ATTESTER, compute_epoch_at_slot(data.slot))
+    domain = compute_domain(
+        DOMAIN_PTC_ATTESTER,
+        compute_fork_version(compute_epoch_at_slot(data.slot)),
+        state.genesis_validators_root,
+    )
     signing_root = compute_signing_root(data, domain)
     if not bls.Verify(validator.pubkey, signing_root, payload_attestation_message.signature):
         raise GossipReject("invalid payload attestation signature")
@@ -1277,7 +1293,11 @@ def validate_beacon_attestation_gossip(
 
     # [REJECT] The attestation signature is valid
     attester = state.validators[attester_index]
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, target_epoch)
+    domain = compute_domain(
+        DOMAIN_BEACON_ATTESTER,
+        compute_fork_version(target_epoch),
+        state.genesis_validators_root,
+    )
     signing_root = compute_signing_root(data, domain)
     if not bls.Verify(attester.pubkey, signing_root, attestation.signature):
         raise GossipReject("invalid attestation signature")
