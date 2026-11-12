@@ -48,8 +48,7 @@ class OptimisticStore:
     block_states: dict[Root, BeaconState]
 ```
 
-At the Gloas fork, `optimistic_payloads` is initialized with
-`body.execution_payload.block_hash` of every block in `optimistic_roots`.
+Payloads of pre-Gloas blocks are tracked by `body.execution_payload.block_hash`.
 
 ### Modified `is_optimistic`
 
