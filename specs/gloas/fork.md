@@ -226,6 +226,9 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
     )
 
     # [New in Gloas:EIP7732]
+    post.execution_payload_availability[post.slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(False)
+
+    # [New in Gloas:EIP7732]
     post.ptc_window = initialize_ptc_window(post)
 
     # [New in Gloas:EIP7732]

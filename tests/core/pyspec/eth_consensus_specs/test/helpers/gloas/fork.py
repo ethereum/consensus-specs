@@ -93,6 +93,13 @@ def run_fork_test(post_spec, pre_state):
     # availability of the attested payload.
     assert post_state.latest_execution_payload_bid.slot == pre_state.latest_block_header.slot
 
+    # Pre-Gloas payloads were available with their blocks, but the first Gloas
+    # payload is not available until its envelope is revealed.
+    fork_slot_index = post_state.slot % post_spec.SLOTS_PER_HISTORICAL_ROOT
+    assert not post_state.execution_payload_availability[fork_slot_index]
+    if fork_slot_index != 0:
+        assert all(post_state.execution_payload_availability[:fork_slot_index])
+
     yield "post", post_state
 
     return post_state
