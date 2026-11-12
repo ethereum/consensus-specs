@@ -124,7 +124,8 @@ When a payload transitions from `NOT_VALIDATED` -> `INVALIDATED`, all
 *descendant* payloads MUST also transition from `NOT_VALIDATED` ->
 `INVALIDATED`. The `full` node of each such payload and every node descending
 from it MUST NOT be viable for head and its weight MUST NOT be applied to any
-ancestor. The block's `empty` node is not affected.
+ancestor. A block's `empty` node is not affected by the invalidation of its own
+payload.
 
 When a payload transitions from the `NOT_VALIDATED` state, it is removed from
 the set of `opt_store.optimistic_payloads`.
