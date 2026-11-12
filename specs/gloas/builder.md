@@ -163,7 +163,12 @@ After building the `bid`, the builder obtains a `signature` of the bid by using:
 def get_execution_payload_bid_signature(
     state: BeaconState, bid: ExecutionPayloadBid, privkey: int
 ) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_BUILDER, compute_epoch_at_slot(bid.slot))
+    epoch = compute_epoch_at_slot(bid.slot)
+    domain = compute_domain(
+        DOMAIN_BEACON_BUILDER,
+        compute_fork_version(epoch),
+        state.genesis_validators_root,
+    )
     signing_root = compute_signing_root(bid, domain)
     return bls.Sign(privkey, signing_root)
 ```
