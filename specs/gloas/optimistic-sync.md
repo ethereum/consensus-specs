@@ -154,8 +154,8 @@ providing that payload to an execution engine.
 ### Payload attestations
 
 An optimistic validator SHOULD still produce payload attestations (i.e., sign
-across the `DOMAIN_PTC_ATTESTER` domain), as they attest to the timeliness of a
-payload and not its validity.
+across the `DOMAIN_PTC_ATTESTER` domain), as they attest to the timeliness and
+data availability of a payload and not its validity.
 
 ## Builder duties
 
