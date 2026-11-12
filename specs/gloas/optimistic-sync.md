@@ -90,10 +90,9 @@ def latest_verified_ancestor(opt_store: OptimisticStore, node: ForkChoiceNode) -
             node = ForkChoiceNode(root=block.parent_root, payload_status=parent_status)
 ```
 
-Let a node be an *optimistic node* if
-`is_optimistic(opt_store, get_head(store))` is `True`. Invalidating payloads
-leaves every block's `empty` node viable, so the block tree cannot be left
-without viable branches.
+Let a beacon node be an *optimistic node* if
+`is_optimistic(opt_store, get_head(store))` is `True` or if `INVALIDATED`
+payloads leave the block tree without viable (with respect to FFG) branches.
 
 ## Mechanisms
 
