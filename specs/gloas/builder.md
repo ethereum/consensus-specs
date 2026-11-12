@@ -156,6 +156,8 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
 13. Set `bid.execution_requests_root` to `hash_tree_root(execution_requests)`,
     where `execution_requests` is the `ExecutionRequests` field returned by
     `engine_getPayloadV6`.
+14. Set `bid.payload_root` to `hash_tree_root(payload)`, where `payload` is the
+    constructed payload.
 
 After building the `bid`, the builder obtains a `signature` of the bid by using:
 
@@ -259,7 +261,7 @@ alias `bid` to be the committed `ExecutionPayloadBid` in
 
 1. Set `envelope.payload` to be the `ExecutionPayload` constructed when creating
    the corresponding bid. This payload **MUST** have the same block hash as
-   `bid.block_hash`.
+   `bid.block_hash` and the same hash tree root as `bid.payload_root`.
 2. Set `envelope.execution_requests` to be the `ExecutionRequests` associated
    with `payload`.
 3. Set `envelope.builder_index` to be the index of the builder performing these

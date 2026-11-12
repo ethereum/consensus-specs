@@ -76,7 +76,7 @@ for the corresponding variable-size libp2p messages. The bound for
 | --------------------------------------- | ----------------------------- |
 | `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE`   | `Uint64(16829)` (= ~16 KiB)   |
 | `MAX_ATTESTER_SLASHING_SIZE`            | `Uint64(2097616)` (= ~2 MiB)  |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `Uint64(196932)` (= ~192 KiB) |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `Uint64(196964)` (= ~192 KiB) |
 
 ## Configs
 
@@ -884,6 +884,10 @@ def validate_execution_payload_envelope_gossip(
     # [REJECT] The number of withdrawals is within the limit
     if len(payload.withdrawals) > MAX_WITHDRAWALS_PER_PAYLOAD:
         raise GossipReject("too many withdrawals")
+
+    # [REJECT] The payload's root matches the bid's payload root
+    if hash_tree_root(payload) != bid.payload_root:
+        raise GossipReject("payload's root does not match the bid's payload root")
 
     # [REJECT] The envelope signature is valid
     if not verify_execution_payload_envelope_signature(state, signed_execution_payload_envelope):

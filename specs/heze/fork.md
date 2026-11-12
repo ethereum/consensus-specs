@@ -57,6 +57,7 @@ def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
         execution_payment=pre.latest_execution_payload_bid.execution_payment,
         blob_kzg_commitments=pre.latest_execution_payload_bid.blob_kzg_commitments,
         execution_requests_root=pre.latest_execution_payload_bid.execution_requests_root,
+        payload_root=pre.latest_execution_payload_bid.payload_root,
         # [New in Heze:EIP7805]
         inclusion_list_bits=InclusionListBits(),
     )

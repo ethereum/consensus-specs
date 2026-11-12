@@ -40,7 +40,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                         | Value                         |
 | -------------------------------------------- | ----------------------------- |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `Uint64(196934)` (= ~192 KiB) |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `Uint64(196966)` (= ~192 KiB) |
 | `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `Uint64(41112)` (= ~40 KiB)   |
 
 ## Configs
