@@ -54,11 +54,13 @@ with `BUILDER_WITHDRAWAL_PREFIX` will be ignored and the funds will be lost.
 
 *Note*: Builders may be onboarded at the fork by submitting a deposit to the
 validator deposit contract with a `BUILDER_WITHDRAWAL_PREFIX` withdrawal
-credential. This must be done late enough that the deposit is still pending at
-the fork, but early enough that the slot in which the deposit is added to the
-pending deposit queue is finalized so that the builder is considered active.
-Such a deposit signs over `DepositMessage` under `DOMAIN_DEPOSIT`, with
-withdrawal credentials of the form
+credential late enough that the deposit is still pending when the Gloas fork is
+applied. The builder is registered during the fork transition and becomes active
+once finality advances past its deposit epoch; without a pending-deposit
+backlog, it is not active in the first Gloas slot. A deposit processed by Fulu
+before the fork is instead added to the validator registry and is not onboarded
+as a builder. Such a deposit signs over `DepositMessage` under `DOMAIN_DEPOSIT`,
+with withdrawal credentials of the form
 `BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + execution_address`.
 
 ### Process deposit
