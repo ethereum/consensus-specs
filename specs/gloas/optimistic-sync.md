@@ -15,7 +15,7 @@
 - [Checkpoint Sync (Weak Subjectivity Sync)](#checkpoint-sync-weak-subjectivity-sync)
 - [Validator assignments](#validator-assignments)
   - [Payload attestations](#payload-attestations)
-  - [Builder duties](#builder-duties)
+- [Builder duties](#builder-duties)
 - [Ethereum Beacon APIs](#ethereum-beacon-apis)
 
 <!-- mdformat-toc end -->
@@ -147,14 +147,14 @@ providing that payload to an execution engine.
 
 ## Validator assignments
 
-Let only a builder on an optimistic node be an *optimistic builder*.
-
 ### Payload attestations
 
 An optimistic validator MUST NOT produce payload attestations (i.e., sign across
 the `DOMAIN_PTC_ATTESTER` domain).
 
-### Builder duties
+## Builder duties
+
+Let only a builder on an optimistic node be an *optimistic builder*.
 
 An optimistic builder MUST NOT submit execution payload bids or envelopes (i.e.,
 sign across the `DOMAIN_BEACON_BUILDER` domain).
