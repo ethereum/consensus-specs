@@ -133,7 +133,6 @@ the set of `opt_store.optimistic_payloads`.
 The Bellatrix rules apply to the payload chain, linked by `parent_hash`, with
 "block" read as "payload": `invalidPayload` is the child of the payload with
 `block_hash == latestValidHash` in the chain containing the payload in question,
-the first payload of that chain if `latestValidHash` is `0x00..00` (all zeroes),
 or the payload in question itself if `latestValidHash` is `null` or unknown.
 `invalidPayload` and all its descendant payloads MUST be transitioned from
 `NOT_VALIDATED` to `INVALIDATED`.
