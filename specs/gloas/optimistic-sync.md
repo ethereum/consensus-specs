@@ -159,8 +159,8 @@ the `DOMAIN_PTC_ATTESTER` domain).
 
 Let only a builder on an optimistic node be an *optimistic builder*.
 
-An optimistic builder MUST NOT submit execution payload bids or envelopes (i.e.,
-sign across the `DOMAIN_BEACON_BUILDER` domain).
+An optimistic builder MUST NOT submit execution payload bids (i.e., sign an
+`ExecutionPayloadBid` across the `DOMAIN_BEACON_BUILDER` domain).
 
 ## Ethereum Beacon APIs
 
