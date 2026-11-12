@@ -1,20 +1,7 @@
-"""
-Gloas optimistic sync test harness.
+"""Test harness for ``specs/gloas/optimistic-sync.md``."""
 
-A Gloas block commits to the payload it builds on (``bid.parent_block_hash``) and its own payload
-arrives later in an envelope. The execution engine judges payloads, so optimistic status is
-tracked per payload, as in ``specs/gloas/optimistic-sync.md``:
-
-- ``opt_store.optimistic_payloads`` holds the payloads that only received ``NOT_VALIDATED``.
-- ``invalidated_payloads`` holds the payloads that transitioned to ``INVALIDATED``.
-
-Removing an ``INVALIDATED`` payload from fork choice removes the ``full`` node of every block that
-committed to it and every node descending from that ``full`` node. The ``empty`` node of that
-block stays. Removed nodes are neither viable for head nor counted in weights.
-
-Every execution engine response is delivered through an ``on_payload_info`` step before the
-call it answers. An ``INVALID`` response rejects the envelope, so its step is ``valid: false``.
-"""
+from dataclasses import dataclass
+from typing import Any
 
 from eth_utils import encode_hex
 
@@ -64,13 +51,13 @@ def invalid(latest_valid_hash):
     )
 
 
+@dataclass
 class GloasBlock:
     """A signed block, its post-state and the envelope that reveals its payload."""
 
-    def __init__(self, signed_block, state, envelope):
-        self.signed_block = signed_block
-        self.state = state
-        self.envelope = envelope
+    signed_block: Any
+    state: Any
+    envelope: Any
 
     @property
     def root(self):
@@ -81,30 +68,32 @@ class GloasBlock:
         return self.signed_block.message.slot
 
     @property
-    def bid(self):
-        return self.signed_block.message.body.signed_execution_payload_bid.message
-
-    @property
     def block_hash(self):
-        return self.bid.block_hash
+        return self.signed_block.message.body.signed_execution_payload_bid.message.block_hash
 
     @property
     def parent_block_hash(self):
-        return self.bid.parent_block_hash
+        return self.signed_block.message.body.signed_execution_payload_bid.message.parent_block_hash
 
 
 class GloasOptimisticRig:
-    def __init__(self, spec, state, test_steps):
+    """
+    Fork choice with ``specs/gloas/optimistic-sync.md`` on top: the ``full`` node of every block
+    that committed to an ``INVALIDATED`` payload is removed with all its descendants, and removed
+    nodes are neither viable for head nor counted in weights.
+    """
+
+    def __init__(self, spec, state, test_steps, slot):
         self.spec = spec
         self.test_steps = test_steps
         self.store, self.anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
-        self.anchor_root = self.anchor_block.hash_tree_root()
+        anchor_root = self.anchor_block.hash_tree_root()
         self.anchor_state = state.copy()
         self.opt_store = spec.OptimisticStore(
             optimistic_payloads=set(),
-            head_block_root=self.anchor_root,
-            blocks={self.anchor_root: self.anchor_block.copy()},
-            block_states={self.anchor_root: state.copy()},
+            head_block_root=anchor_root,
+            blocks={anchor_root: self.anchor_block.copy()},
+            block_states={anchor_root: state.copy()},
         )
         # The anchor's payload is assumed VALID (see "Checkpoint Sync" in optimistic-sync.md).
         self.anchor_block_hash = state.latest_block_hash
@@ -116,6 +105,7 @@ class GloasOptimisticRig:
         self.forkchoice_head = None
         # Payloads whose envelopes fork choice imported, in import order.
         self.imported_payloads = []
+        self.tick(slot)
 
     # Block and envelope construction
 
@@ -128,21 +118,15 @@ class GloasOptimisticRig:
         ``extra_data`` to give sibling payloads distinct block hashes.
         """
         spec = self.spec
-        if parent is None:
-            state = self.anchor_state.copy()
-            parent_slot = self.anchor_state.slot
-        else:
-            state = parent.state.copy()
-            parent_slot = parent.slot
+        state = (self.anchor_state if parent is None else parent.state).copy()
         if slot is None:
-            slot = parent_slot + 1
+            slot = state.slot + 1
 
         block = build_empty_block(spec, state, slot)
         if graffiti is not None:
             block.body.graffiti = spec.Bytes32(graffiti.ljust(32, b"\x00"))
         bid = block.body.signed_execution_payload_bid.message
         if parent_full:
-            assert parent is not None
             bid.parent_block_hash = parent.block_hash
         # A placeholder hash, replaced once the payload is known.
         bid.block_hash = spec.Hash32(b"\x01" + b"\x00" * 31)
@@ -178,24 +162,20 @@ class GloasOptimisticRig:
 
     # Fork choice model
 
+    def bid(self, root):
+        return self.store.blocks[root].body.signed_execution_payload_bid.message
+
     def full_node(self, root):
         return self.spec.ForkChoiceNode(root=root, payload_status=self.spec.PAYLOAD_STATUS_FULL)
 
     def empty_node(self, root):
         return self.spec.ForkChoiceNode(root=root, payload_status=self.spec.PAYLOAD_STATUS_EMPTY)
 
-    def removed_full_nodes(self):
-        return [
-            self.full_node(root)
-            for root in self.store.payloads
-            if self.store.blocks[root].body.signed_execution_payload_bid.message.block_hash
-            in self.invalidated_payloads
-        ]
-
     def is_removed(self, node):
         return any(
-            self.spec.is_ancestor(self.store, node, removed)
-            for removed in self.removed_full_nodes()
+            self.spec.is_ancestor(self.store, node, self.full_node(root))
+            for root in self.store.payloads
+            if self.bid(root).block_hash in self.invalidated_payloads
         )
 
     def attestation_score(self, node, state):
@@ -204,14 +184,14 @@ class GloasOptimisticRig:
         store = self.store
         total = 0
         for index in spec.get_active_validator_indices(state, spec.get_current_epoch(state)):
-            if state.validators[index].slashed:
-                continue
-            if index not in store.latest_messages or index in store.equivocating_indices:
+            if (
+                state.validators[index].slashed
+                or index not in store.latest_messages
+                or index in store.equivocating_indices
+            ):
                 continue
             supported = spec.get_supported_node(store, store.latest_messages[index])
-            if self.is_removed(supported):
-                continue
-            if spec.is_ancestor(store, supported, node):
+            if not self.is_removed(supported) and spec.is_ancestor(store, supported, node):
                 total += state.validators[index].effective_balance
         return spec.Gwei(total)
 
@@ -222,15 +202,10 @@ class GloasOptimisticRig:
         if spec.is_previous_slot_payload_decision(store, node):
             return spec.Gwei(0)
         score = self.attestation_score(node, store.checkpoint_states[store.justified_checkpoint])
-        if not spec.should_apply_proposer_boost(store):
-            return score
-        if spec.is_ancestor(
-            store,
-            spec.ForkChoiceNode(
-                root=store.proposer_boost_root, payload_status=spec.PAYLOAD_STATUS_PENDING
-            ),
-            node,
-        ):
+        boost = spec.ForkChoiceNode(
+            root=store.proposer_boost_root, payload_status=spec.PAYLOAD_STATUS_PENDING
+        )
+        if spec.should_apply_proposer_boost(store) and spec.is_ancestor(store, boost, node):
             score += spec.get_proposer_score(store)
         return score
 
@@ -242,10 +217,7 @@ class GloasOptimisticRig:
         head = spec.ForkChoiceNode(
             root=store.justified_checkpoint.root, payload_status=spec.PAYLOAD_STATUS_PENDING
         )
-        while True:
-            children = [child for child in spec.get_node_children(store, head) if child in nodes]
-            if len(children) == 0:
-                return head
+        while children := [c for c in spec.get_node_children(store, head) if c in nodes]:
             head = max(
                 children,
                 key=lambda child: (
@@ -254,6 +226,7 @@ class GloasOptimisticRig:
                     spec.get_payload_status_tiebreaker(store, child),
                 ),
             )
+        return head
 
     def payload_status(self, block_hash):
         if block_hash in self.invalidated_payloads:
@@ -270,17 +243,6 @@ class GloasOptimisticRig:
             block_hash = self.payload_parent[block_hash]
         return chain
 
-    def payload_descendants(self, block_hash):
-        descendants = {block_hash}
-        changed = True
-        while changed:
-            changed = False
-            for child, parent in self.payload_parent.items():
-                if parent in descendants and child not in descendants:
-                    descendants.add(child)
-                    changed = True
-        return descendants
-
     def mark_valid(self, block_hash):
         """``NOT_VALIDATED`` -> ``VALID`` for ``block_hash`` and all its ancestor payloads."""
         for ancestor in self.payload_ancestors(block_hash):
@@ -291,7 +253,9 @@ class GloasOptimisticRig:
 
     def mark_invalid(self, block_hash):
         """``NOT_VALIDATED`` -> ``INVALIDATED`` for ``block_hash`` and all its descendants."""
-        for descendant in self.payload_descendants(block_hash):
+        for descendant in self.payload_parent:
+            if block_hash not in self.payload_ancestors(descendant):
+                continue
             assert self.payload_status(descendant) != VALID, (
                 "an EL cannot invalidate a VALID payload"
             )
@@ -325,24 +289,18 @@ class GloasOptimisticRig:
         if invalid_payload != block_hash:
             self.mark_invalid(invalid_payload)
 
-    def head_block_hash(self, head):
-        """The execution block hash a ``forkchoiceUpdated`` for ``head`` names."""
-        bid = self.store.blocks[head.root].body.signed_execution_payload_bid.message
-        if head.payload_status == self.spec.PAYLOAD_STATUS_FULL:
-            return bid.block_hash
-        return bid.parent_block_hash
-
     def notify_forkchoice_updated(self):
         """
         Send ``engine_forkchoiceUpdated`` whenever the head node changes, even if its
         ``headBlockHash`` does not, and apply the response. Repeat until the head settles.
         """
-        while True:
-            head = self.head()
-            if head == self.forkchoice_head:
-                return head
+        while (head := self.head()) != self.forkchoice_head:
             self.forkchoice_head = head
-            block_hash = self.head_block_hash(head)
+            bid = self.bid(head.root)
+            if head.payload_status == self.spec.PAYLOAD_STATUS_FULL:
+                block_hash = bid.block_hash
+            else:
+                block_hash = bid.parent_block_hash
             response = self.engine_responses.get(block_hash)
             if response is None:
                 continue
@@ -354,6 +312,7 @@ class GloasOptimisticRig:
                         self.payload_ancestors(block_hash), response.latest_valid_hash
                     )
                 )
+        return head
 
     # Steps
 
@@ -377,31 +336,22 @@ class GloasOptimisticRig:
         self.output_checks()
 
     def add_block(self, block, expect_valid=None):
-        """
-        Deliver ``block``. A block that extends a removed node is rejected.
-        """
+        """Deliver ``block``. A block that extends a removed node is rejected."""
         spec = self.spec
         signed_block = block.signed_block
+        message = signed_block.message
         yield get_block_file_name(signed_block), signed_block
-        parent = self.store.blocks.get(signed_block.message.parent_root)
-        extends_removed = False
-        if parent is not None:
-            parent_node = spec.ForkChoiceNode(
-                root=signed_block.message.parent_root,
-                payload_status=spec.get_parent_payload_status(self.store, signed_block.message),
-            )
-            extends_removed = self.is_removed(parent_node)
-        if extends_removed:
-            assert expect_valid is not True, "expected a valid block"
-            self.test_steps.append({"block": get_block_file_name(signed_block), "valid": False})
-            self.output_checks()
-            return
-        assert expect_valid is not False, "expected an invalid block"
-        run_on_block(spec, self.store, signed_block, valid=True)
-        root = signed_block.message.hash_tree_root()
-        self.opt_store.blocks[root] = signed_block.message.copy()
-        self.opt_store.block_states[root] = self.store.block_states[root].copy()
-        self.test_steps.append({"block": get_block_file_name(signed_block), "valid": True})
+        parent_node = spec.ForkChoiceNode(
+            root=message.parent_root,
+            payload_status=spec.get_parent_payload_status(self.store, message),
+        )
+        is_valid = not self.is_removed(parent_node)
+        assert expect_valid in (None, is_valid), "unexpected block validity"
+        if is_valid:
+            run_on_block(spec, self.store, signed_block, valid=True)
+            self.opt_store.blocks[block.root] = message.copy()
+            self.opt_store.block_states[block.root] = self.store.block_states[block.root].copy()
+        self.test_steps.append({"block": get_block_file_name(signed_block), "valid": is_valid})
         self.output_checks()
 
     def add_envelope(self, block, payload_status):
@@ -413,7 +363,6 @@ class GloasOptimisticRig:
         envelope = block.envelope
         payload = envelope.message.payload
         block_hash = payload.block_hash
-        parent_hash = payload.parent_hash
         file_name = get_execution_payload_envelope_file_name(envelope)
         yield file_name, envelope
         self.set_payload_info(block_hash, payload_status)
@@ -423,32 +372,43 @@ class GloasOptimisticRig:
         del self.store.payloads[envelope.message.beacon_block_root]
 
         status = payload_status.status
-        if parent_hash in self.invalidated_payloads:
-            accepted = False
-        elif status in (
-            PayloadStatusV1Status.VALID,
-            PayloadStatusV1Status.SYNCING,
-            PayloadStatusV1Status.ACCEPTED,
-        ):
-            accepted = True
+        if payload.parent_hash in self.invalidated_payloads:
+            is_accepted = False
         elif status == PayloadStatusV1Status.INVALID:
-            accepted = False
-            self.apply_invalid(block_hash, parent_hash, payload_status.latest_valid_hash)
+            is_accepted = False
+            self.apply_invalid(block_hash, payload.parent_hash, payload_status.latest_valid_hash)
         else:
-            raise AssertionError(f"unknown status {status}")
-
-        if accepted:
+            is_accepted = True
             spec.on_execution_payload_envelope(self.store, envelope)
-            self.payload_parent[block_hash] = parent_hash
+            self.payload_parent[block_hash] = payload.parent_hash
             if block_hash not in self.imported_payloads:
                 self.imported_payloads.append(block_hash)
             if status == PayloadStatusV1Status.VALID:
                 self.mark_valid(block_hash)
             else:
                 self.opt_store.optimistic_payloads.add(block_hash)
-        self.test_steps.append({"execution_payload": file_name, "valid": accepted})
+        self.test_steps.append({"execution_payload": file_name, "valid": is_accepted})
         self.output_checks()
-        return accepted
+        return is_accepted
+
+    def state_at(self, block, slot):
+        state = block.state.copy()
+        if state.slot < slot:
+            self.spec.process_slots(state, slot)
+        return state
+
+    def attest(self, block, slot, index, participants, payload_index):
+        attestation = get_valid_attestation(
+            self.spec,
+            self.state_at(block, slot),
+            slot=slot,
+            index=index,
+            payload_index=payload_index,
+            beacon_block_root=block.root,
+            filter_participant_set=lambda committee: set(participants) & set(committee),
+            signed=True,
+        )
+        yield from add_attestation(self.spec, self.store, attestation, self.test_steps)
 
     def add_attestation(self, block, slot, participants, payload_present):
         """
@@ -456,24 +416,8 @@ class GloasOptimisticRig:
         first committee. ``payload_present`` picks the ``full`` or ``empty`` node of a block from
         an earlier slot.
         """
-        spec = self.spec
-        state = block.state.copy()
-        if state.slot < slot:
-            spec.process_slots(state, slot)
-        payload_index = None
-        if block.slot < slot:
-            payload_index = 1 if payload_present else 0
-        attestation = get_valid_attestation(
-            spec,
-            state,
-            slot=slot,
-            index=0,
-            payload_index=payload_index,
-            beacon_block_root=block.root,
-            filter_participant_set=lambda committee: set(participants) & set(committee),
-            signed=True,
-        )
-        yield from add_attestation(spec, self.store, attestation, self.test_steps)
+        payload_index = (1 if payload_present else 0) if block.slot < slot else None
+        yield from self.attest(block, slot, 0, participants, payload_index)
         self.output_checks()
 
     def add_votes(self, block, epoch, validators, payload_present):
@@ -482,40 +426,21 @@ class GloasOptimisticRig:
         ``epoch``. Every slot must be later than ``block``'s.
         """
         spec = self.spec
-        state = block.state.copy()
         start_slot = spec.compute_start_slot_at_epoch(epoch)
-        if state.slot < start_slot:
-            spec.process_slots(state, start_slot)
         for slot in range(start_slot, start_slot + spec.SLOTS_PER_EPOCH):
             assert slot > block.slot
-            slot_state = state.copy()
-            if slot_state.slot < slot:
-                spec.process_slots(slot_state, slot)
-            for index in range(spec.get_committee_count_per_slot(slot_state, epoch)):
-                committee = spec.get_beacon_committee(slot_state, slot, index)
-                participants = set(validators) & set(committee)
-                if len(participants) == 0:
-                    continue
-                attestation = get_valid_attestation(
-                    spec,
-                    slot_state,
-                    slot=slot,
-                    index=index,
-                    payload_index=1 if payload_present else 0,
-                    beacon_block_root=block.root,
-                    filter_participant_set=lambda c, p=participants: p & set(c),
-                    signed=True,
-                )
-                yield from add_attestation(spec, self.store, attestation, self.test_steps)
+            state = self.state_at(block, slot)
+            for index in range(spec.get_committee_count_per_slot(state, epoch)):
+                participants = set(validators) & set(spec.get_beacon_committee(state, slot, index))
+                if len(participants) > 0:
+                    yield from self.attest(
+                        block, slot, index, participants, 1 if payload_present else 0
+                    )
         self.output_checks()
 
     def committee(self, block, slot):
         """The first committee at ``slot`` on ``block``'s chain."""
-        spec = self.spec
-        state = block.state.copy()
-        if state.slot < slot:
-            spec.process_slots(state, slot)
-        return sorted(spec.get_beacon_committee(state, slot, 0))
+        return sorted(self.spec.get_beacon_committee(self.state_at(block, slot), slot, 0))
 
     def output_checks(self):
         head = self.notify_forkchoice_updated()
@@ -540,16 +465,7 @@ class GloasOptimisticRig:
         )
 
     def assert_head(self, root, payload_status):
-        head = self.head()
-        assert head.root == root, "unexpected head root"
-        assert head.payload_status == payload_status, "unexpected head payload status"
+        assert self.head() == self.spec.ForkChoiceNode(root=root, payload_status=payload_status)
 
     def is_optimistic(self, node):
         return self.spec.is_optimistic(self.opt_store, node)
-
-
-def start(spec, state, test_steps, slot):
-    """Create a rig and tick to ``slot``."""
-    rig = GloasOptimisticRig(spec, state, test_steps)
-    rig.tick(slot)
-    return rig

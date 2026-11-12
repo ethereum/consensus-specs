@@ -17,10 +17,10 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.gloas_optimistic_sync import (
     accepted,
+    GloasOptimisticRig,
     invalid,
     INVALIDATED,
     NOT_VALIDATED,
-    start,
     syncing,
     VALID,
     valid,
@@ -32,8 +32,7 @@ LATE_SLOT = 40
 
 def _setup(spec, state, slot=LATE_SLOT):
     test_steps = []
-    rig = start(spec, state, test_steps, slot)
-    return rig, test_steps
+    return GloasOptimisticRig(spec, state, test_steps, slot), test_steps
 
 
 def _add(rig, block, status):
