@@ -137,6 +137,10 @@ or the payload in question itself if `latestValidHash` is `null` or unknown.
 `invalidPayload` and all its descendant payloads MUST be transitioned from
 `NOT_VALIDATED` to `INVALIDATED`.
 
+An `INVALIDATED` response to a new envelope with a `null` or unknown
+`latestValidHash` only rejects that envelope, as the verdict may stem from the
+versioned hashes of its bid.
+
 ## Checkpoint Sync (Weak Subjectivity Sync)
 
 A consensus engine MAY assume that the payload referenced by `latest_block_hash`
