@@ -5,22 +5,16 @@ test script.
 
 ## Gloas and later
 
-The execution engine judges execution payloads, which arrive in
-`on_execution_payload_envelope` steps. An `on_payload_info` step sets the
-response for one `block_hash`, both to `engine_newPayload` for that payload and
-to `engine_forkchoiceUpdated` with that `headBlockHash`. A later
-`on_payload_info` step for the same `block_hash` replaces the response.
+An `on_payload_info` step sets the execution engine's response for one
+`block_hash`: to `engine_newPayload` for that payload and to
+`engine_forkchoiceUpdated` with it as `headBlockHash`. A later step for the same
+`block_hash` replaces it, and a `block_hash` without one gets `SYNCING`. An
+envelope that gets `INVALID` is `valid: false`.
 
-An envelope whose `engine_newPayload` response is `INVALID` is rejected, so its
-step is `valid: false`. An envelope that builds on an `INVALIDATED` payload is
-rejected whatever the execution engine responds. A block that extends a node
-removed from fork choice is rejected.
-
-The client sends `engine_forkchoiceUpdated` whenever its head node changes, even
-if `headBlockHash` stays the same, and applies the response before the next
-step. For a `full` head node the `headBlockHash` is the block's own payload. For
-an `empty` head node it is the payload the block builds on. A `headBlockHash`
-with no `on_payload_info` gets `SYNCING`.
+The client sends `engine_forkchoiceUpdated` on every head node change, even with
+an unchanged `headBlockHash`, and applies the response before the next step. The
+`headBlockHash` of a `full` head node is the block's payload, of an `empty` one
+the payload the block builds on.
 
 ### `execution_payload_statuses` check
 
@@ -31,9 +25,7 @@ execution_payload_statuses: [{
 }]
 ```
 
-The list holds every payload whose envelope fork choice imported, in any order.
-`NOT_VALIDATED` means the payload is in `opt_store.optimistic_payloads`,
-`INVALIDATED` that it transitioned from `NOT_VALIDATED` to `INVALIDATED`, and
-`VALID` neither. A payload the client pruned with its removed nodes counts as
-`INVALIDATED`. See
+Every imported payload, in any order. `NOT_VALIDATED` means in
+`opt_store.optimistic_payloads`, `INVALIDATED` moved from `NOT_VALIDATED` to
+`INVALIDATED` or pruned with its removed nodes, and `VALID` neither. See
 [Gloas optimistic sync](../../../specs/gloas/optimistic-sync.md).
