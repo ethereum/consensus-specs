@@ -1,4 +1,5 @@
-from eth_consensus_specs.test.context import spec_state_test, with_all_phases
+from eth_consensus_specs.test.context import spec_state_test, with_all_phases_from_to
+from eth_consensus_specs.test.helpers.constants import HEZE, PHASE0
 from eth_consensus_specs.test.helpers.epoch_processing import (
     run_epoch_processing_with,
 )
@@ -9,7 +10,7 @@ def run_process_eth1_data_reset(spec, state):
     yield from run_epoch_processing_with(spec, state, "process_eth1_data_reset")
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, HEZE)
 @spec_state_test
 def test_eth1_vote_no_reset(spec, state):
     assert spec.EPOCHS_PER_ETH1_VOTING_PERIOD > 1
@@ -30,7 +31,7 @@ def test_eth1_vote_no_reset(spec, state):
     assert len(state.eth1_data_votes) == spec.SLOTS_PER_EPOCH
 
 
-@with_all_phases
+@with_all_phases_from_to(PHASE0, HEZE)
 @spec_state_test
 def test_eth1_vote_reset(spec, state):
     # skip ahead to the end of the voting period

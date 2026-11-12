@@ -318,7 +318,9 @@ def validate_sync_committee_contribution_and_proof_gossip(
     # and aggregate pubkey derived from the participation info in aggregation_bits
     # for the subcommittee specified by the contribution.subcommittee_index
     participant_pubkeys = [
-        subcommittee_pubkeys[i] for i, bit in enumerate(contribution.aggregation_bits) if bit
+        subcommittee_pubkeys[index]
+        for index, bit in enumerate(contribution.aggregation_bits)
+        if bit
     ]
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(contribution.slot))
     signing_root = compute_signing_root(contribution.beacon_block_root, domain)

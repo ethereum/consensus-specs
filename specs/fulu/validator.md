@@ -241,6 +241,8 @@ def get_data_column_sidecars(
     each blob in the block, assemble the sidecars which can be distributed to peers.
     """
     assert len(cells_and_kzg_proofs) == len(kzg_commitments)
+    if len(kzg_commitments) == 0:
+        return []
 
     sidecars = []
     for column_index in range(NUMBER_OF_COLUMNS):

@@ -5,15 +5,17 @@ from eth_consensus_specs.test.context import (
     single_phase,
     spec_state_test,
     spec_test,
+    with_all_phases_from_to,
     with_custom_state,
     with_electra_and_later,
     with_electra_only,
     with_presets,
 )
 from eth_consensus_specs.test.helpers.churn import get_activation_churn_limit
-from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.constants import ELECTRA, HEZE, MINIMAL
 from eth_consensus_specs.test.helpers.deposits import prepare_pending_deposit
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
+from eth_consensus_specs.test.helpers.forks import is_post_heze
 from eth_consensus_specs.test.helpers.state import (
     advance_finality_to,
     next_epoch_with_full_participation,
@@ -139,7 +141,7 @@ def test_process_pending_deposits_eth1_bridge_transition_not_applied(spec, state
     assert state.deposit_balance_to_consume == 0
 
 
-@with_electra_and_later
+@with_all_phases_from_to(ELECTRA, HEZE)
 @spec_state_test
 def test_process_pending_deposits_eth1_bridge_transition_complete(spec, state):
     # There is no pending Eth1 bridge deposits
@@ -166,7 +168,8 @@ def test_process_pending_deposits_eth1_bridge_transition_complete(spec, state):
 @spec_state_test
 def test_process_pending_deposits_not_finalized(spec, state):
     # complete eth1 bridge transition
-    state.deposit_requests_start_index = 0
+    if not is_post_heze(spec):
+        state.deposit_requests_start_index = 0
     # advance state three epochs into the future
     for _ in range(3):
         next_epoch_with_full_participation(spec, state)

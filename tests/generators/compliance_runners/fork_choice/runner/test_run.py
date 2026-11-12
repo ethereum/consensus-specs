@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import NamedTuple
 
 import pytest
-from eth_utils import decode_hex
+from eth_utils import decode_hex, encode_hex
 from ruamel.yaml import YAML
 from snappy import uncompress
 
@@ -162,19 +162,19 @@ def run_test(test_info):
                 elif check == "head":
                     head = spec.get_head(store)
                     assert store.blocks[head.root].slot == value["slot"]
-                    assert str(head.root) == value["root"]
+                    assert encode_hex(head.root) == value["root"]
                     if is_post_gloas(spec):
                         assert head.payload_status == value["payload_status"]
                 elif check == "proposer_boost_root":
-                    assert str(store.proposer_boost_root) == str(value)
+                    assert encode_hex(store.proposer_boost_root) == value
                 elif check == "justified_checkpoint":
                     checkpoint = store.justified_checkpoint
                     assert checkpoint.epoch == value["epoch"]
-                    assert str(checkpoint.root) == str(value["root"])
+                    assert encode_hex(checkpoint.root) == value["root"]
                 elif check == "finalized_checkpoint":
                     checkpoint = store.finalized_checkpoint
                     assert checkpoint.epoch == value["epoch"]
-                    assert str(checkpoint.root) == str(value["root"])
+                    assert encode_hex(checkpoint.root) == value["root"]
                 elif check == "viable_for_head_roots_and_weights":
                     actual = value
                     expected = get_viable_for_head_checks(spec, store)

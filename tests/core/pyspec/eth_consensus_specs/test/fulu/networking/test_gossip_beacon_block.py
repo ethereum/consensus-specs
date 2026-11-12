@@ -67,18 +67,18 @@ def test_gossip_beacon_block__valid_at_blob_parameters_limit(spec, state):
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
     kwargs = {}
     if not is_post_gloas(spec):
         kwargs["block_payload_statuses"] = {}
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "valid"
@@ -89,7 +89,7 @@ def test_gossip_beacon_block__valid_at_blob_parameters_limit(spec, state):
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_block),
                 "expected": "valid",
             }
@@ -134,18 +134,18 @@ def test_gossip_beacon_block__reject_next_epoch_blob_limit_at_epoch_end(spec, st
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
     kwargs = {}
     if not is_post_gloas(spec):
         kwargs["block_payload_statuses"] = {}
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "reject"
@@ -156,7 +156,7 @@ def test_gossip_beacon_block__reject_next_epoch_blob_limit_at_epoch_end(spec, st
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_block),
                 "expected": "reject",
                 "reason": reason,
@@ -201,18 +201,18 @@ def test_gossip_beacon_block__valid_previous_epoch_blob_limit_plus_one_at_epoch_
 
     yield get_filename(signed_block), signed_block
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
 
     kwargs = {}
     if not is_post_gloas(spec):
         kwargs["block_payload_statuses"] = {}
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_beacon_block=signed_block,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         **kwargs,
     )
     assert result == "valid"
@@ -223,7 +223,7 @@ def test_gossip_beacon_block__valid_previous_epoch_blob_limit_plus_one_at_epoch_
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(signed_block),
                 "expected": "valid",
             }

@@ -41,8 +41,6 @@ def test_gossip_randao_commitment_registration__valid(spec, state):
 
     yield get_filename(signed_registration), signed_registration
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     result, reason = run_validate_gossip(
@@ -55,7 +53,6 @@ def test_gossip_randao_commitment_registration__valid(spec, state):
     assert reason is None
     messages.append(
         {
-            "offset_ms": 0,
             "message": get_filename(signed_registration),
             "expected": result,
         }
@@ -89,8 +86,6 @@ def test_gossip_randao_commitment_registration__ignore_pre_eip8321_head_state(sp
 
     yield get_filename(signed_registration), signed_registration
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     result, reason = run_validate_gossip(
@@ -103,7 +98,6 @@ def test_gossip_randao_commitment_registration__ignore_pre_eip8321_head_state(sp
     assert reason == "head state is pre-eip8321"
     messages.append(
         {
-            "offset_ms": 0,
             "message": get_filename(signed_registration),
             "expected": result,
             "reason": reason,
@@ -139,8 +133,6 @@ def test_gossip_randao_commitment_registration__valid_post_eip8321_head_state(sp
 
     yield get_filename(signed_registration), signed_registration
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     result, reason = run_validate_gossip(
@@ -153,7 +145,6 @@ def test_gossip_randao_commitment_registration__valid_post_eip8321_head_state(sp
     assert reason is None
     messages.append(
         {
-            "offset_ms": 0,
             "message": get_filename(signed_registration),
             "expected": result,
         }
@@ -187,8 +178,6 @@ def test_gossip_randao_commitment_registration__reject_validator_index_out_of_ra
 
     yield get_filename(signed_registration), signed_registration
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     result, reason = run_validate_gossip(
@@ -201,7 +190,6 @@ def test_gossip_randao_commitment_registration__reject_validator_index_out_of_ra
     assert reason == "validator index out of range"
     messages.append(
         {
-            "offset_ms": 0,
             "message": get_filename(signed_registration),
             "expected": result,
             "reason": reason,
@@ -232,8 +220,6 @@ def test_gossip_randao_commitment_registration__ignore_already_seen(spec, state)
 
     yield get_filename(signed_registration), signed_registration
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     result, reason = run_validate_gossip(
@@ -246,7 +232,6 @@ def test_gossip_randao_commitment_registration__ignore_already_seen(spec, state)
     assert reason == "already seen RANDAO commitment registration for this validator"
     messages.append(
         {
-            "offset_ms": 0,
             "message": get_filename(signed_registration),
             "expected": result,
             "reason": reason,
@@ -277,8 +262,6 @@ def test_gossip_randao_commitment_registration__reject_zero_commitment(spec, sta
 
     yield get_filename(signed_registration), signed_registration
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     result, reason = run_validate_gossip(
@@ -291,7 +274,6 @@ def test_gossip_randao_commitment_registration__reject_zero_commitment(spec, sta
     assert reason == "commitment is zero"
     messages.append(
         {
-            "offset_ms": 0,
             "message": get_filename(signed_registration),
             "expected": result,
             "reason": reason,
@@ -321,8 +303,6 @@ def test_gossip_randao_commitment_registration__ignore_already_registered(spec, 
 
     yield get_filename(signed_registration), signed_registration
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     result, reason = run_validate_gossip(
@@ -335,7 +315,6 @@ def test_gossip_randao_commitment_registration__ignore_already_registered(spec, 
     assert reason == "validator is already registered"
     messages.append(
         {
-            "offset_ms": 0,
             "message": get_filename(signed_registration),
             "expected": result,
             "reason": reason,
@@ -371,8 +350,6 @@ def test_gossip_randao_commitment_registration__ignore_already_pending(spec, sta
 
     yield get_filename(signed_registration), signed_registration
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     result, reason = run_validate_gossip(
@@ -385,7 +362,6 @@ def test_gossip_randao_commitment_registration__ignore_already_pending(spec, sta
     assert reason == "RANDAO commitment registration is already pending for this validator"
     messages.append(
         {
-            "offset_ms": 0,
             "message": get_filename(signed_registration),
             "expected": result,
             "reason": reason,
@@ -417,8 +393,6 @@ def test_gossip_randao_commitment_registration__reject_invalid_signature(spec, s
 
     yield get_filename(signed_registration), signed_registration
 
-    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    yield "current_time_ms", "meta", int(time_ms)
     messages = []
 
     result, reason = run_validate_gossip(
@@ -431,7 +405,6 @@ def test_gossip_randao_commitment_registration__reject_invalid_signature(spec, s
     assert reason == "invalid RANDAO commitment registration signature"
     messages.append(
         {
-            "offset_ms": 0,
             "message": get_filename(signed_registration),
             "expected": result,
             "reason": reason,

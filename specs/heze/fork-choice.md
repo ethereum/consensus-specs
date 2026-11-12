@@ -33,9 +33,9 @@ This is the modification of the fork choice accompanying the Heze upgrade.
 
 ### Time parameters
 
-| Name                     | Value          | Duration                   |
-| ------------------------ | -------------- | -------------------------- |
-| `INCLUSION_LIST_DUE_BPS` | `Uint64(6667)` | ~67% of `SLOT_DURATION_MS` |
+| Name                     | Value          | Duration                  |
+| ------------------------ | -------------- | ------------------------- |
+| `INCLUSION_LIST_DUE_BPS` | `Uint64(7500)` | 75% of `SLOT_DURATION_MS` |
 
 ## Protocols
 
@@ -162,7 +162,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         payload_timeliness_vote={anchor_root: [None] * PTC_SIZE},
         payload_data_availability_vote={anchor_root: [None] * PTC_SIZE},
         # [New in Heze:EIP7805]
-        payload_inclusion_list_satisfaction={},
+        payload_inclusion_list_satisfaction={anchor_root: True},
     )
 ```
 
@@ -321,6 +321,12 @@ def on_execution_payload_envelope(
     Run ``on_execution_payload_envelope`` upon receiving a new execution payload envelope.
     """
     envelope = signed_envelope.message
+
+    # [New in Heze:EIP7805]
+    # Return early if the payload is already known
+    if is_payload_verified(store, envelope.beacon_block_root):
+        return
+
     # The corresponding beacon block root needs to be known
     assert envelope.beacon_block_root in store.block_states
 

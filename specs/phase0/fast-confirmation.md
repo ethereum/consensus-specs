@@ -4,7 +4,6 @@
 
 - [Introduction](#introduction)
 - [Fast Confirmation Rule](#fast-confirmation-rule)
-  - [Constants](#constants)
   - [Configs](#configs)
   - [Helpers](#helpers)
     - [`FastConfirmationStore`](#fastconfirmationstore)
@@ -25,8 +24,7 @@
     - [LMD-GHOST helpers](#lmd-ghost-helpers)
       - [`get_node_support_between_slots`](#get_node_support_between_slots)
       - [`is_full_validator_set_covered`](#is_full_validator_set_covered)
-      - [`adjust_committee_weight_estimate_to_ensure_safety`](#adjust_committee_weight_estimate_to_ensure_safety)
-      - [`estimate_committee_weight_between_slots`](#estimate_committee_weight_between_slots)
+      - [`compute_committee_weight_between_slots`](#compute_committee_weight_between_slots)
       - [`get_equivocation_score`](#get_equivocation_score)
       - [`compute_adversarial_weight`](#compute_adversarial_weight)
       - [`get_adversarial_weight`](#get_adversarial_weight)
@@ -43,6 +41,7 @@
     - [`update_fast_confirmation_variables`](#update_fast_confirmation_variables)
     - [`find_latest_confirmed_descendant`](#find_latest_confirmed_descendant)
     - [`get_latest_confirmed`](#get_latest_confirmed)
+    - [`get_restart_resilient_confirmed_root`](#get_restart_resilient_confirmed_root)
   - [Handlers](#handlers)
     - [`on_fast_confirmation`](#on_fast_confirmation)
 
@@ -66,12 +65,6 @@ who believe in the above assumption. If this assumption is broken, confirmed
 blocks can be reorged without any adversarial behavior and without slashing.
 
 ## Fast Confirmation Rule
-
-### Constants
-
-| Name                                            | Value       | Description                                                                                                                                                                                                                                                                                                                     |
-| ----------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR` | `Uint64(5)` | Per mille value to add to the estimation of the committee weight across a range of slots not covering a full epoch in order to ensure the safety of the confirmation rule with high probability. See [here](https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20) for an explanation about the value chosen. |
 
 ### Configs
 
@@ -293,10 +286,10 @@ distinguished from votes submitted by that same validator in
 `[start_slot, end_slot]` interval. Due to committee shuffling near epoch
 boundary the following cases are possible:
 
-1. Validator assigned to `start_slot - 1` and `end_slot` votes for `node` in
-   `start_slot - 1` but does not vote in `end_slot`.
+1. Validator assigned to `start_slot - 1` and `end_slot` votes for any of the
+   `nodes` in `start_slot - 1` but does not vote in `end_slot`.
 2. Validator assigned to `start_slot` and `end_slot + 1` misses a vote in
-   `start_slot`, but votes for `node` in `end_slot + 1`.
+   `start_slot`, but votes for any of the `nodes` in `end_slot + 1`.
 
 In both cases the support would count a vote outside of the
 `[start_slot, end_slot]` range. This inaccuracy is acceptable as it does not
@@ -311,12 +304,12 @@ of slots are consistent with the `balance_source` validator set.
 def get_node_support_between_slots(
     store: Store,
     balance_source: BeaconState,
-    node: ForkChoiceNode,
+    nodes: set[ForkChoiceNode],
     start_slot: Slot,
     end_slot: Slot,
 ) -> Gwei:
     """
-    Return support of the node by validators assigned to slots
+    Return support of any of the ``nodes`` by validators assigned to slots
     between ``start_slot`` and ``end_slot`` (inclusive of both).
     """
     participants: set[ValidatorIndex] = set()
@@ -326,24 +319,26 @@ def get_node_support_between_slots(
     # Keep validators that were active at the balance_source epoch to be consistent
     # with get_total_active_balance() computation, also filter out slashed validators
     unslashed_and_active_indices = [
-        i
-        for i in participants
+        index
+        for index in participants
         if (
-            not balance_source.validators[i].slashed
-            and is_active_validator(balance_source.validators[i], get_current_epoch(balance_source))
+            not balance_source.validators[index].slashed
+            and is_active_validator(
+                balance_source.validators[index], get_current_epoch(balance_source)
+            )
         )
     ]
 
     return Gwei(
         sum(
-            balance_source.validators[i].effective_balance
-            for i in unslashed_and_active_indices
-            # Check that validator has voted in the support of the node
+            balance_source.validators[index].effective_balance
+            for index in unslashed_and_active_indices
+            # Check that validator has voted in the support of any of the nodes
             # and has not been slashed
             if (
-                i in store.latest_messages
-                and get_supported_node(store, store.latest_messages[i]) == node
-                and i not in store.equivocating_indices
+                index in store.latest_messages
+                and get_supported_node(store, store.latest_messages[index]) in nodes
+                and index not in store.equivocating_indices
             )
         )
     )
@@ -361,33 +356,14 @@ def is_full_validator_set_covered(start_slot: Slot, end_slot: Slot) -> bool:
     return start_full_epoch < end_full_epoch
 ```
 
-##### `adjust_committee_weight_estimate_to_ensure_safety`
-
-*Note*: This function adjusts the estimate of the weight of a committee for a
-sequence of slots spanning an epoch boundary that does not cover any full epoch
-to ensure the safety of FCR with high probability. The sequence may be longer
-than SLOTS_PER_EPOCH. See
-https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20 for an
-explanation of why this is required.
+##### `compute_committee_weight_between_slots`
 
 ```python
-def adjust_committee_weight_estimate_to_ensure_safety(estimate: Gwei) -> Gwei:
-    """
-    Return adjusted ``estimate`` of the weight of a committee for a sequence of slots
-    spanning an epoch boundary that does not cover any full epoch.
-    """
-    ceil = (estimate + 999) // 1000
-    return ceil * (1000 + COMMITTEE_WEIGHT_ESTIMATION_ADJUSTMENT_FACTOR)
-```
-
-##### `estimate_committee_weight_between_slots`
-
-```python
-def estimate_committee_weight_between_slots(
-    total_active_balance: Gwei, start_slot: Slot, end_slot: Slot
+def compute_committee_weight_between_slots(
+    store: Store, balance_source: BeaconState, start_slot: Slot, end_slot: Slot
 ) -> Gwei:
     """
-    Return estimate of the total weight of committees
+    Compute total weight of committees
     between ``start_slot`` and ``end_slot`` (inclusive of both).
     """
 
@@ -397,36 +373,22 @@ def estimate_committee_weight_between_slots(
 
     # If an entire epoch is covered by the range, return the total active balance
     if is_full_validator_set_covered(start_slot, end_slot):
-        return total_active_balance
+        return get_total_active_balance(balance_source)
 
-    start_epoch = compute_epoch_at_slot(start_slot)
-    end_epoch = compute_epoch_at_slot(end_slot)
-    committee_weight = total_active_balance // Uint64(SLOTS_PER_EPOCH)
-    if start_epoch == end_epoch:
-        return committee_weight * Uint64(end_slot - start_slot + 1)
-    else:
-        # First, calculate the number of committees in the end epoch
-        num_slots_in_end_epoch = Uint64(compute_slots_since_epoch_start(end_slot) + 1)
-        # Next, calculate the number of slots remaining in the end epoch
-        remaining_slots_in_end_epoch = Uint64(SLOTS_PER_EPOCH) - num_slots_in_end_epoch
-        # Then, calculate the number of slots in the start epoch
-        num_slots_in_start_epoch = Uint64(
-            SLOTS_PER_EPOCH - compute_slots_since_epoch_start(start_slot)
-        )
+    # Get indices of validators assigned to committees between the slots
+    participants: set[ValidatorIndex] = set()
+    for slot in range(start_slot, end_slot + 1):
+        participants.update(get_slot_committee(store, Slot(slot)))
 
-        start_epoch_weight = committee_weight * num_slots_in_start_epoch
-        end_epoch_weight = committee_weight * num_slots_in_end_epoch
+    # Sort out validators not active in the view of a balance source
+    active_participants: set[ValidatorIndex] = set()
+    current_epoch = get_current_epoch(balance_source)
+    for index in participants:
+        if is_active_validator(balance_source.validators[index], current_epoch):
+            active_participants.add(index)
 
-        # A range that spans an epoch boundary, but does not span any full epoch
-        # needs pro-rata calculation, see https://gist.github.com/saltiniroberto/9ee53d29c33878d79417abb2b4468c20
-        # start_epoch_weight_pro_rated = start_epoch_weight * (1 - num_slots_in_end_epoch / SLOTS_PER_EPOCH)
-        start_epoch_weight_pro_rated = (
-            start_epoch_weight // Uint64(SLOTS_PER_EPOCH) * remaining_slots_in_end_epoch
-        )
-
-        return adjust_committee_weight_estimate_to_ensure_safety(
-            start_epoch_weight_pro_rated + end_epoch_weight
-        )
+    # Return total balance of the participants
+    return get_total_balance(balance_source, active_participants)
 ```
 
 ##### `get_equivocation_score`
@@ -460,13 +422,16 @@ def get_equivocation_score(
     # Keep equivocating validators that were active at the balance_source epoch to be consistent
     # with get_total_active_balance() computation
     active_equivocating_indices = [
-        i
-        for i in committee_indices.intersection(store.equivocating_indices)
-        if is_active_validator(balance_source.validators[i], get_current_epoch(balance_source))
+        index
+        for index in committee_indices.intersection(store.equivocating_indices)
+        if is_active_validator(balance_source.validators[index], get_current_epoch(balance_source))
     ]
 
     return Gwei(
-        sum(balance_source.validators[i].effective_balance for i in active_equivocating_indices)
+        sum(
+            balance_source.validators[index].effective_balance
+            for index in active_equivocating_indices
+        )
     )
 ```
 
@@ -488,9 +453,8 @@ def compute_adversarial_weight(
     Return maximum possible adversarial weight in the committees of the slots
     between ``start_slot`` and ``end_slot`` (inclusive of both).
     """
-    total_active_balance = get_total_active_balance(balance_source)
-    maximum_weight = estimate_committee_weight_between_slots(
-        total_active_balance, start_slot, end_slot
+    maximum_weight = compute_committee_weight_between_slots(
+        store, balance_source, start_slot, end_slot
     )
     max_adversarial_weight = maximum_weight // 100 * CONFIRMATION_BYZANTINE_THRESHOLD
 
@@ -541,11 +505,11 @@ def compute_empty_slot_support_discount(
         return Gwei(0)
 
     # Discount votes supporting the parent block if they are from the committees of empty slots
-    parent_node = get_ancestor(store, get_node_for_root(block_root), parent_block.slot)
+    parent_block_node = get_node_for_root(block.parent_root)
     parent_support_in_empty_slots = get_node_support_between_slots(
         store,
         balance_source,
-        parent_node,
+        {parent_block_node},
         parent_block.slot + 1,
         block.slot - 1,
     )
@@ -580,20 +544,19 @@ def compute_safety_threshold(store: Store, block_root: Root, balance_source: Bea
     block = store.blocks[block_root]
     parent_block = store.blocks[block.parent_root]
 
-    total_active_balance = get_total_active_balance(balance_source)
     proposer_score = compute_proposer_score(balance_source)
-    maximum_support = estimate_committee_weight_between_slots(
-        total_active_balance, parent_block.slot + 1, current_slot - 1
+    maximum_support = compute_committee_weight_between_slots(
+        store, balance_source, parent_block.slot + 1, current_slot - 1
     )
     support_discount = get_support_discount(store, balance_source, block_root)
     adversarial_weight = get_adversarial_weight(store, balance_source, block_root)
 
+    # With precise committee weight computation
+    # support_discount must never exceed maximum_support
+    assert support_discount <= maximum_support
+
     # Return (maximum_support + proposer_score - support_discount) // 2 + adversarial_weight
-    # with an underflow guard
-    if support_discount < maximum_support + proposer_score + 2 * adversarial_weight:
-        return (maximum_support + proposer_score + 2 * adversarial_weight - support_discount) // 2
-    else:
-        return Gwei(0)
+    return (maximum_support + proposer_score + 2 * adversarial_weight - support_discount) // 2
 ```
 
 ##### `is_one_confirmed`
@@ -699,22 +662,22 @@ def get_current_target_score(store: Store) -> Gwei:
     target = get_current_target(store)
     state = get_pulled_up_head_state(store)
     unslashed_and_active_indices = [
-        i
-        for i in get_active_validator_indices(state, get_current_epoch(state))
-        if not state.validators[i].slashed
+        index
+        for index in get_active_validator_indices(state, get_current_epoch(state))
+        if not state.validators[index].slashed
     ]
     return Gwei(
         sum(
-            state.validators[i].effective_balance
-            for i in unslashed_and_active_indices
+            state.validators[index].effective_balance
+            for index in unslashed_and_active_indices
             if (
-                i in store.latest_messages
-                and i not in store.equivocating_indices
+                index in store.latest_messages
+                and index not in store.equivocating_indices
                 and target
                 == get_checkpoint_for_block(
                     store,
-                    store.latest_messages[i].root,
-                    get_latest_message_epoch(store.latest_messages[i]),
+                    store.latest_messages[index].root,
+                    get_latest_message_epoch(store.latest_messages[index]),
                 )
             )
         )
@@ -741,8 +704,8 @@ def compute_honest_ffg_support_for_current_target(store: Store) -> Gwei:
     ffg_support_for_checkpoint = get_current_target_score(store)
 
     # Compute the total FFG weight up to, but excluding, the current slot
-    ffg_weight_till_now = estimate_committee_weight_between_slots(
-        total_active_balance, compute_start_slot_at_epoch(current_epoch), current_slot - 1
+    ffg_weight_till_now = compute_committee_weight_between_slots(
+        store, balance_source, compute_start_slot_at_epoch(current_epoch), current_slot - 1
     )
 
     # Compute remaining honest FFG weight
@@ -1021,6 +984,47 @@ def get_latest_confirmed(fcr_store: FastConfirmationStore) -> Root:
         return find_latest_confirmed_descendant(fcr_store, confirmed_root)
     else:
         return confirmed_root
+```
+
+#### `get_restart_resilient_confirmed_root`
+
+*Note*: Implementations MAY use the mechanism below to restore the confirmed
+root after a restart. This mechanism is safe as long as synchrony has been
+maintained for at least three epochs since the node went offline. If used,
+`get_restart_resilient_confirmed_root` MUST be called once the node is fully
+synced and `on_fast_confirmation` has been called. The body of
+`get_root_confirmed_before_restart` is implementation dependent.
+
+```python
+def block_should_be_finalized(store: Store, block_root: Root) -> bool:
+    block_slot = get_block_slot(store, block_root)
+    next_checkpoint_epoch = compute_epoch_at_slot(block_slot + SLOTS_PER_EPOCH - 1)
+    earliest_finality_slot = compute_start_slot_at_epoch(next_checkpoint_epoch + 2)
+    return earliest_finality_slot <= get_current_slot(store)
+
+
+def get_restart_resilient_confirmed_root(fcr_store: FastConfirmationStore) -> Root:
+    store = fcr_store.store
+    root_before_restart = get_root_confirmed_before_restart()
+    root_before_restart_slot = get_block_slot(store, root_before_restart)
+
+    # Recently confirmed block has advanced beyond the block that was confirmed
+    # before the node restart
+    if root_before_restart_slot <= get_block_slot(store, fcr_store.confirmed_root):
+        return fcr_store.confirmed_root
+
+    # If the block is old enough it either has been finalized already or
+    # finality has been delayed which makes block confirmed before restart
+    # unreliable
+    if block_should_be_finalized(store, root_before_restart):
+        return fcr_store.confirmed_root
+
+    # If a block confirmed before the restart is not canonical,
+    # return the recently confirmed block
+    if not is_ancestor(store, get_head(store), get_node_for_root(root_before_restart)):
+        return fcr_store.confirmed_root
+
+    return root_before_restart
 ```
 
 ### Handlers

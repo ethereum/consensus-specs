@@ -407,7 +407,9 @@ def get_unslashed_participating_indices(
         epoch_participation = state.previous_epoch_participation
     active_validator_indices = get_active_validator_indices(state, epoch)
     participating_indices = [
-        i for i in active_validator_indices if has_flag(epoch_participation[i], flag_index)
+        index
+        for index in active_validator_indices
+        if has_flag(epoch_participation[index], flag_index)
     ]
     return set(filter(lambda index: not state.validators[index].slashed, participating_indices))
 ```
@@ -679,7 +681,7 @@ def process_sync_aggregate(state: BeaconState, sync_aggregate: SyncAggregate) ->
     proposer_reward = participant_reward * PROPOSER_WEIGHT // (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT)
 
     # Apply participant and proposer rewards
-    all_pubkeys = [v.pubkey for v in state.validators]
+    all_pubkeys = [validator.pubkey for validator in state.validators]
     committee_indices = [
         ValidatorIndex(all_pubkeys.index(pubkey)) for pubkey in state.current_sync_committee.pubkeys
     ]

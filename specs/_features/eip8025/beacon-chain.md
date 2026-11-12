@@ -13,6 +13,7 @@
   - [New `ProofType`](#new-prooftype)
 - [Constants](#constants)
   - [Execution](#execution)
+  - [Proof types](#proof-types)
   - [Domains](#domains)
 - [Containers](#containers)
   - [New `PublicInput`](#new-publicinput)
@@ -37,17 +38,20 @@ Execution proofs are non-consensus artifacts. Verifying or storing one does not
 change beacon-chain state, fork choice, or Gloas payload status.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md)
-and imports proof types from [proof-engine.md](./proof-engine.md).
+and uses the proof-verification interface from
+[proof-engine.md](./proof-engine.md).
 
 ## Types
 
 ### New `ProofData`
 
 ```python
-class ProofData(ProgressiveList[Byte]):
+class ProofData(ByteList):
     """
     The opaque proof bytes of an execution proof.
     """
+
+    LIMIT = MAX_PROOF_SIZE
 ```
 
 ### New `ProofType`
@@ -73,6 +77,21 @@ class ProofType(Uint8):
 
 `STATELESS_INPUT_SCHEMA_ID` encodes the Amsterdam protocol fork (`0x15`) and
 schema revision (`0x01`).
+
+### Proof types
+
+*Note*: These assignments are provisional. The verification key column is the
+SHA-256 digest of the raw verification key.
+
+| Proof type     | Stateless validator                    | Proof system            | Verification key (SHA-256)                                           |
+| -------------- | -------------------------------------- | ----------------------- | -------------------------------------------------------------------- |
+| `ProofType(1)` | ethrex `26.0.0`                        | OpenVM `v2.1.0-preview` | `0x5de0d2feff592e5957c2dfcb613b649751e623a8b28e68187250eaf000eed8d7` |
+| `ProofType(2)` | ethrex `26.0.0`                        | SP1 `v6.4.0`            | `0x5e614b666d4f9a60a68d826833b94e2c5afa029b2dc501a45f3656059811a4d7` |
+| `ProofType(3)` | ethrex `26.0.0`                        | ZisK `v1.1.0-alpha`     | `0x7f8d16136f2783e9eaef89365cbc34333d06a73f3b77313a72f94a2054e0347e` |
+| `ProofType(4)` | reth `0.1.0-rc.3`                      | OpenVM `v2.1.0-preview` | `0xc118d0744d722cef89896b7bd085bd957686b190f55deaed80147b9abe3dba59` |
+| `ProofType(5)` | reth `0.1.0-rc.3`                      | SP1 `v6.4.0`            | `0x420933f79a82fcb40880a97f0efb7780e6f939cbf6a0bbec716de24b8033df28` |
+| `ProofType(6)` | reth `0.1.0-rc.3`                      | ZisK `v1.1.0-alpha`     | `0x6806dfc26dfdab7aaa6931d832b78f052e08a151d36353bb8662dc54e6766756` |
+| `ProofType(7)` | zesu `tests-glamsterdam-devnet@v8.1.4` | ZisK `v1.1.0-alpha`     | `0xad94ad82ad310fda4ab8e8e91e7b4826edaa20e9c4e76f479ed7ca3482e3755c` |
 
 ### Domains
 
@@ -125,9 +144,9 @@ class SignedExecutionProofEnvelope(Container):
 
 ### New `get_supported_proof_types`
 
-*Note*: The initial proof type assignments are provisional. A `ProofType`
-identifies an immutable combination of proof system, guest program, and version.
-Assignments MUST NOT be reused.
+*Note*: A `ProofType` identifies an immutable combination of proof system, guest
+program, and version. Assignments MUST NOT be reused. See
+[Proof types](#proof-types) for the current assignments.
 
 ```python
 def get_supported_proof_types() -> set[ProofType]:
@@ -138,6 +157,10 @@ def get_supported_proof_types() -> set[ProofType]:
         ProofType(1),
         ProofType(2),
         ProofType(3),
+        ProofType(4),
+        ProofType(5),
+        ProofType(6),
+        ProofType(7),
     }
 ```
 
@@ -149,16 +172,14 @@ def get_supported_proof_types() -> set[ProofType]:
 def verify_execution_proof_envelope(
     state: BeaconState,
     signed_proof_envelope: SignedExecutionProofEnvelope,
-    payload_envelope: ExecutionPayloadEnvelope,
 ) -> None:
     """
-    Verify an execution proof envelope against the beacon state and payload.
+    Verify an execution proof envelope against the beacon state.
     The execution proof itself is verified separately by the proof engine.
     """
     proof_envelope = signed_proof_envelope.message
-    assert proof_envelope.beacon_block_root == payload_envelope.beacon_block_root
     assert signed_proof_envelope.validator_index < len(state.validators)
-    assert 0 < len(proof_envelope.proof_data) <= MAX_PROOF_SIZE
+    assert len(proof_envelope.proof_data) != 0
     assert proof_envelope.proof_type in get_supported_proof_types()
 
     # Verify the prover is an active validator
@@ -223,7 +244,6 @@ def process_execution_proof(
     verify_execution_proof_envelope(
         state,
         signed_proof_envelope,
-        payload_envelope,
     )
 
     proof = get_execution_proof(

@@ -99,16 +99,16 @@ def test_gossip_data_column_sidecar__valid(spec, state):
     yield get_filename(sidecar), sidecar
 
     sidecar_slot = sidecar.slot if is_post_gloas(spec) else sidecar.signed_block_header.message.slot
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, sidecar_slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, sidecar_slot)
 
     subnet_id = correct_subnet(spec, sidecar)
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "valid"
@@ -120,7 +120,7 @@ def test_gossip_data_column_sidecar__valid(spec, state):
         [
             {
                 "subnet_id": int(subnet_id),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(sidecar),
                 "expected": "valid",
             }
@@ -152,18 +152,18 @@ def test_gossip_data_column_sidecar__reject_index_out_of_range(spec, state):
 
     yield get_filename(sidecar), sidecar
 
-    block_time_ms = spec.compute_time_at_slot_ms(
+    current_time_ms = spec.compute_time_at_slot_ms(
         store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
-    yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = spec.SubnetID(0)
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "reject"
@@ -175,7 +175,7 @@ def test_gossip_data_column_sidecar__reject_index_out_of_range(spec, state):
         [
             {
                 "subnet_id": int(subnet_id),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(sidecar),
                 "expected": "reject",
                 "reason": reason,
@@ -215,18 +215,18 @@ def test_gossip_data_column_sidecar__reject_too_many_commitments(spec, state):
 
     yield get_filename(sidecar), sidecar
 
-    block_time_ms = spec.compute_time_at_slot_ms(
+    current_time_ms = spec.compute_time_at_slot_ms(
         store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
-    yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, sidecar)
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "reject"
@@ -238,7 +238,7 @@ def test_gossip_data_column_sidecar__reject_too_many_commitments(spec, state):
         [
             {
                 "subnet_id": int(subnet_id),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(sidecar),
                 "expected": "reject",
                 "reason": reason,
@@ -283,19 +283,19 @@ def test_gossip_data_column_sidecar__reject_wrong_subnet(spec, state):
     yield get_filename(sidecar), sidecar
 
     sidecar_slot = sidecar.slot if is_post_gloas(spec) else sidecar.signed_block_header.message.slot
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, sidecar_slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, sidecar_slot)
 
     expected_subnet = correct_subnet(spec, sidecar)
     wrong_subnet = spec.SubnetID(
         (int(expected_subnet) + 1) % spec.config.DATA_COLUMN_SIDECAR_SUBNET_COUNT
     )
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=wrong_subnet,
     )
     assert result == "reject"
@@ -307,7 +307,7 @@ def test_gossip_data_column_sidecar__reject_wrong_subnet(spec, state):
         [
             {
                 "subnet_id": int(wrong_subnet),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(sidecar),
                 "expected": "reject",
                 "reason": reason,
@@ -341,9 +341,8 @@ def test_gossip_data_column_sidecar__ignore_future_slot(spec, state):
     yield get_filename(sidecar), sidecar
 
     sidecar_slot = sidecar.slot if is_post_gloas(spec) else sidecar.signed_block_header.message.slot
-    slot_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, sidecar_slot)
-    current_time_ms = slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY - 1
-    yield "current_time_ms", "meta", int(current_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, sidecar_slot)
+    current_time_ms -= spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY + 1
 
     subnet_id = correct_subnet(spec, sidecar)
     result, reason = run_validate_gossip(
@@ -363,7 +362,7 @@ def test_gossip_data_column_sidecar__ignore_future_slot(spec, state):
         [
             {
                 "subnet_id": int(subnet_id),
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(sidecar),
                 "expected": "ignore",
                 "reason": reason,
@@ -408,9 +407,8 @@ def test_gossip_data_column_sidecar__valid_slot_within_clock_disparity(spec, sta
     yield get_filename(sidecar), sidecar
 
     sidecar_slot = sidecar.slot if is_post_gloas(spec) else sidecar.signed_block_header.message.slot
-    slot_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, sidecar_slot)
-    current_time_ms = slot_time_ms - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
-    yield "current_time_ms", "meta", int(current_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, sidecar_slot)
+    current_time_ms -= spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
 
     subnet_id = correct_subnet(spec, sidecar)
     result, reason = run_validate_gossip(
@@ -430,7 +428,7 @@ def test_gossip_data_column_sidecar__valid_slot_within_clock_disparity(spec, sta
         [
             {
                 "subnet_id": int(subnet_id),
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(sidecar),
                 "expected": "valid",
             }
@@ -476,16 +474,16 @@ def test_gossip_data_column_sidecar__ignore_not_later_than_finalized_slot(spec, 
 
     yield get_filename(sidecar), sidecar
 
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, block_header.slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, block_header.slot)
 
     subnet_id = correct_subnet(spec, sidecar)
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "ignore"
@@ -497,7 +495,7 @@ def test_gossip_data_column_sidecar__ignore_not_later_than_finalized_slot(spec, 
         [
             {
                 "subnet_id": int(subnet_id),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(sidecar),
                 "expected": "ignore",
                 "reason": reason,
@@ -530,18 +528,18 @@ def test_gossip_data_column_sidecar__reject_proposer_index_out_of_range(spec, st
 
     yield get_filename(sidecar), sidecar
 
-    block_time_ms = spec.compute_time_at_slot_ms(
+    current_time_ms = spec.compute_time_at_slot_ms(
         store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
-    yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, sidecar)
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "reject"
@@ -553,7 +551,7 @@ def test_gossip_data_column_sidecar__reject_proposer_index_out_of_range(spec, st
         [
             {
                 "subnet_id": int(subnet_id),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(sidecar),
                 "expected": "reject",
                 "reason": reason,
@@ -587,18 +585,18 @@ def test_gossip_data_column_sidecar__reject_invalid_proposer_signature(spec, sta
 
     yield get_filename(sidecar), sidecar
 
-    block_time_ms = spec.compute_time_at_slot_ms(
+    current_time_ms = spec.compute_time_at_slot_ms(
         store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
-    yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, sidecar)
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "reject"
@@ -610,7 +608,7 @@ def test_gossip_data_column_sidecar__reject_invalid_proposer_signature(spec, sta
         [
             {
                 "subnet_id": int(subnet_id),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(sidecar),
                 "expected": "reject",
                 "reason": reason,
@@ -646,18 +644,18 @@ def test_gossip_data_column_sidecar__ignore_parent_not_seen(spec, state):
 
     yield get_filename(sidecar), sidecar
 
-    block_time_ms = spec.compute_time_at_slot_ms(
+    current_time_ms = spec.compute_time_at_slot_ms(
         store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
-    yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, sidecar)
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "ignore"
@@ -669,7 +667,7 @@ def test_gossip_data_column_sidecar__ignore_parent_not_seen(spec, state):
         [
             {
                 "subnet_id": int(subnet_id),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(sidecar),
                 "expected": "ignore",
                 "reason": reason,
@@ -722,18 +720,18 @@ def test_gossip_data_column_sidecar__reject_parent_failed_validation(spec, state
 
     yield get_filename(sidecar), sidecar
 
-    block_time_ms = spec.compute_time_at_slot_ms(
+    current_time_ms = spec.compute_time_at_slot_ms(
         store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
-    yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, sidecar)
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "reject"
@@ -745,7 +743,7 @@ def test_gossip_data_column_sidecar__reject_parent_failed_validation(spec, state
         [
             {
                 "subnet_id": int(subnet_id),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(sidecar),
                 "expected": "reject",
                 "reason": reason,
@@ -798,18 +796,18 @@ def test_gossip_data_column_sidecar__reject_slot_not_higher_than_parent(spec, st
 
     yield get_filename(sidecar), sidecar
 
-    block_time_ms = spec.compute_time_at_slot_ms(
+    current_time_ms = spec.compute_time_at_slot_ms(
         store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
-    yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, sidecar)
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "reject"
@@ -821,7 +819,7 @@ def test_gossip_data_column_sidecar__reject_slot_not_higher_than_parent(spec, st
         [
             {
                 "subnet_id": int(subnet_id),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(sidecar),
                 "expected": "reject",
                 "reason": reason,
@@ -860,18 +858,18 @@ def test_gossip_data_column_sidecar__reject_non_ancestor_finalized_checkpoint(sp
     yield "finalized_checkpoint", "meta", {"epoch": 0, "root": "0x" + "ab" * 32}
     yield get_filename(sidecar), sidecar
 
-    block_time_ms = spec.compute_time_at_slot_ms(
+    current_time_ms = spec.compute_time_at_slot_ms(
         store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
-    yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, sidecar)
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "reject"
@@ -883,7 +881,7 @@ def test_gossip_data_column_sidecar__reject_non_ancestor_finalized_checkpoint(sp
         [
             {
                 "subnet_id": int(subnet_id),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(sidecar),
                 "expected": "reject",
                 "reason": reason,
@@ -917,18 +915,18 @@ def test_gossip_data_column_sidecar__reject_invalid_inclusion_proof(spec, state)
 
     yield get_filename(sidecar), sidecar
 
-    block_time_ms = spec.compute_time_at_slot_ms(
+    current_time_ms = spec.compute_time_at_slot_ms(
         store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
-    yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, sidecar)
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "reject"
@@ -940,7 +938,7 @@ def test_gossip_data_column_sidecar__reject_invalid_inclusion_proof(spec, state)
         [
             {
                 "subnet_id": int(subnet_id),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(sidecar),
                 "expected": "reject",
                 "reason": reason,
@@ -990,16 +988,16 @@ def test_gossip_data_column_sidecar__reject_invalid_kzg_proofs(spec, state):
     yield get_filename(sidecar), sidecar
 
     sidecar_slot = sidecar.slot if is_post_gloas(spec) else sidecar.signed_block_header.message.slot
-    block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, sidecar_slot)
-    yield "current_time_ms", "meta", int(block_time_ms)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, sidecar_slot)
 
     subnet_id = correct_subnet(spec, sidecar)
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "reject"
@@ -1011,7 +1009,7 @@ def test_gossip_data_column_sidecar__reject_invalid_kzg_proofs(spec, state):
         [
             {
                 "subnet_id": int(subnet_id),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(sidecar),
                 "expected": "reject",
                 "reason": reason,
@@ -1047,39 +1045,40 @@ def test_gossip_data_column_sidecar__ignore_already_seen(spec, state):
 
     yield get_filename(sidecar), sidecar
 
-    block_time_ms = spec.compute_time_at_slot_ms(
+    current_time_ms = spec.compute_time_at_slot_ms(
         store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
-    yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, sidecar)
 
     # First delivery passes.
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "valid"
     messages.append(
         {
             "subnet_id": int(subnet_id),
-            "offset_ms": 500,
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(sidecar),
             "expected": "valid",
         }
     )
 
     # Second delivery of the same sidecar is ignored.
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=block_time_ms + 600,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "ignore"
@@ -1087,7 +1086,7 @@ def test_gossip_data_column_sidecar__ignore_already_seen(spec, state):
     messages.append(
         {
             "subnet_id": int(subnet_id),
-            "offset_ms": 600,
+            "current_time_ms": int(current_time_ms),
             "message": get_filename(sidecar),
             "expected": "ignore",
             "reason": reason,
@@ -1125,18 +1124,18 @@ def test_gossip_data_column_sidecar__reject_wrong_proposer_index(spec, state):
 
     yield get_filename(sidecar), sidecar
 
-    block_time_ms = spec.compute_time_at_slot_ms(
+    current_time_ms = spec.compute_time_at_slot_ms(
         store.genesis_time_ms, sidecar.signed_block_header.message.slot
     )
-    yield "current_time_ms", "meta", int(block_time_ms)
 
     subnet_id = correct_subnet(spec, sidecar)
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sidecar=sidecar,
-        current_time_ms=block_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "reject"
@@ -1148,7 +1147,7 @@ def test_gossip_data_column_sidecar__reject_wrong_proposer_index(spec, state):
         [
             {
                 "subnet_id": int(subnet_id),
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "message": get_filename(sidecar),
                 "expected": "reject",
                 "reason": reason,

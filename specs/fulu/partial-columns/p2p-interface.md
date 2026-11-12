@@ -168,14 +168,14 @@ def verify_partial_data_column_sidecar_kzg_proofs(
     Verify the KZG proofs.
     """
     # Get the blob indices from the bitmap
-    blob_indices = [i for i, b in enumerate(sidecar.cells_present_bitmap) if b]
+    blob_indices = [index for index, bit in enumerate(sidecar.cells_present_bitmap) if bit]
 
     # The cell index is the column index for all cells in this column
     cell_indices = [CellIndex(column_index)] * len(blob_indices)
 
     # Batch verify that the cells match the corresponding commitments and proofs
     return kzg.verify_cell_kzg_proof_batch(
-        commitments_bytes=[all_commitments[i] for i in blob_indices],
+        commitments_bytes=[all_commitments[index] for index in blob_indices],
         cell_indices=cell_indices,
         cells=sidecar.partial_column,
         proofs_bytes=sidecar.kzg_proofs,
@@ -255,6 +255,7 @@ def validate_partial_data_column_sidecar_gossip(
     if has_header:
         header = sidecar.header[0]
         block_header = header.signed_block_header.message
+        epoch = compute_epoch_at_slot(block_header.slot)
 
         # [REJECT] The received header MUST equal any previously validated header for this block
         prior_header = seen.partial_data_column_headers.get(group_id.beacon_block_root)
@@ -268,6 +269,10 @@ def validate_partial_data_column_sidecar_gossip(
         # [REJECT] The header's kzg_commitments list is non-empty
         if len(header.kzg_commitments) == 0:
             raise GossipReject("header's kzg_commitments is empty")
+
+        # [REJECT] The header's kzg_commitments list respects the blob limit
+        if len(header.kzg_commitments) > get_blob_parameters(epoch).max_blobs_per_block:
+            raise GossipReject("header's kzg_commitments is too long")
 
         # [IGNORE] The header is not from a future slot
         # (MAY be queued for processing at the appropriate slot)
@@ -297,7 +302,7 @@ def validate_partial_data_column_sidecar_gossip(
 
         # [REJECT] The proposer signature of signed_block_header is valid
         proposer = state.validators[block_header.proposer_index]
-        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block_header.slot))
+        domain = get_domain(state, DOMAIN_BEACON_PROPOSER, epoch)
         signing_root = compute_signing_root(block_header, domain)
         if not bls.Verify(proposer.pubkey, signing_root, header.signed_block_header.signature):
             raise GossipReject("invalid proposer signature on header")

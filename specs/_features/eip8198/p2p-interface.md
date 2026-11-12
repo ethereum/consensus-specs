@@ -89,10 +89,8 @@ def compute_blob_data_retention_start_epoch(epoch: Epoch) -> Epoch:
 
 ### The gossip domain: gossipsub
 
-Each duration schedule entry after genesis MUST coincide with a network upgrade
-at or after `EIP8198_FORK_EPOCH`. Clients SHOULD subscribe to the new
-fork-digest topics ahead of the upgrade epoch and unsubscribe from the old
-topics after it.
+Clients SHOULD subscribe to the new fork-digest topics ahead of
+`EIP8198_FORK_EPOCH` and unsubscribe from the old topics after it.
 
 Durations defined in slots or epochs MUST use the piecewise timeline
 (`compute_time_at_slot_ms` / `compute_slot_at_time_ms`). For example, the
