@@ -4,6 +4,11 @@ node of an ``INVALIDATED`` payload with everything that descends from it.
 
 ``X-FULL`` and ``X-EMPTY`` are the two nodes of block ``X``. The payload a ``latestValidHash``
 names is already ``VALID``, since the spec does not say whether naming it validates it.
+
+In the charts, ``X == Y`` means Y extends X-FULL and ``X -- Y`` that Y extends X-EMPTY. A suffix
+gives the response to the block's envelope: ``:V`` VALID, ``:S`` SYNCING, ``:A`` ACCEPTED and
+``:I(H)`` INVALID with the latest valid hash of H's payload. A block without a suffix has no
+envelope. ``->`` gives the result.
 """
 
 from eth_consensus_specs.test.context import (
@@ -47,6 +52,9 @@ def test_invalid_payload_keeps_its_empty_node(spec, state):
     """
     A -> B -> C on full nodes. C's payload is INVALID with the latest valid hash A, so B's payload
     is the first invalid one. B-FULL and C go, B-EMPTY becomes the head.
+
+        A:V == B:S == C:I(A)
+        -> B INVALIDATED, head B-EMPTY
     """
     rig, test_steps = _setup(spec, state)
     yield from _anchor(rig)
@@ -72,6 +80,9 @@ def test_latest_valid_hash_is_parent_payload(spec, state):
     """
     C's payload is INVALID with the latest valid hash of its own parent payload B. Only C's
     envelope is rejected, and C-EMPTY becomes the head.
+
+        A:S == B:V == C:I(B)
+        -> head C-EMPTY
     """
     rig, test_steps = _setup(spec, state)
     yield from _anchor(rig)
@@ -97,6 +108,9 @@ def test_invalidation_skips_empty_gap(spec, state):
     payload builds on A's. C on B-FULL is INVALID with the latest valid hash A. Only B's payload
     is invalid: E1 and E2 stay, and B-EMPTY becomes the head. A block on B-FULL is then rejected
     and a block on B-EMPTY is accepted.
+
+        A:V == E1 -- E2 -- B:S == C:I(A)
+        -> B INVALIDATED, head B-EMPTY, then B == x is rejected and B -- y accepted
     """
     rig, test_steps = _setup(spec, state)
     yield from _anchor(rig)
@@ -132,6 +146,9 @@ def test_invalidation_spares_revealed_payload_in_gap(spec, state):
     E1 extends A-FULL and reveals its own payload. B extends E1-EMPTY, so B's payload builds on
     A's, not on E1's. C on B-FULL is INVALID with the latest valid hash A. B's payload is invalid
     and E1's sibling payload stays NOT_VALIDATED, with E1-FULL the head.
+
+        A:V == E1:S -- B:S == C:I(A)
+        -> B INVALIDATED, E1 NOT_VALIDATED, head E1-FULL
     """
     rig, test_steps = _setup(spec, state)
     yield from _anchor(rig)
@@ -159,6 +176,10 @@ def test_invalidation_spares_payload_on_empty_child(spec, state):
     E extends B-EMPTY and reveals its own payload, which builds on A's. C on B-FULL is INVALID
     with the latest valid hash A. B's payload is invalid, E's payload stays NOT_VALIDATED, and
     E-FULL becomes the head.
+
+        A:V == B:S == C:I(A)
+                 '-- E:S
+        -> B INVALIDATED, E NOT_VALIDATED, head E-FULL
     """
     rig, test_steps = _setup(spec, state)
     yield from _anchor(rig)
@@ -186,6 +207,10 @@ def test_invalidation_removes_every_full_branch(spec, state):
     C1 and C2 both extend B-FULL, C1 imported first. C2 and D2 on C2-FULL reveal their own
     payloads. C1's payload is INVALID with the latest valid hash A. B's payload is invalid, so C2
     and D2 go too and their payloads are INVALIDATED. B-EMPTY becomes the head.
+
+        A:V == B:S == C1:I(A)
+                 '== C2:S == D2:S
+        -> B C2 D2 INVALIDATED, head B-EMPTY
     """
     rig, test_steps = _setup(spec, state)
     yield from _anchor(rig)
@@ -215,6 +240,9 @@ def test_block_on_empty_node_of_removed_block(spec, state):
     C on B-FULL is INVALID with the latest valid hash A, so C goes with B-FULL. C-EMPTY is
     removed too, so a block on it is rejected, although its bid builds on B's payload and not on
     C's.
+
+        A:V == B:S == C:I(A) -- x
+        -> B INVALIDATED, x rejected, head B-EMPTY
     """
     rig, test_steps = _setup(spec, state)
     yield from _anchor(rig)
@@ -239,6 +267,9 @@ def test_valid_payload_validates_through_empty_gap(spec, state):
     """
     A and E1's payloads are NOT_VALIDATED. B extends E1-EMPTY, so its payload builds on A's.
     C on B-FULL is VALID: C, B and A become VALID, and E1's sibling payload stays NOT_VALIDATED.
+
+        A:S == E1:A -- B:S == C:V
+        -> A B C VALID, E1 NOT_VALIDATED
     """
     rig, test_steps = _setup(spec, state)
     yield from _anchor(rig)
@@ -262,6 +293,9 @@ def _run_rejected_payload_only(spec, state, status):
     """
     C on B-FULL gets ``status``, which names no ancestor of C's payload. Only C's envelope is
     rejected.
+
+        A:S == B:S == C:status
+        -> A B NOT_VALIDATED, head C-EMPTY
     """
     rig, test_steps = _setup(spec, state)
     yield from _anchor(rig)
@@ -282,12 +316,24 @@ def _run_rejected_payload_only(spec, state, status):
 @with_gloas_and_later
 @spec_state_test
 def test_latest_valid_hash_unknown(spec, state):
+    """
+    C's latest valid hash names no known payload.
+
+        A:S == B:S == C:I(unknown)
+        -> A B NOT_VALIDATED, head C-EMPTY
+    """
     yield from _run_rejected_payload_only(spec, state, invalid(spec.Hash32(b"\x42" * 32)))
 
 
 @with_gloas_and_later
 @spec_state_test
 def test_latest_valid_hash_null(spec, state):
+    """
+    C's latest valid hash is null.
+
+        A:S == B:S == C:I(null)
+        -> A B NOT_VALIDATED, head C-EMPTY
+    """
     yield from _run_rejected_payload_only(spec, state, invalid(None))
 
 
@@ -297,6 +343,10 @@ def test_latest_valid_hash_on_other_branch(spec, state):
     """
     B1 and B2 both extend A-FULL. C on B1-FULL is INVALID with the latest valid hash B2, which is
     not in C's payload chain. Only C's envelope is rejected.
+
+        A:S == B1:S == C:I(B2)
+          '== B2:V
+        -> B1 NOT_VALIDATED
     """
     rig, test_steps = _setup(spec, state)
     yield from _anchor(rig)
@@ -321,6 +371,9 @@ def test_latest_valid_hash_is_anchor_payload(spec, state):
     A builds on the anchor's payload. C on B-FULL is INVALID with the latest valid hash of the
     anchor's payload, so A's payload is the first invalid one. A-FULL and everything on it go and
     A-EMPTY becomes the head.
+
+        anchor == A:S == B:S == C:I(anchor)
+        -> A B INVALIDATED, head A-EMPTY
     """
     rig, test_steps = _setup(spec, state)
     yield from _anchor(rig)
@@ -346,6 +399,10 @@ def test_invalid_payload_shared_by_equivocating_blocks(spec, state):
     B1 and B2 are equivocating blocks at one slot that commit to the same payload. C on B1-FULL is
     INVALID with the latest valid hash A. The shared payload is invalid, so both B1-FULL and
     B2-FULL go.
+
+        A:V == B1:S == C:I(A)
+          '== B2:S             B2 has B1's payload
+        -> B1-FULL and B2-FULL removed, head B1-EMPTY or B2-EMPTY
     """
     rig, test_steps = _setup(spec, state)
     yield from _anchor(rig)
@@ -376,6 +433,10 @@ def test_invalid_envelope_for_payload_imported_by_equivocating_block(spec, state
     B1 and B2 are equivocating blocks that commit to the same payload. B1's envelope is imported
     as NOT_VALIDATED and C extends B1-FULL. B2's envelope is INVALID with the latest valid hash A,
     so the shared payload is invalid: B1-FULL and C go.
+
+        A:V == B1:S == C:S
+          '== B2:I(A)          B2 has B1's payload
+        -> B1 C INVALIDATED, B1-FULL removed
     """
     rig, test_steps = _setup(spec, state)
     yield from _anchor(rig)
@@ -402,6 +463,9 @@ def test_invalidation_stops_at_latest_valid_hash(spec, state):
     """
     A -> B -> C -> D on full nodes. E on D-FULL is INVALID with the latest valid hash B. C and D's
     payloads are invalid and B's stays VALID. C-EMPTY becomes the head.
+
+        A:S == B:V == C:S == D:S == E:I(B)
+        -> C D INVALIDATED, head C-EMPTY
     """
     rig, test_steps = _setup(spec, state)
     yield from _anchor(rig)
@@ -432,6 +496,9 @@ def test_invalidation_removes_empty_descendants_below_first_invalid(spec, state)
     D-FULL is INVALID with the latest valid hash A. B's payload is the first invalid one: C and D
     descend from B-FULL and go on both nodes, even though D extends C-EMPTY. B-EMPTY becomes the
     head.
+
+        A:V == B:S == C:S -- D:S == E:I(A)
+        -> B C D INVALIDATED, head B-EMPTY
     """
     rig, test_steps = _setup(spec, state)
     yield from _anchor(rig)
@@ -461,6 +528,10 @@ def test_envelope_on_invalidated_parent_payload(spec, state):
     """
     C1 and C2 extend B-FULL. C2's payload is INVALID with the latest valid hash A, so B's payload
     is invalid. C1's envelope arrives afterwards and builds on B's payload, so it is rejected.
+
+        A:V == B:S == C2:I(A)
+                 '== C1:S      C1's envelope comes last
+        -> C1 rejected, head B-EMPTY
     """
     rig, test_steps = _setup(spec, state)
     yield from _anchor(rig)
@@ -483,6 +554,8 @@ def _setup_forkchoice_updated_response(spec, state, response_fn, a_valid=False):
     A -> B on full nodes, B NOT_VALIDATED. The execution engine's response for B's payload
     changes to ``response_fn(rig, a, b)``. D on B-FULL becomes the head, its forkchoiceUpdated
     names B's payload, and the response applies.
+
+        A:S == B:S == D        forkchoiceUpdated(B): response_fn
     """
     rig, test_steps = _setup(spec, state)
     yield from _anchor(rig)
@@ -502,6 +575,9 @@ def test_forkchoice_updated_invalid_on_empty_head(spec, state):
     """
     The forkchoiceUpdated for D-EMPTY names B's payload and gets INVALID with the latest valid
     hash A. B's payload is invalid, D goes, and B-EMPTY becomes the head.
+
+        A:V == B:S == D        forkchoiceUpdated(B): I(A)
+        -> B INVALIDATED, head B-EMPTY
     """
     rig, test_steps, a, b, _ = yield from _setup_forkchoice_updated_response(
         spec, state, lambda rig, a, b: invalid(a.block_hash), a_valid=True
@@ -518,6 +594,9 @@ def test_forkchoice_updated_invalid_without_latest_valid_hash(spec, state):
     """
     The forkchoiceUpdated for D-EMPTY gets INVALID with a null latest valid hash. Only the head's
     payload, B's, is invalid.
+
+        A:S == B:S == D        forkchoiceUpdated(B): I(null)
+        -> B INVALIDATED, A NOT_VALIDATED, head B-EMPTY
     """
     rig, test_steps, a, b, _ = yield from _setup_forkchoice_updated_response(
         spec, state, lambda rig, a, b: invalid(None)
@@ -534,6 +613,9 @@ def test_forkchoice_updated_invalid_with_deeper_latest_valid_hash(spec, state):
     """
     The forkchoiceUpdated for D-EMPTY gets INVALID with the latest valid hash of the anchor's
     payload. A's payload is the first invalid one, so A-EMPTY becomes the head.
+
+        anchor == A:S == B:S == D        forkchoiceUpdated(B): I(anchor)
+        -> A B INVALIDATED, head A-EMPTY
     """
     rig, test_steps, a, b, _ = yield from _setup_forkchoice_updated_response(
         spec, state, lambda rig, a, b: invalid(rig.anchor_block_hash)
@@ -549,6 +631,9 @@ def test_forkchoice_updated_invalid_with_deeper_latest_valid_hash(spec, state):
 def test_forkchoice_updated_valid_validates_ancestors(spec, state):
     """
     The forkchoiceUpdated for D-EMPTY gets VALID for B's payload, so A and B become VALID.
+
+        A:S == B:S == D        forkchoiceUpdated(B): V
+        -> A B VALID, head D-EMPTY
     """
     rig, test_steps, a, b, d = yield from _setup_forkchoice_updated_response(
         spec, state, lambda rig, a, b: valid(b.block_hash)
@@ -565,6 +650,9 @@ def test_forkchoice_updated_invalid_with_unknown_latest_valid_hash(spec, state):
     """
     The forkchoiceUpdated for D-EMPTY gets INVALID with a latest valid hash that names no known
     payload. Only the head's payload, B's, is invalid.
+
+        A:S == B:S == D        forkchoiceUpdated(B): I(unknown)
+        -> B INVALIDATED, A NOT_VALIDATED, head B-EMPTY
     """
     rig, test_steps, a, b, _ = yield from _setup_forkchoice_updated_response(
         spec, state, lambda rig, a, b: invalid(spec.Hash32(b"\x42" * 32))
@@ -582,6 +670,10 @@ def test_forkchoice_updated_invalid_with_latest_valid_hash_on_other_branch(spec,
     X extends A-EMPTY and B extends A-FULL, so B's branch is the head. The forkchoiceUpdated for
     D-EMPTY gets INVALID with the latest valid hash X, which is not in B's payload chain. Only B's
     payload is invalid.
+
+        A:S == B:S == D        forkchoiceUpdated(B): I(X)
+          '-- X:V
+        -> B INVALIDATED, A NOT_VALIDATED
     """
     rig, test_steps = _setup(spec, state)
     yield from _anchor(rig)
@@ -608,6 +700,11 @@ def test_votes_moved_off_removed_full_node(spec, state):
     payload removes B-FULL, so its votes stop counting and X becomes the head although B-EMPTY is
     viable. In epoch 1 the B-FULL voters move to D on B-EMPTY, so D outweighs X and becomes the
     head.
+
+        A:V == B:S == C:I(A)
+          |      '-- D         epoch 1: the B-FULL voters move to D
+          '== X                epoch 0: most votes on B-FULL, the rest on X
+        -> head X-EMPTY after C, then D-EMPTY after the move
     """
     rig, test_steps = _setup(spec, state, slot=6)
     yield from _anchor(rig)
