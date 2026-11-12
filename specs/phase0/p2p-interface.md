@@ -953,6 +953,19 @@ def validate_attester_slashing_gossip(
     attestation_1 = attester_slashing.attestation_1
     attestation_2 = attester_slashing.attestation_2
 
+    # [REJECT] Neither attestation has an empty attesting_indices list
+    if len(attestation_1.attesting_indices) == 0 or len(attestation_2.attesting_indices) == 0:
+        raise GossipReject("attestation has empty attesting_indices")
+
+    attesting_indices_1 = set(attestation_1.attesting_indices)
+    attesting_indices_2 = set(attestation_2.attesting_indices)
+    slashable_indices = attesting_indices_1.intersection(attesting_indices_2)
+
+    # [IGNORE] At least one index in the intersection has not yet been seen
+    new_indices = slashable_indices.difference(seen.attester_slashing_indices)
+    if len(new_indices) == 0:
+        raise GossipIgnore("all attester slashing indices already seen")
+
     # [REJECT] The attestation data is slashable (double vote or surround vote)
     if not is_slashable_attestation_data(attestation_1.data, attestation_2.data):
         raise GossipReject("attestation data is not slashable")
@@ -975,10 +988,6 @@ def validate_attester_slashing_gossip(
     if not is_valid_indexed_attestation(state, attestation_2):
         raise GossipReject("invalid indexed attestation 2")
 
-    attesting_indices_1 = set(attestation_1.attesting_indices)
-    attesting_indices_2 = set(attestation_2.attesting_indices)
-    slashable_indices = attesting_indices_1.intersection(attesting_indices_2)
-
     # [REJECT] At least one validator in the intersection is slashable
     slashable_any = False
     current_epoch = get_current_epoch(state)
@@ -988,11 +997,6 @@ def validate_attester_slashing_gossip(
             break
     if not slashable_any:
         raise GossipReject("no slashable validators in intersection")
-
-    # [IGNORE] At least one index in the intersection has not yet been seen
-    new_indices = slashable_indices.difference(seen.attester_slashing_indices)
-    if len(new_indices) == 0:
-        raise GossipIgnore("all attester slashing indices already seen")
 
     # Mark these indices as seen
     seen.attester_slashing_indices.update(slashable_indices)
