@@ -62,6 +62,7 @@ def get_execution_payload_bid(spec, state, execution_payload):
         value=spec.Gwei(0),
         blob_kzg_commitments=spec.BlobKZGCommitments(data=kzg_list),
         execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
+        payload_root=spec.hash_tree_root(execution_payload),
     )
 
 
@@ -499,6 +500,54 @@ def sign_execution_payload_envelope(spec, state, signed_block, envelope):
     )
 
 
+def build_execution_payload_for_latest_bid(spec, state):
+    """
+    Build the execution payload which tests reveal by default for the bid of
+    the latest block in ``state``, the post-state of that block.
+    """
+    payload = build_empty_execution_payload(spec, state)
+    payload.block_hash = state.latest_execution_payload_bid.block_hash
+    payload.gas_limit = state.latest_execution_payload_bid.gas_limit
+    payload.parent_hash = state.latest_block_hash
+    payload.withdrawals = state.payload_expected_withdrawals
+    return payload
+
+
+def commit_self_build_bid_to_payload(spec, state, block, update_payload=None):
+    """
+    Commit the self-build bid of ``block`` to the execution payload which tests
+    reveal by default, after ``update_payload`` (if given) changes the payload,
+    where ``state`` is the post-state of ``block``. The payload depends on that
+    post-state, and nothing in the state transition reads the bid's payload
+    root, so the commitment is set after the fact.
+    """
+    bid = block.body.signed_execution_payload_bid.message
+    if bid.builder_index != spec.BUILDER_INDEX_SELF_BUILD or bid.payload_root != spec.Root():
+        return
+    payload = build_execution_payload_for_latest_bid(spec, state)
+    if update_payload is not None:
+        update_payload(payload)
+    bid.payload_root = spec.hash_tree_root(payload)
+    state.latest_execution_payload_bid.payload_root = bid.payload_root
+    state.latest_block_header.body_root = spec.hash_tree_root(block.body)
+
+
+def commit_builder_bid_to_payload(spec, state, block):
+    """
+    Commit the builder's bid of ``block`` to the execution payload which tests
+    reveal by default and sign the bid again, where ``state`` is the pre-state
+    of ``block``. Call before the state transition.
+    """
+    post_state = state.copy()
+    if post_state.slot < block.slot:
+        spec.process_slots(post_state, block.slot)
+    spec.process_block(post_state, block)
+    bid = block.body.signed_execution_payload_bid.message
+    payload = build_execution_payload_for_latest_bid(spec, post_state)
+    bid.payload_root = spec.hash_tree_root(payload)
+    block.body.signed_execution_payload_bid = sign_execution_payload_bid(spec, post_state, bid)
+
+
 def build_signed_execution_payload_envelope(
     spec, state, block_root, signed_block, execution_requests=None
 ):
@@ -506,11 +555,7 @@ def build_signed_execution_payload_envelope(
     builder_index = signed_block.message.body.signed_execution_payload_bid.message.builder_index
 
     # Create execution payload with fields matching the bid's commitments
-    payload = build_empty_execution_payload(spec, state)
-    payload.block_hash = state.latest_execution_payload_bid.block_hash
-    payload.gas_limit = state.latest_execution_payload_bid.gas_limit
-    payload.parent_hash = state.latest_block_hash
-    payload.withdrawals = state.payload_expected_withdrawals
+    payload = build_execution_payload_for_latest_bid(spec, state)
 
     if execution_requests is None:
         execution_requests = spec.ExecutionRequests()
@@ -549,6 +594,7 @@ def compute_execution_payload_bid(spec, state, payload, execution_requests=None)
         value=spec.Gwei(0),
         blob_kzg_commitments=spec.BlobKZGCommitments(data=kzg_list),
         execution_requests_root=spec.hash_tree_root(execution_requests),
+        payload_root=spec.hash_tree_root(payload),
     )
 
 

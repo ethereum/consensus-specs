@@ -21,12 +21,18 @@ from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 
-def setup_store_with_block(spec, state):
-    """Apply one block to the genesis store. Returns store, blocks, block_root."""
+def setup_store_with_block(spec, state, update_payload=None):
+    """
+    Apply one block to the genesis store. Returns store, blocks, block_root.
+    The block's bid commits to the default payload after ``update_payload``
+    (if given) changes it.
+    """
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
     block = build_empty_block_for_next_slot(spec, state)
-    signed_block = state_transition_and_sign_block(spec, state, block)
+    signed_block = state_transition_and_sign_block(
+        spec, state, block, update_payload=update_payload
+    )
     block_root = signed_block.message.hash_tree_root()
     store.blocks[block_root] = signed_block.message
     store.block_states[block_root] = state.copy()
@@ -437,6 +443,49 @@ def test_gossip_execution_payload_envelope__reject_execution_requests_root_misma
     yield "messages", "meta", messages
 
 
+@with_gloas_and_later
+@spec_state_test
+def test_gossip_execution_payload_envelope__reject_payload_root_mismatch(spec, state):
+    """An envelope whose payload root does not match the bid's is rejected."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload"
+
+    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+
+    seen = get_seen(spec)
+    signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
+    # Change a payload field which no other check covers, then re-sign so the
+    # payload root is the only check under test.
+    envelope = signed_envelope.message
+    envelope.payload.extra_data = spec.ExtraData(data=list(b"\x42"))
+    privkey = privkeys[signed_block.message.proposer_index]
+    signed_envelope.signature = spec.get_execution_payload_envelope_signature(
+        state, envelope, privkey
+    )
+    yield get_filename(signed_envelope), signed_envelope
+
+    messages = []
+
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
+    )
+    assert result == "reject"
+    assert reason == "payload's root does not match the bid's payload root"
+    messages.append(
+        {
+            "message": get_filename(signed_envelope),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
 def _assert_envelope_requests(spec, state, execution_requests, expected, reason=None):
     """Assert an envelope carrying ``execution_requests`` returns ``expected``.
 
@@ -493,7 +542,14 @@ def _assert_envelope_withdrawals(spec, state, count, expected, reason=None):
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload"
 
-    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
+    def update_payload(payload):
+        payload.withdrawals = make_progressive_list(spec.Withdrawals, count)
+
+    # The bid commits to the payload with these withdrawals so that the payload
+    # root check passes.
+    store, blocks, signed_block, block_root = setup_store_with_block(
+        spec, state, update_payload=update_payload
+    )
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
@@ -504,7 +560,7 @@ def _assert_envelope_withdrawals(spec, state, count, expected, reason=None):
     # Set the payload's withdrawals, then re-sign so the withdrawal count is the only
     # check under test.
     envelope = signed_envelope.message
-    envelope.payload.withdrawals = make_progressive_list(spec.Withdrawals, count)
+    update_payload(envelope.payload)
     if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
         privkey = privkeys[signed_block.message.proposer_index]
     else:

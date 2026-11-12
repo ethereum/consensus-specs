@@ -16,6 +16,9 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
     sign_block,
 )
+from eth_consensus_specs.test.helpers.execution_payload import (
+    commit_self_build_bid_to_payload,
+)
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_attestation,
     add_attester_slashing,
@@ -318,6 +321,9 @@ def produce_block(
         spec.process_block(post_state, block)
     except AssertionError:
         valid = False
+
+    if valid and is_post_gloas(spec):
+        commit_self_build_bid_to_payload(spec, post_state, block)
 
     block.state_root = post_state.hash_tree_root()
     signed_block = sign_block(spec, post_state, block)
