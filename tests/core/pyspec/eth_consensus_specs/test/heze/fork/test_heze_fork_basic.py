@@ -90,3 +90,13 @@ def test_fork_random_misc_balances(spec, phases, state):
 @with_meta_tags(HEZE_FORK_TEST_META_TAGS)
 def test_fork_random_large_validator_set(spec, phases, state):
     yield from run_fork_test(phases[HEZE], state)
+
+
+@with_phases(phases=[GLOAS], other_phases=[HEZE])
+@spec_test
+@with_state
+@with_meta_tags(HEZE_FORK_TEST_META_TAGS)
+def test_fork_unset_deposit_requests_start_index(spec, phases, state):
+    # A network that starts at Fulu or later never sets the start index
+    state.deposit_requests_start_index = spec.UNSET_DEPOSIT_REQUESTS_START_INDEX
+    yield from run_fork_test(phases[HEZE], state)

@@ -24,6 +24,7 @@
   - [Modified `verify_data_column_sidecar_kzg_proofs`](#modified-verify_data_column_sidecar_kzg_proofs)
   - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
   - [New `compute_max_data_column_sidecar_size`](#new-compute_max_data_column_sidecar_size)
+  - [New `get_builder_bid_limit`](#new-get_builder_bid_limit)
   - [New `is_current_or_next_slot`](#new-is_current_or_next_slot)
   - [New `is_past_slot`](#new-is_past_slot)
   - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
@@ -212,7 +213,7 @@ class Seen:
     # [New in Gloas:EIP7732]
     payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
     # [New in Gloas:EIP7732]
-    execution_payload_bids: set[tuple[Slot, Hash32, Root, BuilderIndex]]
+    execution_payload_bid_counts: Counter[tuple[Slot, Hash32, Root, BuilderIndex]]
     # [New in Gloas:EIP7732]
     best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
     # [New in Gloas:EIP7732]
@@ -339,6 +340,16 @@ def compute_max_data_column_sidecar_size() -> Uint64:
         beacon_block_root=Root(),
     )
     return Uint64(len(ssz_serialize(sidecar)))
+```
+
+### New `get_builder_bid_limit`
+
+```python
+def get_builder_bid_limit(state: BeaconState, builder_index: BuilderIndex) -> Uint64:
+    """
+    Return the number of bids the builder may submit for each slot and parent.
+    """
+    return Uint64(state.builders[builder_index].balance // ETH_TO_GWEI)
 ```
 
 ### New `is_current_or_next_slot`
@@ -855,9 +866,21 @@ def validate_execution_payload_envelope_gossip(
     if block.slot != payload.slot_number:
         raise GossipReject("block's slot does not match payload's slot number")
 
+    # [REJECT] The envelope's parent beacon block root matches the block's parent root
+    if envelope.parent_beacon_block_root != block.parent_root:
+        raise GossipReject("envelope's parent beacon block root does not match the block's")
+
     # [REJECT] The envelope is from the builder committed to by the bid
     if envelope.builder_index != bid.builder_index:
         raise GossipReject("envelope's builder index does not match the bid's builder index")
+
+    # [REJECT] The payload's previous randao matches the bid's previous randao
+    if payload.prev_randao != bid.prev_randao:
+        raise GossipReject("payload's previous randao does not match the bid's previous randao")
+
+    # [REJECT] The payload's gas limit matches the bid's gas limit
+    if payload.gas_limit != bid.gas_limit:
+        raise GossipReject("payload's gas limit does not match the bid's gas limit")
 
     # [REJECT] The payload's block hash matches the bid's block hash
     if payload.block_hash != bid.block_hash:
@@ -873,6 +896,22 @@ def validate_execution_payload_envelope_gossip(
     # [REJECT] The number of withdrawals is within the limit
     if len(payload.withdrawals) > MAX_WITHDRAWALS_PER_PAYLOAD:
         raise GossipReject("too many withdrawals")
+
+    # [REJECT] The payload builds on the execution head of the block's post-state
+    if payload.parent_hash != state.latest_block_hash:
+        raise GossipReject("payload's parent hash does not match the latest block hash")
+
+    # [REJECT] The payload's timestamp is correct with respect to the slot
+    if payload.timestamp != compute_time_at_slot(state.genesis_time, block.slot):
+        raise GossipReject("incorrect execution payload timestamp")
+
+    # [REJECT] The payload contains no empty transactions
+    if any(len(transaction) == 0 for transaction in payload.transactions):
+        raise GossipReject("payload contains an empty transaction")
+
+    # [REJECT] The payload's withdrawals match the withdrawals expected by the block's post-state
+    if hash_tree_root(payload.withdrawals) != hash_tree_root(state.payload_expected_withdrawals):
+        raise GossipReject("payload's withdrawals do not match the expected withdrawals")
 
     # [REJECT] The envelope signature is valid
     if not verify_execution_payload_envelope_signature(state, signed_execution_payload_envelope):
@@ -952,6 +991,14 @@ def validate_payload_attestation_message_gossip(
 
 This topic is used to propagate signed bids as `SignedExecutionPayloadBid`.
 
+*Note*: The proposer for `bid.slot` SHOULD accept higher-value bids from a
+builder regardless of how many bids it has already seen from that builder for
+the same slot and parent. Otherwise, a builder could send low-value bids to the
+proposer and a high-value bid to the rest of the network. Nodes that accepted
+the high-value bid would not forward competing bids with lower values, and the
+proposer would ignore the high-value bid, leaving it with only the low-value
+bids.
+
 ```python
 def validate_execution_payload_bid_gossip(
     seen: Seen,
@@ -964,11 +1011,6 @@ def validate_execution_payload_bid_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     bid = signed_execution_payload_bid.message
-
-    # [IGNORE] This is the first bid for this slot, parent, and builder
-    bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
-    if bid_key in seen.execution_payload_bids:
-        raise GossipIgnore("already seen valid bid for this slot, parent, and builder")
 
     # [IGNORE] This is the highest value bid seen for the slot and parent
     best_bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root)
@@ -1062,6 +1104,12 @@ def validate_execution_payload_bid_gossip(
     if not is_active_builder(state, bid.builder_index):
         raise GossipReject("builder is not active")
 
+    # [IGNORE] The builder has not reached its bid limit for this slot and parent
+    bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
+    bid_limit = get_builder_bid_limit(state, bid.builder_index)
+    if seen.execution_payload_bid_counts[bid_key] >= bid_limit:
+        raise GossipIgnore("builder has reached its bid limit for this slot and parent")
+
     # [IGNORE] The builder can cover the bid
     if not can_builder_cover_bid(state, bid.builder_index, bid.value):
         raise GossipIgnore("builder cannot cover bid value")
@@ -1078,8 +1126,8 @@ def validate_execution_payload_bid_gossip(
     if not verify_execution_payload_bid_signature(state, signed_execution_payload_bid):
         raise GossipReject("invalid bid signature")
 
-    # Mark this bid as seen and update the highest-value bid for this slot/parent
-    seen.execution_payload_bids.add(bid_key)
+    # Count this bid and update the highest-value bid for this slot/parent
+    seen.execution_payload_bid_counts[bid_key] += 1
     seen.best_execution_payload_bid[best_bid_key] = bid.value
 ```
 

@@ -20,9 +20,6 @@ from eth_consensus_specs.test.helpers.fast_confirmation import (
     FCRTest,
     Slashing,
 )
-from eth_consensus_specs.test.helpers.forks import (
-    is_post_gloas,
-)
 
 """
 Test is_one_confirmed
@@ -366,7 +363,10 @@ def test_is_one_confirmed_empty_slot_discount(spec, state):
         spec.get_node_support_between_slots(
             store,
             balance_source,
-            spec.get_ancestor(store, spec.get_node_for_root(block_b), parent_b.slot),
+            {
+                spec.get_node_for_root(block_b_data.parent_root),
+                spec.get_ancestor(store, spec.get_node_for_root(block_b), parent_b.slot),
+            },
             spec.Slot(parent_b.slot + 1),
             spec.Slot(block_b_data.slot - 1),
         )
@@ -1205,7 +1205,7 @@ def test_is_one_confirmed_fails_recently_activated_validator_voting_in_empty_slo
     parent_support_in_empty_slots = spec.get_node_support_between_slots(
         store,
         balance_source,
-        p_node,
+        {spec.get_node_for_root(p_root), p_node},
         spec.get_block_slot(store, p_root) + 1,
         spec.Slot(fcr.current_slot() - 1),
     )
@@ -1250,7 +1250,7 @@ def test_is_one_confirmed_fails_recently_activated_validator_voting_in_empty_slo
     parent_support_in_empty_slots = spec.get_node_support_between_slots(
         store,
         balance_source,
-        p_node,
+        {spec.get_node_for_root(p_root), p_node},
         spec.get_block_slot(store, p_root) + 1,
         spec.Slot(fcr.current_slot() - 1),
     )
@@ -1304,7 +1304,7 @@ def test_is_one_confirmed_with_empty_slot_and_attester_in_two_consecutive_slots_
     2. Leave the first slot of the next epoch empty.
     3. Attest to parent block by the whole committee of the empty slot except for V.
     4. V has already attested to the parent block because it is in the parent's slot committee.
-    5. Accumulate more support to confirma block ensuring that V still supports the block's parent.
+    5. Accumulate more support to confirm a block ensuring that V still supports the block's parent.
     """
     fcr = FCRTest(spec, seed=1)
     store, fcr_store = fcr.initialize(state)
@@ -1344,16 +1344,7 @@ def test_is_one_confirmed_with_empty_slot_and_attester_in_two_consecutive_slots_
 
     fcr.run_fast_confirmation()
 
-    if is_post_gloas(spec):
-        # In gloas the vote of V in the support of parent
-        # submitted in the parent's slot wouldn't count
-        # into an empty slot support discount because
-        # it supports a PENDING(P) node and not a FULL(P)
-        # node which is a parent node of block B
-        assert fcr_store.confirmed_root == p_root
-    else:
-        # The block must be confirmed, otherwise
-        assert fcr_store.confirmed_root == b_root
+    assert fcr_store.confirmed_root == b_root
 
     yield from fcr.get_test_artefacts()
 
