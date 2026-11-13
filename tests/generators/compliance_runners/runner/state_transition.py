@@ -126,7 +126,7 @@ def run_test(test_info: VectorCase):
     state = test_case["pre"]
     expected_post = test_case["post"]
     old_bls_active = bls.bls_active
-    bls.bls_active = bool(test_case["meta"].get("bls_setting", 0))
+    bls.bls_active = test_case["meta"].get("bls_setting", 0) == 1
 
     try:
         if runner == "epoch_processing":
