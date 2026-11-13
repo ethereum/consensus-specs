@@ -2,6 +2,7 @@ from eth_consensus_specs.test.context import expect_assertion_error
 from eth_consensus_specs.test.helpers.forks import is_post_heze
 from eth_consensus_specs.test.helpers.keys import builder_privkeys
 from eth_consensus_specs.test.helpers.signatures import (
+    get_execution_payload_bid_signature,
     get_placeholder_signature,
     get_unsigned_signature,
 )
@@ -115,7 +116,7 @@ def prepare_signed_execution_payload_bid(
         else:
             # External builders use real signatures
             privkey = builder_privkeys[builder_index]
-            signature = spec.get_execution_payload_bid_signature(state, bid, privkey)
+            signature = get_execution_payload_bid_signature(spec, state, bid, privkey)
     else:
         # Invalid signature
         signature = get_unsigned_signature(spec)

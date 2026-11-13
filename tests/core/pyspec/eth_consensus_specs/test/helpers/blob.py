@@ -16,7 +16,10 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_gloas,
 )
 from eth_consensus_specs.test.helpers.keys import builder_privkeys
-from eth_consensus_specs.test.helpers.signatures import get_placeholder_signature
+from eth_consensus_specs.test.helpers.signatures import (
+    get_execution_payload_bid_signature,
+    get_placeholder_signature,
+)
 from eth_consensus_specs.utils import kzg
 
 # Scalar field modulus of BLS12-381; a canonical field element is in [0, BLS_MODULUS).
@@ -133,12 +136,11 @@ def add_blobs_to_block(spec, state, block, rng: Random | None = None, blob_count
         ):
             block.body.signed_execution_payload_bid.signature = get_placeholder_signature(spec)
         else:
-            block.body.signed_execution_payload_bid.signature = (
-                spec.get_execution_payload_bid_signature(
-                    state,
-                    block.body.signed_execution_payload_bid.message,
-                    builder_privkeys[block.body.signed_execution_payload_bid.message.builder_index],
-                )
+            block.body.signed_execution_payload_bid.signature = get_execution_payload_bid_signature(
+                spec,
+                state,
+                block.body.signed_execution_payload_bid.message,
+                builder_privkeys[block.body.signed_execution_payload_bid.message.builder_index],
             )
     else:
         block.body.execution_payload.transactions = spec.Transactions.of(

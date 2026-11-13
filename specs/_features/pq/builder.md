@@ -24,6 +24,12 @@ is the 32-byte seed from which its XMSS key is derived. As for validators, an
 XMSS key MUST NOT sign two different messages at the same leaf, because that
 exposes the leaf and lets others forge signatures at it.
 
+A builder signs each bid at a leaf reserved for bids, see
+`is_builder_bid_leaf_index`. Its signer MUST use each of these leaves at most
+once, for example by allocating them in increasing order, and its record of used
+leaves must survive restarts and move with the key. A builder that runs out of
+bid leaves exits and joins again with a new key.
+
 At the upgrade, each builder that registered an XMSS public key with a builder
 PQ registration request takes it in place of its BLS public key. A builder
 without a registration has its balance withdrawn at the upgrade. A new builder
@@ -51,21 +57,18 @@ followed by its XMSS public key.
 
 ### Constructing the `SignedExecutionPayloadBid`
 
-*Note*: Every bid for a slot is signed at the same leaf. A builder MUST NOT sign
-two different bids for the same slot, so it cannot raise a bid it has broadcast
-or bid on more than one parent.
-
 ```python
 def get_execution_payload_bid_signature(
     state: BeaconState,
     bid: ExecutionPayloadBid,
     # [Modified in PQ]
     privkey: Bytes32,
+    # [New in PQ]
+    leaf_index: Uint64,
 ) -> XMSSSignature:
     domain = get_domain(state, DOMAIN_BEACON_BUILDER, compute_epoch_at_slot(bid.slot))
     signing_root = compute_signing_root(bid, domain)
     # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(bid.slot, LEAF_OFFSET_EXECUTION_PAYLOAD_BID)
     return xmss.Sign(privkey, leaf_index, signing_root)
 ```
 

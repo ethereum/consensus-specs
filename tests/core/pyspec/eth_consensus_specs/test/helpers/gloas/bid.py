@@ -14,7 +14,10 @@ from eth_consensus_specs.test.helpers.fork_choice import (
 from eth_consensus_specs.test.helpers.forks import is_post_heze
 from eth_consensus_specs.test.helpers.gossip import get_filename, wrap_genesis_block
 from eth_consensus_specs.test.helpers.keys import builder_privkeys
-from eth_consensus_specs.test.helpers.signatures import get_unsigned_signature
+from eth_consensus_specs.test.helpers.signatures import (
+    get_execution_payload_bid_signature,
+    get_unsigned_signature,
+)
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 
 
@@ -334,7 +337,7 @@ def build_signed_bid(
         )
     if valid_signature and builder_index < len(builder_privkeys):
         privkey = builder_privkeys[builder_index]
-        signature = spec.get_execution_payload_bid_signature(state, bid, privkey)
+        signature = get_execution_payload_bid_signature(spec, state, bid, privkey)
     else:
         signature = get_unsigned_signature(spec)
     return spec.SignedExecutionPayloadBid(message=bid, signature=signature)

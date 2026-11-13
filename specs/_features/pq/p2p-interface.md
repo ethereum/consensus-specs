@@ -668,11 +668,6 @@ def validate_payload_attestation_message_gossip(
 
 ##### Modified `execution_payload_bid`
 
-*Note*: A builder signs all of its bids for a slot at the same leaf, so it must
-not sign two different bids for the same slot. In particular, it cannot bid on
-two different parents in the same slot, even though this topic accepts one bid
-per parent.
-
 ```python
 def validate_execution_payload_bid_gossip(
     seen: Seen,

@@ -13,7 +13,10 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_gloas,
 )
 from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
-from eth_consensus_specs.test.helpers.signatures import get_placeholder_signature
+from eth_consensus_specs.test.helpers.signatures import (
+    get_execution_payload_bid_signature,
+    get_placeholder_signature,
+)
 from eth_consensus_specs.test.helpers.withdrawals import get_expected_withdrawals
 
 
@@ -328,7 +331,7 @@ def sign_execution_payload_bid(spec, state, bid):
         signature = get_placeholder_signature(spec)
     else:
         privkey = builder_privkeys[bid.builder_index]
-        signature = spec.get_execution_payload_bid_signature(state, bid, privkey)
+        signature = get_execution_payload_bid_signature(spec, state, bid, privkey)
 
     return spec.SignedExecutionPayloadBid(
         message=bid,

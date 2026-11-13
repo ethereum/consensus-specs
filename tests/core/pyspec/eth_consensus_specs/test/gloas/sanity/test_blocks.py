@@ -41,6 +41,7 @@ from eth_consensus_specs.test.helpers.proposer_slashings import (
     get_valid_proposer_slashings,
 )
 from eth_consensus_specs.test.helpers.registry import get_builders, get_validators
+from eth_consensus_specs.test.helpers.signatures import get_execution_payload_bid_signature
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
     next_epoch_with_full_participation,
@@ -582,8 +583,8 @@ def test_builder_payment_removed_when_proposer_slashes_itself(spec, state):
     bid = block.body.signed_execution_payload_bid.message
     bid.builder_index = builder_index
     bid.value = value
-    signature = spec.get_execution_payload_bid_signature(
-        state, bid, builder_privkeys[builder_index]
+    signature = get_execution_payload_bid_signature(
+        spec, state, bid, builder_privkeys[builder_index]
     )
     block.body.signed_execution_payload_bid = spec.SignedExecutionPayloadBid(
         message=bid,
@@ -857,8 +858,8 @@ def test_builder_payment_after_missed_epochs(spec, state):
     bid.execution_requests_root = spec.hash_tree_root(spec.ExecutionRequests())
 
     # Sign the bid with the builder's private key
-    signature = spec.get_execution_payload_bid_signature(
-        state, bid, builder_privkeys[builder_index]
+    signature = get_execution_payload_bid_signature(
+        spec, state, bid, builder_privkeys[builder_index]
     )
     block_1.body.signed_execution_payload_bid = spec.SignedExecutionPayloadBid(
         message=bid,

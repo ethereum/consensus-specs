@@ -65,6 +65,7 @@
     - [New `compute_xmss_leaf_index`](#new-compute_xmss_leaf_index)
   - [Predicates](#predicates)
     - [New `is_active_preregistration`](#new-is_active_preregistration)
+    - [New `is_builder_bid_leaf_index`](#new-is_builder_bid_leaf_index)
     - [New `is_legacy_pubkey`](#new-is_legacy_pubkey)
     - [New `is_valid_preregistration_signature`](#new-is_valid_preregistration_signature)
     - [New `is_valid_vrf_proof`](#new-is_valid_vrf_proof)
@@ -139,7 +140,8 @@ therefore assigns every validator message a leaf derived from its slot and its
 type, see `compute_xmss_leaf_index`. An attestation instead uses the leaf of its
 target epoch, see `compute_xmss_attestation_leaf_index`. A message that a key
 signs at most once, such as a voluntary exit, instead uses one of the first
-`XMSS_RESERVED_LEAVES` leaves. An honest signer that never equivocates never
+`XMSS_RESERVED_LEAVES` leaves. A bid instead uses any leaf reserved for bids,
+see `is_builder_bid_leaf_index`. An honest signer that never equivocates never
 reuses a leaf. Each signature carries its leaf index, and verification checks it
 against the expected one.
 
@@ -261,12 +263,13 @@ class ValidatorPreregistrations(ProgressiveList[StoredPreregistration]):
 
 ### XMSS
 
-| Name                      | Value                           |
-| ------------------------- | ------------------------------- |
-| `XMSS_SIGNATURE_SIZE`     | `Uint64(2404)`                  |
-| `XMSS_RESERVED_LEAVES`    | `Uint64(2**15)` (= 32,768)      |
-| `XMSS_ATTESTATION_LEAVES` | `Uint64(2**29)` (= 536,870,912) |
-| `XMSS_LEAVES_PER_SLOT`    | `Uint64(2**3)` (= 8)            |
+| Name                      | Value                             |
+| ------------------------- | --------------------------------- |
+| `XMSS_SIGNATURE_SIZE`     | `Uint64(2404)`                    |
+| `XMSS_RESERVED_LEAVES`    | `Uint64(2**15)` (= 32,768)        |
+| `XMSS_ATTESTATION_LEAVES` | `Uint64(2**29)` (= 536,870,912)   |
+| `XMSS_BUILDER_BID_LEAVES` | `Uint64(2**30)` (= 1,073,741,824) |
+| `XMSS_LEAVES_PER_SLOT`    | `Uint64(2**3)` (= 8)              |
 
 ### VRF
 
@@ -282,8 +285,7 @@ class ValidatorPreregistrations(ProgressiveList[StoredPreregistration]):
 | `LEAF_OFFSET_AGGREGATE_AND_PROOF`        | `Uint64(1)` |
 | `LEAF_OFFSET_PTC_ATTESTER`               | `Uint64(2)` |
 | `LEAF_OFFSET_PROPOSER_PREFERENCES`       | `Uint64(3)` |
-| `LEAF_OFFSET_EXECUTION_PAYLOAD_BID`      | `Uint64(4)` |
-| `LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE` | `Uint64(5)` |
+| `LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE` | `Uint64(4)` |
 
 ### XMSS reserved leaves
 
@@ -711,8 +713,13 @@ defines the following functions:
 
 - `def Sign(privkey: Bytes32, leaf_index: Uint64, message: Bytes32) -> XMSSSignature`
 - `def Verify(pubkey: XMSSPubkey, leaf_index: Uint64, message: Bytes32, signature: XMSSSignature) -> bool`
+- `def GetLeafIndex(signature: XMSSSignature) -> Uint64`
 
-`Verify` returns `True` only if `signature` was produced at `leaf_index`.
+Where:
+
+- `Sign` returns the signature of `message` at `leaf_index`.
+- `Verify` returns `True` only if `signature` was produced at `leaf_index`.
+- `GetLeafIndex` returns the leaf index that `signature` carries.
 
 The above functions are accessed through the `xmss` module, e.g. `xmss.Verify`.
 
@@ -782,11 +789,6 @@ def compute_xmss_attestation_leaf_index(epoch: Epoch) -> Uint64:
 
 #### New `compute_xmss_leaf_index`
 
-*Note*: The leaves of each slot follow the reserved and attestation leaves. A
-key covers `2**32` leaves, so it lasts
-`(2**32 - XMSS_RESERVED_LEAVES - XMSS_ATTESTATION_LEAVES) // XMSS_LEAVES_PER_SLOT`
-slots.
-
 ```python
 def compute_xmss_leaf_index(slot: Slot, leaf_offset: Uint64) -> Uint64:
     """
@@ -794,7 +796,11 @@ def compute_xmss_leaf_index(slot: Slot, leaf_offset: Uint64) -> Uint64:
     is signed for ``slot``.
     """
     return Uint64(
-        XMSS_RESERVED_LEAVES + XMSS_ATTESTATION_LEAVES + slot * XMSS_LEAVES_PER_SLOT + leaf_offset
+        XMSS_RESERVED_LEAVES
+        + XMSS_ATTESTATION_LEAVES
+        + XMSS_BUILDER_BID_LEAVES
+        + slot * XMSS_LEAVES_PER_SLOT
+        + leaf_offset
     )
 ```
 
@@ -813,6 +819,17 @@ def is_active_preregistration(state: BeaconState, preregistration: StoredPreregi
     """
     parent_slot = state.latest_execution_payload_bid.slot
     return parent_slot < preregistration.expiry_slot
+```
+
+#### New `is_builder_bid_leaf_index`
+
+```python
+def is_builder_bid_leaf_index(leaf_index: Uint64) -> bool:
+    """
+    Check if ``leaf_index`` is one of the leaves reserved for builder bids.
+    """
+    start = XMSS_RESERVED_LEAVES + XMSS_ATTESTATION_LEAVES
+    return start <= leaf_index < start + XMSS_BUILDER_BID_LEAVES
 ```
 
 #### New `is_legacy_pubkey`
@@ -1324,7 +1341,9 @@ def verify_execution_payload_bid_signature(
         signed_bid.message, get_domain(state, DOMAIN_BEACON_BUILDER)
     )
     # [Modified in PQ]
-    leaf_index = compute_xmss_leaf_index(signed_bid.message.slot, LEAF_OFFSET_EXECUTION_PAYLOAD_BID)
+    leaf_index = xmss.GetLeafIndex(signed_bid.signature)
+    if not is_builder_bid_leaf_index(leaf_index):
+        return False
     return xmss.Verify(builder.pubkey, leaf_index, signing_root, signed_bid.signature)
 ```
 

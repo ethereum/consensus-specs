@@ -41,8 +41,12 @@ def test_verify_malformed_signature():
     assert not xmss.Verify(PUBKEY, LEAF_INDEX, MESSAGE, SIGNATURE[:-1])
 
 
+def test_get_leaf_index():
+    assert xmss.GetLeafIndex(SIGNATURE) == LEAF_INDEX
+
+
 def test_inactive_stubs():
     xmss.xmss_active = False
-    assert xmss.Sign(1, LEAF_INDEX, MESSAGE) == xmss.STUB_SIGNATURE
+    assert xmss.GetLeafIndex(xmss.Sign(1, LEAF_INDEX, MESSAGE)) == LEAF_INDEX
     assert xmss.Verify(OTHER_PUBKEY, LEAF_INDEX, MESSAGE, SIGNATURE)
     assert xmss.SkToPk(1) == xmss.StubPk(1)

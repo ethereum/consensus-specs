@@ -13,6 +13,8 @@ from ethlib.cryptography import xmss as leanxmss
 PUBKEY_SIZE = leanxmss.PUB_KEY_SIZE
 SIGNATURE_SIZE = leanxmss.SIG_SIZE
 SEED_SIZE = leanxmss.SEED_LEN
+# A signature starts with its leaf index, little-endian
+LEAF_INDEX_SIZE = 4
 
 STUB_SIGNATURE = b"\x11" * SIGNATURE_SIZE
 
@@ -99,11 +101,18 @@ def SkToPk(SK):
 ################################################################################
 
 
-@only_with_xmss(alt_return=STUB_SIGNATURE)
 def Sign(SK, leaf_index, message):
+    if not xmss_active:
+        # Like a real signature, the stub starts with its leaf index
+        leaf_bytes = int(leaf_index).to_bytes(LEAF_INDEX_SIZE, "little")
+        return leaf_bytes + STUB_SIGNATURE[LEAF_INDEX_SIZE:]
     return leanxmss.sign(_sk_to_seed(SK), int(leaf_index), bytes(message))
 
 
 @only_with_xmss(alt_return=True)
 def Verify(PK, leaf_index, message, signature):
     return _verify(PK, int(leaf_index), message, signature)
+
+
+def GetLeafIndex(signature):
+    return leanxmss.signature_index(bytes(signature))
