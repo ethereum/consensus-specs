@@ -94,6 +94,10 @@ def decode_slots(test_dir: Path):
 
 
 def decode_optional_operation(spec, test_dir: Path, handler: str):
+    if handler == "withdrawals":
+        if is_post_gloas(spec):
+            return None
+        return decode_file(spec, test_dir, "execution_payload", spec.ExecutionPayload)
     input_name = OPERATION_INPUTS.get(handler, (handler, None))[0]
     if not (test_dir / f"{input_name}.ssz_snappy").exists():
         return None
