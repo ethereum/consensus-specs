@@ -146,7 +146,7 @@ def run_case(case: VectorCase, processor) -> None:
     spec = spec_targets[case.preset][case.fork]
     test_case = replay.get_test_case(spec, Path(case.test_dir), case.handler)
     old_bls_active = bls.bls_active
-    bls.bls_active = bool(test_case["meta"].get("bls_setting", 0))
+    bls.bls_active = test_case["meta"].get("bls_setting", 0) == 1
     try:
         if case.runner == "sanity":
             if case.handler == "slots":
