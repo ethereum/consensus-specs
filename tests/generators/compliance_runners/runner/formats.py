@@ -2,7 +2,7 @@
 
 OPERATION_INPUTS = {
     "attestation": ("attestation", "Attestation"),
-    "block_header": ("block_header", "BeaconBlock"),
+    "block_header": ("block", "BeaconBlock"),
     "builder_deposit_request": ("builder_deposit_request", "BuilderDepositRequest"),
     "builder_exit_request": ("builder_exit_request", "BuilderExitRequest"),
     "consolidation_request": ("consolidation_request", "ConsolidationRequest"),
