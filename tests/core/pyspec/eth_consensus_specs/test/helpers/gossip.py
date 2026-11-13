@@ -55,12 +55,13 @@ def add_pending_block_to_store(store, signed_block):
     store.blocks[signed_block.message.hash_tree_root()] = signed_block.message
 
 
-def setup_store_with_failed_block(spec, state):
+def setup_store_with_failed_block(spec, state, block=None):
     """
     Build the genesis store plus a correctly signed block for the next slot
     whose state root is wrong, so it passes gossip checks but fails state
     transition on import. The failed block is recorded as seen, with no
     post-state. The corresponding blocks meta entry must set ``failed: true``.
+    ``block``, if given, is used in place of an empty block for the next slot.
 
     Advances ``state`` past the valid version of the block so callers can
     build descendants and messages on top of it.
@@ -69,7 +70,8 @@ def setup_store_with_failed_block(spec, state):
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
     pre_state = state.copy()
-    block = build_empty_block_for_next_slot(spec, state)
+    if block is None:
+        block = build_empty_block_for_next_slot(spec, state)
     signed_block = state_transition_and_sign_block(spec, state, block)
     failed_block = signed_block.message.copy()
     failed_block.state_root = spec.Root(b"\xab" * 32)

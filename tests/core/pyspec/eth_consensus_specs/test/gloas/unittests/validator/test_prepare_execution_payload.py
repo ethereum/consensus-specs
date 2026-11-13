@@ -10,6 +10,7 @@ from eth_consensus_specs.test.helpers.consolidations import (
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
+    commit_bid_to_execution_payload,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
@@ -62,6 +63,7 @@ def _add_block_to_store(spec, state, execution_requests=None):
                 message=bid,
                 signature=spec.G2_POINT_AT_INFINITY,
             )
+    commit_bid_to_execution_payload(spec, state, block, execution_requests)
 
     signed_block = state_transition_and_sign_block(spec, state, block)
     block_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)

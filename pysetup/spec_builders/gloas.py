@@ -13,6 +13,10 @@ from ssz.bitfields import ProgressiveBitList
 from ssz.container import active_fields, ProgressiveContainer
 
 from eth_consensus_specs.fulu import {preset_name} as fulu
+from eth_hash.auto import keccak as keccak256_hash
+from trie import HexaryTrie
+
+from eth_consensus_specs.utils.execution import rlp_encode
 """
 
     @classmethod
