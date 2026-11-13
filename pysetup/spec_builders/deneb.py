@@ -65,12 +65,12 @@ EXECUTION_ENGINE = NoopExecutionEngine()"""
     @classmethod
     def deprecate_functions(cls) -> set[str]:
         return {
-            "upgrade_lc_bootstrap_to_capella",
-            "upgrade_lc_finality_update_to_capella",
-            "upgrade_lc_header_to_capella",
-            "upgrade_lc_optimistic_update_to_capella",
-            "upgrade_lc_store_to_capella",
-            "upgrade_lc_update_to_capella",
+            "upgrade_light_client_bootstrap_to_capella",
+            "upgrade_light_client_finality_update_to_capella",
+            "upgrade_light_client_header_to_capella",
+            "upgrade_light_client_optimistic_update_to_capella",
+            "upgrade_light_client_store_to_capella",
+            "upgrade_light_client_update_to_capella",
             "upgrade_to_capella",
         }
 
