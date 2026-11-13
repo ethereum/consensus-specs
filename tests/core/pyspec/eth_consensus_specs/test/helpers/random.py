@@ -4,6 +4,7 @@ from eth_consensus_specs.test.helpers.attestations import cached_prepare_state_w
 from eth_consensus_specs.test.helpers.deposits import mock_deposit
 from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
+    is_post_capella,
     is_post_electra,
 )
 from eth_consensus_specs.test.helpers.state import next_epoch
@@ -298,6 +299,30 @@ def set_some_pending_consolidations(spec, state, rng):
     return consolidation_pairs
 
 
+def randomize_withdrawal_sweep(spec, state, rng):
+    """Set the withdrawal sweep to a random position if post-Capella."""
+    state.next_withdrawal_index = rng.randint(1, 2**16)
+    state.next_withdrawal_validator_index = rng.randrange(len(state.validators))
+
+
+def randomize_churn_state(spec, state, rng):
+    """Set the balance churn accumulators and churn epochs to random values if post-Electra."""
+    increment = spec.EFFECTIVE_BALANCE_INCREMENT
+    # The minimum churn is a lower bound of the activation and exit churn limits
+    min_churn = spec.config.MIN_PER_EPOCH_CHURN_LIMIT_ELECTRA
+    # The consolidation churn can be zero for small validator sets, so allow at
+    # least one increment to ensure that the field is not left at its default
+    consolidation_churn = max(spec.get_consolidation_churn_limit(state), increment)
+    activation_exit_epoch = spec.compute_activation_exit_epoch(spec.get_current_epoch(state))
+
+    state.deposit_balance_to_consume = rng.randint(1, min_churn)
+    state.exit_balance_to_consume = increment * rng.randint(1, min_churn // increment)
+    state.consolidation_balance_to_consume = increment * rng.randint(
+        1, consolidation_churn // increment
+    )
+    state.earliest_consolidation_epoch = activation_exit_epoch + rng.randint(0, 3)
+
+
 def randomize_state(spec, state, rng=None, exit_fraction=0.5, slash_fraction=0.5):
     if rng is None:
         rng = Random(8020)
@@ -309,6 +334,11 @@ def randomize_state(spec, state, rng=None, exit_fraction=0.5, slash_fraction=0.5
         set_some_pending_deposits(spec, state, rng)
         set_some_pending_partial_withdrawals(spec, state, rng)
         set_some_pending_consolidations(spec, state, rng)
+    # Populate scalar fields last so that they reflect the final validator set
+    if is_post_capella(spec):
+        randomize_withdrawal_sweep(spec, state, rng)
+    if is_post_electra(spec):
+        randomize_churn_state(spec, state, rng)
 
 
 def patch_state_to_non_leaking(spec, state):
