@@ -11,7 +11,7 @@ from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.utils import bls
 
 from .formats import OPERATION_INPUTS
-from .io import read_ssz_snappy, read_yaml
+from .io import read_meta, read_ssz_snappy, read_yaml
 
 if TYPE_CHECKING:
     from .discovery import VectorCase
@@ -63,7 +63,7 @@ def decode_file(spec, test_dir: Path, name: str, typ):
 
 def get_test_case(spec, test_dir: Path, handler: str):
     return {
-        "meta": read_yaml(test_dir / "meta.yaml"),
+        "meta": read_meta(test_dir / "meta.yaml"),
         "pre": decode_file(spec, test_dir, "pre", spec.BeaconState),
         "operation": decode_optional_operation(spec, test_dir, handler),
         "blocks": decode_blocks(spec, test_dir) if handler == "blocks" else [],
@@ -73,7 +73,7 @@ def get_test_case(spec, test_dir: Path, handler: str):
 
 
 def decode_blocks(spec, test_dir: Path):
-    meta = read_yaml(test_dir / "meta.yaml")
+    meta = read_meta(test_dir / "meta.yaml")
     blocks_count = meta.get("blocks_count")
     if type(blocks_count) is not int or blocks_count <= 0:
         raise ValueError("sanity/blocks case requires a positive integer blocks_count in meta.yaml")
