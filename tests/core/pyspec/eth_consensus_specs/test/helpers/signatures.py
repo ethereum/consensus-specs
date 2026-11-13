@@ -5,16 +5,15 @@ from eth_consensus_specs.utils import bls, xmss
 def sign(spec, privkey, signing_root, slot, leaf_name):
     """
     Sign ``signing_root`` with BLS, or from PQ onwards with XMSS at the leaf named
-    by ``leaf_name``: a reserved leaf, the attestation leaf of the epoch of
-    ``slot``, or the leaf offset of ``slot``.
+    by ``leaf_name``: the first reserved leaf, the attestation leaf of the epoch
+    of ``slot``, or the leaf offset of ``slot``.
     """
     if is_post_pq(spec):
-        # Stubbed verification ignores the leaf
+        # The first reserved leaf, which stubbed verification also accepts for
+        # any other message
         leaf_index = 0
-        if xmss.xmss_active:
-            if leaf_name.startswith("RESERVED_LEAF_"):
-                leaf_index = getattr(spec, leaf_name)
-            elif leaf_name == "ATTESTATION":
+        if xmss.xmss_active and leaf_name != "RESERVED":
+            if leaf_name == "ATTESTATION":
                 epoch = spec.compute_epoch_at_slot(slot)
                 leaf_index = spec.compute_xmss_attestation_leaf_index(epoch)
             else:

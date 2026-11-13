@@ -16,7 +16,6 @@
   - [XMSS](#xmss)
   - [VRF](#vrf)
   - [XMSS leaf offsets](#xmss-leaf-offsets)
-  - [XMSS reserved leaves](#xmss-reserved-leaves)
   - [Deposits](#deposits)
   - [Legacy domains](#legacy-domains)
   - [Domains](#domains)
@@ -69,6 +68,7 @@
     - [New `is_active_preregistration`](#new-is_active_preregistration)
     - [New `is_builder_bid_leaf_index`](#new-is_builder_bid_leaf_index)
     - [New `is_legacy_pubkey`](#new-is_legacy_pubkey)
+    - [New `is_reserved_leaf_index`](#new-is_reserved_leaf_index)
     - [New `is_valid_preregistration_signature`](#new-is_valid_preregistration_signature)
     - [New `is_valid_vrf_proof`](#new-is_valid_vrf_proof)
     - [Modified `is_pending_validator`](#modified-is_pending_validator)
@@ -140,12 +140,12 @@ XMSS is a stateful scheme. A key covers a fixed number of one-time leaves, and
 signing two different messages at the same leaf breaks the key. This upgrade
 therefore assigns every validator message a leaf derived from its slot and its
 type, see `compute_xmss_leaf_index`. An attestation instead uses the leaf of its
-target epoch, see `compute_xmss_attestation_leaf_index`. A message that a key
-signs at most once, such as a voluntary exit, instead uses one of the first
-`XMSS_RESERVED_LEAVES` leaves. A bid instead uses any leaf reserved for bids,
-see `is_builder_bid_leaf_index`. An honest signer that never equivocates never
-reuses a leaf. Each signature carries its leaf index, and verification checks it
-against the expected one.
+target epoch, see `compute_xmss_attestation_leaf_index`. A message without a
+leaf of its own, such as a voluntary exit, instead uses any reserved leaf, see
+`is_reserved_leaf_index`. A bid instead uses any leaf reserved for bids, see
+`is_builder_bid_leaf_index`. An honest signer never equivocates and uses each
+leaf it chooses at most once, so it never reuses a leaf. Each signature carries
+its leaf index, and verification checks that the message may use it.
 
 XMSS has no native aggregation. A STARK instead proves many XMSS signatures at
 once, such as those of attestations in an `AttestationProof`.
@@ -177,10 +177,8 @@ Without deposit signatures, anyone who sees the first deposit for a new XMSS
 public key could get in first with a deposit of their own withdrawal credentials
 and VRF root. As in [EIP-8205](../eip8205/beacon-chain.md), the holder of a key
 can first bind the key to its withdrawal credentials and VRF root with a
-preregistration request, signed by the key at `RESERVED_LEAF_PREREGISTRATION`.
-While the binding is active, a deposit for the key is discarded unless it
-matches the binding. A key signs only one binding, so a different binding needs
-a new key.
+preregistration request signed by the key. While the binding is active, a
+deposit for the key is discarded unless it matches the binding.
 
 `BLSToExecutionChange` is disabled, because its BLS signature could be forged.
 
@@ -288,13 +286,6 @@ class ValidatorPreregistrations(ProgressiveList[StoredPreregistration]):
 | `LEAF_OFFSET_PTC_ATTESTER`               | `Uint64(2)` |
 | `LEAF_OFFSET_PROPOSER_PREFERENCES`       | `Uint64(3)` |
 | `LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE` | `Uint64(4)` |
-
-### XMSS reserved leaves
-
-| Name                            | Value       |
-| ------------------------------- | ----------- |
-| `RESERVED_LEAF_PREREGISTRATION` | `Uint64(0)` |
-| `RESERVED_LEAF_VOLUNTARY_EXIT`  | `Uint64(1)` |
 
 ### Deposits
 
@@ -796,10 +787,10 @@ def compute_deposit_vrf_root(deposit: PendingDeposit) -> Root:
 
 #### New `compute_xmss_attestation_leaf_index`
 
-*Note*: The first `XMSS_RESERVED_LEAVES` leaves are reserved for messages that a
-key signs at most once. The next `XMSS_ATTESTATION_LEAVES` leaves hold one
-attestation per target epoch, since a validator that attests twice for the same
-target epoch is slashed for a double vote.
+*Note*: The attestation leaves follow the `XMSS_RESERVED_LEAVES` reserved
+leaves, see `is_reserved_leaf_index`. They hold one attestation per target
+epoch, since a validator that attests twice for the same target epoch is slashed
+for a double vote.
 
 ```python
 def compute_xmss_attestation_leaf_index(epoch: Epoch) -> Uint64:
@@ -868,6 +859,17 @@ def is_legacy_pubkey(pubkey: Bytes48) -> bool:
     return pubkey[:16] != XMSS_DEPOSIT_PREFIX
 ```
 
+#### New `is_reserved_leaf_index`
+
+```python
+def is_reserved_leaf_index(leaf_index: Uint64) -> bool:
+    """
+    Check if ``leaf_index`` is one of the leaves reserved for messages without
+    a leaf of their own.
+    """
+    return leaf_index < XMSS_RESERVED_LEAVES
+```
+
 #### New `is_valid_preregistration_signature`
 
 ```python
@@ -885,9 +887,10 @@ def is_valid_preregistration_signature(state: BeaconState, request: Preregistrat
         genesis_validators_root=state.genesis_validators_root,
     )
     signing_root = compute_signing_root(preregistration, domain)
-    return xmss.Verify(
-        request.pubkey, RESERVED_LEAF_PREREGISTRATION, signing_root, request.signature
-    )
+    leaf_index = xmss.GetLeafIndex(request.signature)
+    if not is_reserved_leaf_index(leaf_index):
+        return False
+    return xmss.Verify(request.pubkey, leaf_index, signing_root, request.signature)
 ```
 
 #### New `is_valid_vrf_proof`
@@ -1529,12 +1532,9 @@ def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVolu
     )
     signing_root = compute_signing_root(voluntary_exit, domain)
     # [Modified in PQ]
-    assert xmss.Verify(
-        validator.pubkey,
-        RESERVED_LEAF_VOLUNTARY_EXIT,
-        signing_root,
-        signed_voluntary_exit.signature,
-    )
+    leaf_index = xmss.GetLeafIndex(signed_voluntary_exit.signature)
+    assert is_reserved_leaf_index(leaf_index)
+    assert xmss.Verify(validator.pubkey, leaf_index, signing_root, signed_voluntary_exit.signature)
     # Initiate exit
     initiate_validator_exit(state, voluntary_exit.validator_index)
 ```

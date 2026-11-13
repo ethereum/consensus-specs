@@ -31,11 +31,13 @@ def build_preregistration_request(
     )
 
 
-def build_pq_preregistration_request(spec, state, index, withdrawal_credentials, vrf_root=None):
+def build_pq_preregistration_request(
+    spec, state, index, withdrawal_credentials, vrf_root=None, leaf_index=0
+):
     """
     Build a ``PreregistrationRequest`` for the XMSS key at ``index``, binding it
     to ``withdrawal_credentials`` and ``vrf_root``, by default the key's own VRF
-    root.
+    root. It is signed at ``leaf_index``, by default the first reserved leaf.
     """
     if vrf_root is None:
         vrf_root = get_vrf_root(index)
@@ -53,7 +55,7 @@ def build_pq_preregistration_request(spec, state, index, withdrawal_credentials,
         pubkey=xmss_pubkeys[index],
         withdrawal_credentials=withdrawal_credentials,
         vrf_root=vrf_root,
-        signature=xmss.Sign(privkeys[index], spec.RESERVED_LEAF_PREREGISTRATION, signing_root),
+        signature=xmss.Sign(privkeys[index], leaf_index, signing_root),
     )
 
 

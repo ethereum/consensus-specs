@@ -42,7 +42,7 @@ def sign_voluntary_exit(spec, state, voluntary_exit, privkey, fork_version=None)
     signing_root = spec.compute_signing_root(voluntary_exit, domain)
     return spec.SignedVoluntaryExit(
         message=voluntary_exit,
-        signature=sign(spec, privkey, signing_root, None, "RESERVED_LEAF_VOLUNTARY_EXIT"),
+        signature=sign(spec, privkey, signing_root, None, "RESERVED"),
     )
 
 

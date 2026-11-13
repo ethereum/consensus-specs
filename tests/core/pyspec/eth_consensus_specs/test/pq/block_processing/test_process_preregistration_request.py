@@ -45,6 +45,39 @@ def test_preregistration_stored(spec, state):
 
 @with_phases([PQ])
 @spec_state_test
+def test_preregistration_signed_at_last_reserved_leaf(spec, state):
+    request = build_pq_preregistration_request(
+        spec,
+        state,
+        FRESH_INDEX,
+        preregistration_withdrawal_credentials(spec),
+        leaf_index=spec.XMSS_RESERVED_LEAVES - 1,
+    )
+
+    yield from run_preregistration_request_processing(spec, state, request)
+
+    assert len(state.validator_preregistrations) == 1
+    assert state.validator_preregistrations[0].pubkey == request.pubkey
+
+
+@with_phases([PQ])
+@spec_state_test
+def test_preregistration_signed_past_reserved_leaves_ignored(spec, state):
+    request = build_pq_preregistration_request(
+        spec,
+        state,
+        FRESH_INDEX,
+        preregistration_withdrawal_credentials(spec),
+        leaf_index=spec.XMSS_RESERVED_LEAVES,
+    )
+
+    yield from run_preregistration_request_processing(spec, state, request)
+
+    assert len(state.validator_preregistrations) == 0
+
+
+@with_phases([PQ])
+@spec_state_test
 def test_preregistration_existing_validator_ignored(spec, state):
     request = build_pq_preregistration_request(
         spec, state, 0, preregistration_withdrawal_credentials(spec)

@@ -57,11 +57,13 @@ validator" to implement PQ.
 Validators sign with leanXMSS instead of BLS. Every message is signed at the
 leaf that `compute_xmss_leaf_index` assigns to its slot and type, except an
 attestation, which is signed at the leaf that
-`compute_xmss_attestation_leaf_index` assigns to its target epoch. At the
-upgrade, each validator that registered an XMSS public key with EIP-8483 takes
-it in place of its BLS public key. A validator without a registration becomes
-withdrawable at the upgrade, and its balance is withdrawn, unless it has `0x00`
-withdrawal credentials, in which case its balance stays locked. See
+`compute_xmss_attestation_leaf_index` assigns to its target epoch, and a message
+without a leaf of its own, such as a voluntary exit, which is signed at a
+reserved leaf, see [Protection best practices](#protection-best-practices). At
+the upgrade, each validator that registered an XMSS public key with EIP-8483
+takes it in place of its BLS public key. A validator without a registration
+becomes withdrawable at the upgrade, and its balance is withdrawn, unless it has
+`0x00` withdrawal credentials, in which case its balance stays locked. See
 [the fork document](./fork.md) for details.
 
 ## Constants
@@ -140,15 +142,16 @@ own withdrawal credentials and VRF root. To prevent this, a validator first
 submits a `PreregistrationRequest` that binds its XMSS public key to its
 withdrawal credentials and VRF root. It signs the `ValidatorPreregistration`
 under `DOMAIN_PREREGISTRATION`, computed with `compute_domain` and the chain's
-`genesis_validators_root`, at `RESERVED_LEAF_PREREGISTRATION`.
+`genesis_validators_root`, at a reserved leaf.
 
 The validator waits until its binding is in `state.validator_preregistrations`,
 then submits its deposit before the binding's `expiry_slot`. If the binding is
 not stored, a deposit for the key may already be pending, so the validator
 generates a new key and preregisters that one instead.
 
-A key signs only one binding. To renew an expired binding, the validator
-resubmits the same request. To change its binding, it generates a new key.
+To renew an expired binding, the validator resubmits the same request. To change
+its binding, it generates a new key, since anyone can resubmit the old binding
+once it expires.
 
 ### Submit deposit
 
@@ -545,5 +548,8 @@ different signing root at a recorded leaf, and records each new signing root
 before signing it. Like the slashing protection database, this record must
 survive restarts and move with the key.
 
-A voluntary exit is signed at `RESERVED_LEAF_VOLUNTARY_EXIT`, a leaf that a key
-uses only once, so a validator MUST NOT sign more than one voluntary exit.
+A message without a leaf of its own, such as a voluntary exit, is signed at a
+reserved leaf, see `is_reserved_leaf_index`. The signer MUST use each reserved
+leaf at most once, for example by allocating them in increasing order. The
+record must include the leaf of the key's preregistration, which is signed
+before the validator exists.
