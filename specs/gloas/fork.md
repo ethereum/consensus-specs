@@ -218,6 +218,7 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
             execution_payment=Gwei(0),
             blob_kzg_commitments=BlobKZGCommitments(),
             execution_requests_root=hash_tree_root(ExecutionRequests.empty()),
+            payload_root=Root(),
         ),
         # [New in Gloas:EIP7732]
         payload_expected_withdrawals=Withdrawals(),

@@ -711,21 +711,27 @@ def tick_store_to_slot(spec, store, slot, test_steps):
         on_tick_and_append_step(spec, store, slot_time_ms, test_steps)
 
 
-def add_signed_empty_block(spec, store, state, test_steps):
+def add_signed_empty_block(spec, store, state, test_steps, update_payload=None):
     """
-    Build, sign, and submit an empty block at ``state.slot + 1``.
+    Build, sign, and submit an empty block at ``state.slot + 1``. Post-Gloas,
+    the block's bid commits to the default payload after ``update_payload`` (if
+    given) changes it.
     """
     block = build_empty_block_for_next_slot(spec, state)
-    signed_block = state_transition_and_sign_block(spec, state, block)
+    signed_block = state_transition_and_sign_block(
+        spec, state, block, update_payload=update_payload
+    )
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
 
     root = signed_block.message.hash_tree_root()
     return root, store.block_states[root], signed_block
 
 
-def setup_one_block_store(spec, state):
+def setup_one_block_store(spec, state, update_payload=None):
     """
     Bootstrap a fork choice store with the genesis anchor plus an empty block at slot 1.
+    Post-Gloas, the block's bid commits to the default payload after
+    ``update_payload`` (if given) changes it.
     """
     test_steps = []
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -735,7 +741,7 @@ def setup_one_block_store(spec, state):
 
     tick_store_to_slot(spec, store, state.slot, test_steps)
     block_root, block_state, signed_block = yield from add_signed_empty_block(
-        spec, store, state, test_steps
+        spec, store, state, test_steps, update_payload=update_payload
     )
     return store, block_root, block_state, signed_block, test_steps
 

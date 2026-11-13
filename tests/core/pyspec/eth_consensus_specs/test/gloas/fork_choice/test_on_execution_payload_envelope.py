@@ -7,7 +7,7 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
-    build_empty_execution_payload,
+    build_execution_payload_for_latest_bid,
     build_signed_execution_payload_envelope,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
@@ -25,14 +25,21 @@ from eth_consensus_specs.test.helpers.state import (
 
 
 def _build_invalid_envelope(spec, state, block_root, signed_block, **overrides):
-    """Build a signed envelope with optional field overrides to make it invalid."""
+    """
+    Build a signed envelope with optional field overrides to make it invalid.
+    The ``update_payload`` override changes the payload in the way the block's
+    bid committed to, so that the payload root check passes and a later check
+    is the one under test.
+    """
     builder_index = signed_block.message.body.signed_execution_payload_bid.message.builder_index
     bid = state.latest_execution_payload_bid
 
-    payload = build_empty_execution_payload(spec, state)
-    payload.block_hash = bid.block_hash
-    payload.gas_limit = bid.gas_limit
-    payload.parent_hash = state.latest_block_hash
+    payload = build_execution_payload_for_latest_bid(spec, state)
+
+    update_payload = overrides.pop("update_payload", None)
+    if update_payload is not None:
+        update_payload(payload)
+        assert spec.hash_tree_root(payload) == bid.payload_root
 
     # Apply payload-level overrides
     for key in (
@@ -174,14 +181,20 @@ def test_on_execution_payload_envelope_wrong_slot(spec, state):
     """
     Test that an envelope whose payload.slot_number doesn't match state.slot is rejected.
     """
-    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(spec, state)
+
+    def update_payload(payload):
+        payload.slot_number = payload.slot_number + 1
+
+    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(
+        spec, state, update_payload=update_payload
+    )
 
     envelope = _build_invalid_envelope(
         spec,
         state,
         block_root,
         signed_block,
-        slot_number=state.slot + 1,
+        update_payload=update_payload,
     )
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 
@@ -236,6 +249,28 @@ def test_on_execution_payload_envelope_wrong_prev_randao(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+def test_on_execution_payload_envelope_wrong_payload_root(spec, state):
+    """
+    Test that an envelope whose payload root differs from the bid's commitment is rejected.
+    """
+    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(spec, state)
+
+    # Change a payload field which no other check covers
+    envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
+    envelope.message.payload.extra_data = spec.ExtraData(data=list(b"\x42"))
+    privkey = privkeys[signed_block.message.proposer_index]
+    envelope.signature = spec.get_execution_payload_envelope_signature(
+        state, envelope.message, privkey
+    )
+    yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
+
+    assert block_root not in store.payloads
+
+    yield "steps", test_steps
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_on_execution_payload_envelope_wrong_execution_requests_root(spec, state):
     """
     Test that an envelope whose execution_requests hash differs from the bid's commitment is rejected.
@@ -277,17 +312,23 @@ def test_on_execution_payload_envelope_wrong_withdrawals(spec, state):
     """
     Test that an envelope with withdrawals not matching state.payload_expected_withdrawals is rejected.
     """
-    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(spec, state)
-
     wrong_withdrawal = spec.Withdrawal(
         index=0, validator_index=0, address=b"\x22" * 20, amount=spec.Gwei(1)
     )
+
+    def update_payload(payload):
+        payload.withdrawals = spec.Withdrawals.of(wrong_withdrawal)
+
+    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(
+        spec, state, update_payload=update_payload
+    )
+
     envelope = _build_invalid_envelope(
         spec,
         state,
         block_root,
         signed_block,
-        withdrawals=spec.Withdrawals.of(wrong_withdrawal),
+        update_payload=update_payload,
     )
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 
@@ -310,7 +351,12 @@ def test_on_execution_payload_envelope_missing_expected_withdrawal(spec, state):
     )
     state.payload_expected_withdrawals = spec.Withdrawals.of(expected_withdrawal)
 
-    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(spec, state)
+    def update_payload(payload):
+        payload.withdrawals = spec.Withdrawals()
+
+    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(
+        spec, state, update_payload=update_payload
+    )
 
     # Sanity check: the seeded expected withdrawal survived block_1.
     assert len(state.payload_expected_withdrawals) == 1
@@ -321,7 +367,7 @@ def test_on_execution_payload_envelope_missing_expected_withdrawal(spec, state):
         state,
         block_root,
         signed_block,
-        withdrawals=spec.Withdrawals(),
+        update_payload=update_payload,
     )
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 
@@ -380,14 +426,20 @@ def test_on_execution_payload_envelope_wrong_parent_hash(spec, state):
     """
     Test that an envelope whose payload.parent_hash doesn't match state.latest_block_hash is rejected.
     """
-    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(spec, state)
+
+    def update_payload(payload):
+        payload.parent_hash = spec.Hash32(b"\x42" * 32)
+
+    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(
+        spec, state, update_payload=update_payload
+    )
 
     envelope = _build_invalid_envelope(
         spec,
         state,
         block_root,
         signed_block,
-        parent_hash=spec.Hash32(b"\x42" * 32),
+        update_payload=update_payload,
     )
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 
@@ -402,14 +454,20 @@ def test_on_execution_payload_envelope_wrong_timestamp(spec, state):
     """
     Test that an envelope whose payload.timestamp doesn't match compute_time_at_slot is rejected.
     """
-    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(spec, state)
+
+    def update_payload(payload):
+        payload.timestamp = payload.timestamp + 1
+
+    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(
+        spec, state, update_payload=update_payload
+    )
 
     envelope = _build_invalid_envelope(
         spec,
         state,
         block_root,
         signed_block,
-        timestamp=spec.compute_time_at_slot(state.genesis_time, state.slot) + 1,
+        update_payload=update_payload,
     )
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 

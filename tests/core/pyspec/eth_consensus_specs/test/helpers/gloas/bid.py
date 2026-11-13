@@ -4,6 +4,7 @@ from eth_consensus_specs.test.helpers.attestations import (
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
+    commit_builder_bid_to_payload,
 )
 from eth_consensus_specs.test.helpers.execution_payload_bid import (
     prepare_signed_execution_payload_bid,
@@ -221,6 +222,7 @@ def append_head_with_requests(spec, state, store, blocks, execution_requests, si
     else:
         assert signed_bid.message.execution_requests_root == spec.hash_tree_root(execution_requests)
         block.body.signed_execution_payload_bid = signed_bid
+        commit_builder_bid_to_payload(spec, state, block)
     signed_block = state_transition_and_sign_block(spec, state, block)
     record_block_in_store(spec, store, signed_block, state.copy())
     blocks.append(signed_block)

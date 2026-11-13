@@ -747,7 +747,7 @@ class IndexedPayloadAttestation(ProgressiveContainer):
 
 ```python
 class ExecutionPayloadBid(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=12)
+    ACTIVE_FIELDS = active_fields(width=13)
 
     parent_block_hash: Hash32
     parent_block_root: Root
@@ -761,6 +761,7 @@ class ExecutionPayloadBid(ProgressiveContainer):
     execution_payment: Gwei
     blob_kzg_commitments: BlobKZGCommitments
     execution_requests_root: Root
+    payload_root: Root
 ```
 
 #### `SignedExecutionPayloadBid`

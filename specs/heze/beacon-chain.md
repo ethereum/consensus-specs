@@ -121,7 +121,7 @@ class SignedInclusionList(Container):
 
 ```python
 class ExecutionPayloadBid(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=13)
+    ACTIVE_FIELDS = active_fields(width=14)
 
     parent_block_hash: Hash32
     parent_block_root: Root
@@ -135,6 +135,7 @@ class ExecutionPayloadBid(ProgressiveContainer):
     execution_payment: Gwei
     blob_kzg_commitments: BlobKZGCommitments
     execution_requests_root: Root
+    payload_root: Root
     # [New in Heze:EIP7805]
     inclusion_list_bits: InclusionListBits
 ```

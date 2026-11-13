@@ -122,6 +122,9 @@ def _attempt_payload_with_withdrawals(spec, state, withdrawals):
         withdrawals=spec.Withdrawals(data=withdrawals),
         slot_number=test_state.slot,
     )
+    # Commit the bid to this payload so that the withdrawals are the only check
+    # under test
+    committed_bid.payload_root = spec.hash_tree_root(payload)
 
     # Cache state root for beacon_block_root computation
     header = test_state.latest_block_header.copy()

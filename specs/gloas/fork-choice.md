@@ -704,6 +704,7 @@ def verify_execution_payload_envelope(
     assert payload.gas_limit == bid.gas_limit
     assert payload.block_hash == bid.block_hash
     assert hash_tree_root(envelope.execution_requests) == bid.execution_requests_root
+    assert hash_tree_root(payload) == bid.payload_root
 
     # Verify the execution payload is valid
     assert payload.slot_number == state.slot
