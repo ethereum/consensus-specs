@@ -127,10 +127,11 @@ All validator responsibilities remain unchanged other than those noted below.
 *Note*: The only change made to `signed_execution_payload_bid` is to require
 that `bid.inclusion_list_bits` must satisfy `is_inclusion_list_bits_inclusive()`
 with respect to the proposer's inclusion list view, which comprises all valid
-and non-equivocating inclusion lists they have observed.
+and non-equivocating inclusion lists they have observed by the inclusion list
+deadline.
 
 - The `bid.inclusion_list_bits` must satisfy
-  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), inclusion_list_committee, slot, dependent_root, bid.inclusion_list_bits, only_timely=False)`,
+  `is_inclusion_list_bits_inclusive(get_inclusion_list_store(), inclusion_list_committee, slot, dependent_root, bid.inclusion_list_bits, only_timely=True)`,
   where `inclusion_list_committee` is
   `get_inclusion_list_committee(state, slot)`, `slot` is `bid.slot - 1`,
   `dependent_root` is
