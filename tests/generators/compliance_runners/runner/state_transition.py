@@ -66,18 +66,31 @@ def get_test_case(spec, test_dir: Path, handler: str):
         "meta": read_yaml(test_dir / "meta.yaml"),
         "pre": decode_file(spec, test_dir, "pre", spec.BeaconState),
         "operation": decode_optional_operation(spec, test_dir, handler),
-        "blocks": decode_blocks(spec, test_dir),
-        "slots": read_yaml(test_dir / "slots.yaml") if (test_dir / "slots.yaml").exists() else None,
+        "blocks": decode_blocks(spec, test_dir) if handler == "blocks" else [],
+        "slots": decode_slots(test_dir) if handler == "slots" else None,
         "post": decode_optional_post(spec, test_dir),
     }
 
 
 def decode_blocks(spec, test_dir: Path):
     meta = read_yaml(test_dir / "meta.yaml")
+    blocks_count = meta.get("blocks_count")
+    if type(blocks_count) is not int or blocks_count <= 0:
+        raise ValueError("sanity/blocks case requires a positive integer blocks_count in meta.yaml")
     return [
         decode_file(spec, test_dir, f"blocks_{index}", spec.SignedBeaconBlock)
-        for index in range(meta.get("blocks_count", 0))
+        for index in range(blocks_count)
     ]
+
+
+def decode_slots(test_dir: Path):
+    slots_path = test_dir / "slots.yaml"
+    if not slots_path.exists():
+        raise ValueError("sanity/slots case is missing slots.yaml")
+    slots = read_yaml(slots_path)
+    if type(slots) is not int or slots <= 0:
+        raise ValueError("sanity/slots case requires a positive integer in slots.yaml")
+    return slots
 
 
 def decode_optional_operation(spec, test_dir: Path, handler: str):
@@ -167,12 +180,10 @@ def run_sanity_blocks_case(spec, state, blocks, expected_post):
 
 
 def run_sanity_slots_case(spec, state, slots, expected_post):
-    if slots is None:
-        raise ValueError("sanity/slots case is missing slots.yaml")
     run_processing_case(
         spec.process_slots,
         state,
-        spec.Slot(int(state.slot) + int(slots)),
+        spec.Slot(int(state.slot) + slots),
         expected_post,
     )
 
