@@ -1,7 +1,7 @@
 """Coverage target for the assertion slice of Gloas ``process_block_header``.
 
 The operation vectors provide a ``BeaconBlock`` in
-``block_header.ssz_snappy``. Signature verification and the rest of
+``block.ssz_snappy``. Signature verification and the rest of
 ``process_block`` are intentionally out of scope.
 """
 

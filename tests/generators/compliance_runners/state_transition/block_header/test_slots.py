@@ -8,6 +8,8 @@ from types import SimpleNamespace
 import pytest
 
 from eth_consensus_specs.test.helpers.specs import spec_targets
+from tests.generators.compliance_runners.runner.discovery import gather_tests
+from tests.generators.compliance_runners.runner.state_transition import run_test
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
     Context,
     score,
@@ -30,7 +32,7 @@ def materialize(spec, assignment):
     meta, parts = materializer.materialize_solution(SimpleNamespace(**assignment))
     encoded = {name: data for name, _, data in parts}
     pre = spec.BeaconState.decode_bytes(encoded["pre"])
-    block = spec.BeaconBlock.decode_bytes(encoded["block_header"])
+    block = spec.BeaconBlock.decode_bytes(encoded["block"])
     post = spec.BeaconState.decode_bytes(encoded["post"]) if "post" in encoded else None
     return meta, pre, block, post
 
@@ -40,6 +42,28 @@ def first_assertion(spec, pre, block):
         spec.process_block_header(pre.copy(), block)
     frames = traceback.extract_tb(error.value.__traceback__)
     return next(frame.line for frame in reversed(frames) if frame.name == "process_block_header")
+
+
+@pytest.mark.parametrize("accepted", [False, True])
+def test_standard_block_filename_end_to_end(tmp_path, accepted):
+    spec = spec_targets["minimal"]["gloas"]
+    assignment = {
+        "slot_matches_state": "EQ",
+        "slot_is_newer": "GT_1",
+        "proposer_index_matches": True,
+        "parent_matches": accepted,
+        "proposer_not_slashed": True,
+        "accepted": accepted,
+    }
+    provider = load_provider("block_header", spec=spec)
+    materializer = BlockHeaderMaterializer(spec)
+    materializer.test_provider = "block_header"
+    materializer.materialize_reps(tmp_path, [SimpleNamespace(**assignment)])
+    (case,) = gather_tests(tmp_path, kind="state_transition")
+    assert (case.test_dir / "block.ssz_snappy").is_file()
+    assert not (case.test_dir / "block_header.ssz_snappy").exists()
+    assert all(check.status == "ok" for check in provider.validate_case(case.test_dir))
+    run_test(case)
 
 
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])
