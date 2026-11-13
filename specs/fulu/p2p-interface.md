@@ -44,6 +44,7 @@
     - [Next fork digest](#next-fork-digest)
 - [Peer scoring](#peer-scoring)
 - [Supernodes](#supernodes)
+- [Broadcasting retrieved blocks](#broadcasting-retrieved-blocks)
 
 <!-- mdformat-toc end -->
 
@@ -974,3 +975,13 @@ is connected to validator(s) with a combined balance greater than or equal to
 may altruistically be a supernode. Therefore, there are expected to be many
 (hundreds) of supernodes on mainnet and it is likely (though not necessary) for
 a node to be connected to several of these by chance.
+
+## Broadcasting retrieved blocks
+
+Extend the definitions of the *required* beacon block that has not been received
+with:
+
+- `sidecar.signed_block_header.message.parent_root` for a data column sidecar
+  queued for processing.
+- `sidecar.header[0].signed_block_header.message.parent_root` for a partial data
+  column sidecar queued for processing when `len(sidecar.header) == 1`.

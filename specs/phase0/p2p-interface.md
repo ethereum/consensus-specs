@@ -65,6 +65,7 @@
       - [Attestation subnet bitfield](#attestation-subnet-bitfield)
       - [`eth2` field](#eth2-field)
   - [Attestation subnet subscription](#attestation-subnet-subscription)
+  - [Broadcasting retrieved blocks](#broadcasting-retrieved-blocks)
 - [Design decision rationale](#design-decision-rationale)
   - [Transport](#transport-1)
     - [Why are we defining specific transports?](#why-are-we-defining-specific-transports)
@@ -1846,6 +1847,25 @@ epochs in advance of the upgrade. These new subnets for the fork are maintained
 in addition to those for the current fork until the fork occurs. After the fork
 occurs, let the subnets from the previous fork reach the end of life with no
 replacements.
+
+### Broadcasting retrieved blocks
+
+When a message is queued for processing because a required beacon block has not
+been received, the beacon node MUST process that block, once retrieved, as if it
+had been received via Gossipsub. Specifically, the node MUST run
+`validate_beacon_block_gossip(seen, store, retrieved_beacon_block, current_time_ms)`,
+where `retrieved_beacon_block` is the retrieved signed beacon block and
+`current_time_ms` is the node’s wall-clock time. If validation completes without
+raising an exception, the node MUST publish the block on the `beacon_block`
+Gossipsub topic.
+
+The *required* beacon block that has not been received is identified by:
+
+- `signed_beacon_block.message.parent_root` for a beacon block queued for
+  processing.
+- `signed_aggregate_and_proof.message.aggregate.data.beacon_block_root` for an
+  aggregate queued for processing.
+- `attestation.data.beacon_block_root` for an attestation queued for processing.
 
 ## Design decision rationale
 
