@@ -91,7 +91,7 @@ class BlockHeaderMaterializer(Materializer):
         }
         parts = [
             ("pre", "ssz", pre.encode_bytes()),
-            ("block_header", "ssz", block.encode_bytes()),
+            ("block", "ssz", block.encode_bytes()),
         ]
         if post is not None:
             parts.append(("post", "ssz", post.encode_bytes()))
