@@ -163,7 +163,11 @@ After building the `bid`, the builder obtains a `signature` of the bid by using:
 def get_execution_payload_bid_signature(
     state: BeaconState, bid: ExecutionPayloadBid, privkey: int
 ) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_BUILDER, compute_epoch_at_slot(bid.slot))
+    domain = compute_domain(
+        DOMAIN_BEACON_BUILDER,
+        compute_fork_version(compute_epoch_at_slot(bid.slot)),
+        state.genesis_validators_root,
+    )
     signing_root = compute_signing_root(bid, domain)
     return bls.Sign(privkey, signing_root)
 ```
@@ -171,6 +175,11 @@ def get_execution_payload_bid_signature(
 Then the builder assembles
 `signed_execution_payload_bid = SignedExecutionPayloadBid(message=bid, signature=signature)`
 and broadcasts it on the `execution_payload_bid` global gossip topic.
+
+A builder may broadcast multiple bids for the same slot and parent, for example
+to raise its bid value. Nodes forward at most
+`get_builder_bid_limit(state, bid.builder_index)` such bids per builder and
+ignore the rest.
 
 ### Constructing the `DataColumnSidecar`s
 

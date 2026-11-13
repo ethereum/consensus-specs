@@ -66,7 +66,11 @@ def get_execution_payload_bid_signature(
     # [New in PQ]
     leaf_index: Uint64,
 ) -> XMSSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_BUILDER, compute_epoch_at_slot(bid.slot))
+    domain = compute_domain(
+        DOMAIN_BEACON_BUILDER,
+        compute_fork_version(compute_epoch_at_slot(bid.slot)),
+        state.genesis_validators_root,
+    )
     signing_root = compute_signing_root(bid, domain)
     # [Modified in PQ]
     return xmss.Sign(privkey, leaf_index, signing_root)
