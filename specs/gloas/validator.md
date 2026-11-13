@@ -243,7 +243,10 @@ construct the `payload_attestations` field in `BeaconBlockBody`:
   given `PayloadAttestation` object. For this the proposer needs to fill the
   `aggregation_bits` field by using the relative position of the validator
   indices with respect to the PTC that is obtained from
-  `get_ptc(state, Slot(block_slot - 1))`.
+  `get_ptc(state, Slot(block_slot - 1))`. Because `compute_ptc` samples
+  validators with replacement, duplicate validator indices may appear in the
+  PTC. In this case, at most one bit per distinct validator may be set (or the
+  signature must be aggregated once per set bit).
 
 ##### Parent execution requests
 
