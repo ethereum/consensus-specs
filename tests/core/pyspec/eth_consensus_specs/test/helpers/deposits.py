@@ -44,6 +44,10 @@ def mock_deposit(spec, state, index):
     state.validators[index].activation_eligibility_epoch = spec.FAR_FUTURE_EPOCH
     state.validators[index].activation_epoch = spec.FAR_FUTURE_EPOCH
     state.validators[index].effective_balance = spec.MAX_EFFECTIVE_BALANCE
+    if is_post_heze(spec):
+        state.validators[index].withdrawal_credentials = make_withdrawal_credentials(
+            spec, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX, b"\x05"
+        )
     if is_post_altair(spec):
         state.inactivity_scores[index] = 0
     assert not spec.is_active_validator(state.validators[index], spec.get_current_epoch(state))
