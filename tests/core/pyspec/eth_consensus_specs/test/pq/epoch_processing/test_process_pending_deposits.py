@@ -79,8 +79,8 @@ def test_legacy_deposit_is_exited(spec, state):
 
     assert len(state.validators) == index + 1
     validator = state.validators[index]
-    assert validator.pubkey == spec.sha256(bls_pubkey + spec.LEGACY_XMSS_PUBKEY_DOMAIN)
-    assert validator.vrf_root == spec.sha256(bls_pubkey + spec.LEGACY_VRF_ROOT_DOMAIN)
+    assert validator.pubkey == spec.compute_legacy_xmss_pubkey(bls_pubkey)
+    assert validator.vrf_root == spec.compute_legacy_vrf_root(bls_pubkey)
     assert validator.exit_epoch == spec.get_current_epoch(state)
     expected_withdrawable = (
         spec.get_current_epoch(state) + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY

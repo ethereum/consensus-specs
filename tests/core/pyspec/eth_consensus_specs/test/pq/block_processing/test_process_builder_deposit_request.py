@@ -63,9 +63,7 @@ def test_legacy_builder_deposit_initiates_exit(spec, state):
 
     yield from run_builder_deposit_request_processing(spec, state, request)
 
-    builder = state.builders[
-        get_builder_index(state, spec.sha256(bls_pubkey + spec.LEGACY_XMSS_PUBKEY_DOMAIN))
-    ]
+    builder = state.builders[get_builder_index(state, spec.compute_legacy_xmss_pubkey(bls_pubkey))]
     assert builder.balance == amount
     expected_withdrawable = current_epoch + spec.config.MIN_BUILDER_WITHDRAWABILITY_DELAY
     assert builder.withdrawable_epoch == expected_withdrawable
@@ -77,7 +75,7 @@ def test_legacy_builder_deposit_tops_up_unregistered_builder(spec, state):
     # A builder that did not register takes the legacy XMSS public key at the fork
     builder_index = 0
     bls_pubkey = builder_pubkeys[builder_index]
-    state.builders[builder_index].pubkey = spec.sha256(bls_pubkey + spec.LEGACY_XMSS_PUBKEY_DOMAIN)
+    state.builders[builder_index].pubkey = spec.compute_legacy_xmss_pubkey(bls_pubkey)
     pre_builder_count = len(state.builders)
     pre_balance = state.builders[builder_index].balance
     amount = spec.MIN_DEPOSIT_AMOUNT

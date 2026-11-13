@@ -7,6 +7,8 @@
 - [Introduction](#introduction)
 - [Configs](#configs)
 - [Helpers](#helpers)
+  - [New `get_validator_pq_registrations`](#new-get_validator_pq_registrations)
+  - [New `get_builder_pq_registrations`](#new-get_builder_pq_registrations)
   - [New `compute_validators`](#new-compute_validators)
   - [New `compute_builders`](#new-compute_builders)
   - [New `compute_pending_deposits`](#new-compute_pending_deposits)
@@ -46,6 +48,13 @@ payments to their fee recipients, and the builder sweep then withdraws the rest
 of its balance to its execution address. Its unsettled payments are settled at
 the fork if they have reached the payment quorum, and dropped otherwise.
 
+A registration is ignored if its XMSS public key is
+`sha256(pubkey + LEGACY_XMSS_PUBKEY_DOMAIN)`, where `pubkey` is the BLS public
+key of a validator, or of a builder for a builder registration. This is the key
+a validator or builder takes when it does not register, and anyone can compute
+it. Otherwise, someone could register it for their own validator or builder, so
+that two would share the same XMSS public key.
+
 Pending deposits name their validator by BLS public key. The fork renames a
 pending deposit for an existing validator to 16 zero bytes followed by that
 validator's XMSS public key, so it still tops up that validator. A top-up for a
@@ -60,6 +69,15 @@ validator sweep refunds its balance after the withdrawability delay.
 The proposer lookahead and the PTC window are kept, so the slots and votes they
 assign to validators that did not register are missed.
 
+*TODO*: Prevent registrations from stealing new deposits. A deposit for a new
+validator or builder that is applied after the fork looks for the XMSS public
+key `sha256(pubkey + LEGACY_XMSS_PUBKEY_DOMAIN)` of its BLS public key. Anyone
+who sees the deposit before the fork, whether pending or still on the execution
+layer, can register that key for their own validator or builder. The deposit
+then tops up theirs instead of creating the depositor's. One option is for the
+EIP-8483 system contracts to require a proof of possession of each registered
+XMSS public key.
+
 ## Configs
 
 Warning: this configuration is not definitive.
@@ -71,6 +89,42 @@ Warning: this configuration is not definitive.
 
 ## Helpers
 
+### New `get_validator_pq_registrations`
+
+```python
+def get_validator_pq_registrations(
+    pre: eip8483.BeaconState,
+) -> Sequence[eip8483.ValidatorPQRegistration]:
+    """
+    Return the validator registrations, except those whose XMSS public key is
+    derived from the BLS public key of a validator.
+    """
+    legacy_pubkeys = [compute_legacy_xmss_pubkey(validator.pubkey) for validator in pre.validators]
+    return [
+        registration
+        for registration in pre.validator_pq_registrations
+        if XMSSPubkey(registration.pq_data[:32]) not in legacy_pubkeys
+    ]
+```
+
+### New `get_builder_pq_registrations`
+
+```python
+def get_builder_pq_registrations(
+    pre: eip8483.BeaconState,
+) -> Sequence[eip8483.BuilderPQRegistration]:
+    """
+    Return the builder registrations, except those whose XMSS public key is
+    derived from the BLS public key of a builder.
+    """
+    legacy_pubkeys = [compute_legacy_xmss_pubkey(builder.pubkey) for builder in pre.builders]
+    return [
+        registration
+        for registration in pre.builder_pq_registrations
+        if XMSSPubkey(registration.pq_data) not in legacy_pubkeys
+    ]
+```
+
 ### New `compute_validators`
 
 ```python
@@ -78,7 +132,7 @@ def compute_validators(pre: eip8483.BeaconState) -> Validators:
     epoch = eip8483.get_current_epoch(pre)
     registered = {
         registration.validator_index: registration.pq_data
-        for registration in pre.validator_pq_registrations
+        for registration in get_validator_pq_registrations(pre)
     }
     validators = Validators()
     for index, validator in enumerate(pre.validators):
@@ -89,10 +143,9 @@ def compute_validators(pre: eip8483.BeaconState) -> Validators:
             exit_epoch = validator.exit_epoch
             withdrawable_epoch = validator.withdrawable_epoch
         else:
-            pubkey = XMSSPubkey(sha256(validator.pubkey + LEGACY_XMSS_PUBKEY_DOMAIN))
-            vrf_root = Root(sha256(validator.pubkey + LEGACY_VRF_ROOT_DOMAIN))
+            pubkey = compute_legacy_xmss_pubkey(validator.pubkey)
+            vrf_root = compute_legacy_vrf_root(validator.pubkey)
             exit_epoch = min(validator.exit_epoch, epoch)
-            # A slashed validator must still receive its slashing penalty
             if validator.slashed:
                 withdrawable_epoch = validator.withdrawable_epoch
             else:
@@ -120,7 +173,7 @@ def compute_builders(pre: eip8483.BeaconState) -> Builders:
     epoch = eip8483.get_current_epoch(pre)
     registered = {
         registration.builder_pubkey: registration.pq_data
-        for registration in pre.builder_pq_registrations
+        for registration in get_builder_pq_registrations(pre)
     }
     builders = Builders()
     for builder in pre.builders:
@@ -128,7 +181,7 @@ def compute_builders(pre: eip8483.BeaconState) -> Builders:
             pubkey = XMSSPubkey(registered[builder.pubkey])
             withdrawable_epoch = builder.withdrawable_epoch
         else:
-            pubkey = XMSSPubkey(sha256(builder.pubkey + LEGACY_XMSS_PUBKEY_DOMAIN))
+            pubkey = compute_legacy_xmss_pubkey(builder.pubkey)
             withdrawable_epoch = min(builder.withdrawable_epoch, epoch)
         builders.append(
             Builder(
@@ -173,7 +226,9 @@ def compute_pending_deposits(pre: eip8483.BeaconState, validators: Validators) -
 def compute_builder_pending_withdrawals(
     pre: eip8483.BeaconState,
 ) -> BuilderPendingWithdrawals:
-    builder_pubkeys = [registration.builder_pubkey for registration in pre.builder_pq_registrations]
+    builder_pubkeys = [
+        registration.builder_pubkey for registration in get_builder_pq_registrations(pre)
+    ]
     quorum = eip8483.get_builder_payment_quorum_threshold(pre)
     withdrawals = pre.builder_pending_withdrawals.copy()
     for payment in pre.builder_pending_payments:
@@ -191,7 +246,9 @@ def compute_builder_pending_withdrawals(
 
 ```python
 def compute_builder_pending_payments(pre: eip8483.BeaconState) -> BuilderPendingPayments:
-    builder_pubkeys = [registration.builder_pubkey for registration in pre.builder_pq_registrations]
+    builder_pubkeys = [
+        registration.builder_pubkey for registration in get_builder_pq_registrations(pre)
+    ]
     payments = []
     for payment in pre.builder_pending_payments:
         builder = pre.builders[payment.withdrawal.builder_index]

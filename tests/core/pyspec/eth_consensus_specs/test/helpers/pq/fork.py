@@ -89,10 +89,15 @@ def run_fork_test(post_spec, pre_state):
         assert getattr(pre_state, field) == getattr(post_state, field)
     assert len(post_state.validator_preregistrations) == 0
 
-    # Every validator moves to the PQ registry at the same index
+    # Every validator moves to the PQ registry at the same index. A registration
+    # of a key derived from a validator's BLS public key is ignored.
+    validator_legacy_pubkeys = [
+        post_spec.compute_legacy_xmss_pubkey(validator.pubkey) for validator in pre_state.validators
+    ]
     registered = {
         int(registration.validator_index): registration.pq_data
         for registration in pre_state.validator_pq_registrations
+        if registration.pq_data[:32] not in validator_legacy_pubkeys
     }
     assert len(post_state.validators) == len(pre_state.validators)
     for index, (pre_validator, post_validator) in enumerate(
@@ -108,11 +113,11 @@ def run_fork_test(post_spec, pre_state):
             assert post_validator.vrf_root == pq_data[32:]
             assert post_validator.exit_epoch == pre_validator.exit_epoch
         else:
-            assert post_validator.pubkey == post_spec.sha256(
-                pre_validator.pubkey + post_spec.LEGACY_XMSS_PUBKEY_DOMAIN
+            assert post_validator.pubkey == post_spec.compute_legacy_xmss_pubkey(
+                pre_validator.pubkey
             )
-            assert post_validator.vrf_root == post_spec.sha256(
-                pre_validator.pubkey + post_spec.LEGACY_VRF_ROOT_DOMAIN
+            assert post_validator.vrf_root == post_spec.compute_legacy_vrf_root(
+                pre_validator.pubkey
             )
             assert post_validator.exit_epoch <= post_state.fork.epoch
             if pre_validator.slashed:
@@ -140,10 +145,15 @@ def run_fork_test(post_spec, pre_state):
     assert not hasattr(post_state, "current_sync_committee")
     assert not hasattr(post_state, "next_sync_committee")
 
-    # Every builder moves to the PQ registry at the same index
+    # Every builder moves to the PQ registry at the same index. A registration
+    # of a key derived from a builder's BLS public key is ignored.
+    builder_legacy_pubkeys = [
+        post_spec.compute_legacy_xmss_pubkey(builder.pubkey) for builder in pre_state.builders
+    ]
     registered_builders = {
         registration.builder_pubkey: registration.pq_data
         for registration in pre_state.builder_pq_registrations
+        if registration.pq_data not in builder_legacy_pubkeys
     }
     assert len(post_state.builders) == len(pre_state.builders)
     for pre_builder, post_builder in zip(pre_state.builders, post_state.builders, strict=True):
@@ -153,9 +163,7 @@ def run_fork_test(post_spec, pre_state):
             assert post_builder.pubkey == registered_builders[pre_builder.pubkey]
             assert post_builder.withdrawable_epoch == pre_builder.withdrawable_epoch
         else:
-            assert post_builder.pubkey == post_spec.sha256(
-                pre_builder.pubkey + post_spec.LEGACY_XMSS_PUBKEY_DOMAIN
-            )
+            assert post_builder.pubkey == post_spec.compute_legacy_xmss_pubkey(pre_builder.pubkey)
             assert post_builder.withdrawable_epoch != post_spec.FAR_FUTURE_EPOCH
 
     assert pre_state.fork.current_version == post_state.fork.previous_version

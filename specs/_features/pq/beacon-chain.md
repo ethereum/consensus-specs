@@ -59,6 +59,8 @@
     - [XMSS signatures](#xmss-signatures)
     - [STARK proofs](#stark-proofs)
   - [Misc](#misc)
+    - [New `compute_legacy_xmss_pubkey`](#new-compute_legacy_xmss_pubkey)
+    - [New `compute_legacy_vrf_root`](#new-compute_legacy_vrf_root)
     - [New `compute_deposit_pubkey`](#new-compute_deposit_pubkey)
     - [New `compute_deposit_vrf_root`](#new-compute_deposit_vrf_root)
     - [New `compute_xmss_attestation_leaf_index`](#new-compute_xmss_attestation_leaf_index)
@@ -748,6 +750,26 @@ They stand in for a recursive STARK, which would change the encoding of
 
 ### Misc
 
+#### New `compute_legacy_xmss_pubkey`
+
+```python
+def compute_legacy_xmss_pubkey(pubkey: Bytes48) -> XMSSPubkey:
+    """
+    Return the XMSS public key derived from the BLS public key ``pubkey``.
+    """
+    return XMSSPubkey(sha256(pubkey + LEGACY_XMSS_PUBKEY_DOMAIN))
+```
+
+#### New `compute_legacy_vrf_root`
+
+```python
+def compute_legacy_vrf_root(pubkey: Bytes48) -> Root:
+    """
+    Return the VRF root derived from the BLS public key ``pubkey``.
+    """
+    return Root(sha256(pubkey + LEGACY_VRF_ROOT_DOMAIN))
+```
+
 #### New `compute_deposit_pubkey`
 
 ```python
@@ -756,7 +778,7 @@ def compute_deposit_pubkey(pubkey: Bytes48) -> XMSSPubkey:
     Return the XMSS public key that a deposit naming ``pubkey`` is for.
     """
     if is_legacy_pubkey(pubkey):
-        return XMSSPubkey(sha256(pubkey + LEGACY_XMSS_PUBKEY_DOMAIN))
+        return compute_legacy_xmss_pubkey(pubkey)
     return XMSSPubkey(pubkey[16:])
 ```
 
@@ -768,7 +790,7 @@ def compute_deposit_vrf_root(deposit: PendingDeposit) -> Root:
     Return the VRF root of the validator that ``deposit`` creates.
     """
     if is_legacy_pubkey(deposit.pubkey):
-        return Root(sha256(deposit.pubkey + LEGACY_VRF_ROOT_DOMAIN))
+        return compute_legacy_vrf_root(deposit.pubkey)
     return Root(deposit.signature[:32])
 ```
 
