@@ -29,6 +29,7 @@
   - [New `is_past_slot`](#new-is_past_slot)
   - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
   - [New `is_bid_compatible_with_head`](#new-is_bid_compatible_with_head)
+  - [New `get_max_payload_gas_limit`](#new-get_max_payload_gas_limit)
   - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
   - [New `verify_block_body_operation_limits`](#new-verify_block_body_operation_limits)
   - [New `verify_execution_requests_limits`](#new-verify_execution_requests_limits)
@@ -80,9 +81,16 @@ for the corresponding variable-size libp2p messages. The bound for
 
 ## Configs
 
-| Name                   | Value                  |
-| ---------------------- | ---------------------- |
-| `MAX_REQUEST_PAYLOADS` | `Uint64(2**7)` (= 128) |
+*Note*: `MIN_TRANSACTION_GAS` is a lower bound on the gas used by a single
+transaction, it bounds the number of transactions an execution payload can
+contain for a given gas limit. The value is set well below the cheapest
+transaction in Glamsterdam (12,000 gas). It may need to be changed in a future
+fork if the execution layer reduces the cost of a transaction below this value.
+
+| Name                   | Value                     |
+| ---------------------- | ------------------------- |
+| `MAX_REQUEST_PAYLOADS` | `Uint64(2**7)` (= 128)    |
+| `MIN_TRANSACTION_GAS`  | `Uint64(2**12)` (= 4,096) |
 
 ## Types
 
@@ -432,6 +440,25 @@ def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
         return builds_on_head_payload
 
     return builds_on_parent_payload
+```
+
+### New `get_max_payload_gas_limit`
+
+```python
+def get_max_payload_gas_limit(store: Store, block: BeaconBlock) -> Uint64:
+    """
+    Return the highest gas limit the EIP-1559 transition rule allows for the
+    execution payload of ``block``, given the gas limit of the parent payload,
+    i.e. the payload of the closest full ancestor. If no ancestor in the store
+    is full, the parent payload is unknown and the bid's gas limit is the bound.
+    """
+    bid = block.body.signed_execution_payload_bid.message
+    while block.parent_root in store.blocks:
+        if is_parent_node_full(store, block):
+            parent_gas_limit = store.payloads[block.parent_root].payload.gas_limit
+            return parent_gas_limit + saturating_sub(parent_gas_limit // 1024, 1)
+        block = store.blocks[block.parent_root]
+    return bid.gas_limit
 ```
 
 ### New `verify_attestation_payload_status`
@@ -896,6 +923,12 @@ def validate_execution_payload_envelope_gossip(
     # [REJECT] The number of withdrawals is within the limit
     if len(payload.withdrawals) > MAX_WITHDRAWALS_PER_PAYLOAD:
         raise GossipReject("too many withdrawals")
+
+    # [REJECT] The number of transactions is within the limit implied by the parent payload's gas limit
+    max_gas_limit = get_max_payload_gas_limit(store, block)
+    max_payload_transactions = max_gas_limit // MIN_TRANSACTION_GAS
+    if len(payload.transactions) > max_payload_transactions:
+        raise GossipReject("too many transactions")
 
     # [REJECT] The payload builds on the execution head of the block's post-state
     if payload.parent_hash != state.latest_block_hash:
