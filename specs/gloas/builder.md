@@ -174,7 +174,9 @@ def get_execution_payload_bid_signature(
 
 Then the builder assembles
 `signed_execution_payload_bid = SignedExecutionPayloadBid(message=bid, signature=signature)`
-and broadcasts it on the `execution_payload_bid` global gossip topic.
+and broadcasts it on the `execution_payload_bid` global gossip topic, no earlier
+than `get_payload_attestation_due_ms()` into slot `bid.slot - 1`, as bids
+received before it are ignored on gossip.
 
 A builder may broadcast multiple bids for the same slot and parent, for example
 to raise its bid value. Nodes forward at most
