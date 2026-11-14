@@ -22,9 +22,15 @@
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
 - [Helpers](#helpers)
+  - [Misc](#misc)
+    - [Modified `compute_balance_weighted_selection`](#modified-compute_balance_weighted_selection)
+    - [Modified `compute_proposer_indices`](#modified-compute_proposer_indices)
+    - [Modified `compute_ptc`](#modified-compute_ptc)
   - [Predicates](#predicates)
     - [New `is_valid_inclusion_list_signature`](#new-is_valid_inclusion_list_signature)
   - [Beacon state accessors](#beacon-state-accessors)
+    - [Modified `get_beacon_proposer_indices`](#modified-get_beacon_proposer_indices)
+    - [Modified `get_next_sync_committee_indices`](#modified-get_next_sync_committee_indices)
     - [New `get_inclusion_list_committee`](#new-get_inclusion_list_committee)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Epoch processing](#epoch-processing)
@@ -233,6 +239,120 @@ class BeaconState(ProgressiveContainer):
 
 ## Helpers
 
+### Misc
+
+#### Modified `compute_balance_weighted_selection`
+
+*Note*: `compute_balance_weighted_selection` is modified to take an
+`exclude_slashed` flag. When set, slashed candidates are rejected as they are
+drawn instead of being removed from `indices` beforehand, so a slashing does not
+change the shuffle of the remaining candidates.
+
+```python
+def compute_balance_weighted_selection(
+    state: BeaconState,
+    indices: Sequence[ValidatorIndex],
+    seed: Bytes32,
+    size: Uint64,
+    shuffle_indices: bool,
+    # [New in Heze]
+    exclude_slashed: bool,
+) -> Sequence[ValidatorIndex]:
+    """
+    Return ``size`` indices sampled by effective balance, using ``indices``
+    as candidates. If ``shuffle_indices`` is ``True``, candidate indices
+    are themselves sampled from ``indices`` by shuffling it, otherwise
+    ``indices`` is traversed in order. If ``exclude_slashed`` is ``True``,
+    slashed candidates are rejected when drawn. The returned list can contain
+    duplicates.
+    """
+    MAX_RANDOM_VALUE = 2**16 - 1
+    total = Uint64(len(indices))
+    assert total > 0
+    # [New in Heze]
+    if exclude_slashed:
+        assert any(not state.validators[index].slashed for index in indices)
+    effective_balances = [state.validators[index].effective_balance for index in indices]
+    selected: list[ValidatorIndex] = []
+    i = Uint64(0)
+    while len(selected) < size:
+        offset = i % 16 * 2
+        if offset == 0:
+            random_bytes = sha256(seed + uint_to_bytes(i // 16))
+        next_index = i % total
+        if shuffle_indices:
+            next_index = compute_shuffled_index(next_index, total, seed)
+        weight = effective_balances[next_index] * MAX_RANDOM_VALUE
+        random_value = bytes_to_uint64(random_bytes[offset : offset + 2])
+        threshold = MAX_EFFECTIVE_BALANCE_ELECTRA * random_value
+        # [Modified in Heze]
+        is_excluded = exclude_slashed and state.validators[indices[next_index]].slashed
+        if not is_excluded and weight >= threshold:
+            selected.append(indices[next_index])
+        i += 1
+    return selected
+```
+
+#### Modified `compute_proposer_indices`
+
+*Note*: `compute_proposer_indices` is modified to reject slashed validators as
+they are drawn.
+
+```python
+def compute_proposer_indices(
+    state: BeaconState, epoch: Epoch, seed: Bytes32, indices: Sequence[ValidatorIndex]
+) -> ProposerIndices:
+    """
+    Return the proposer indices for the given ``epoch``.
+    """
+    start_slot = compute_start_slot_at_epoch(epoch)
+    seeds = [sha256(seed + uint_to_bytes(start_slot + index)) for index in range(SLOTS_PER_EPOCH)]
+    return ProposerIndices(
+        data=[
+            compute_balance_weighted_selection(
+                state,
+                indices,
+                seed,
+                size=Uint64(1),
+                shuffle_indices=True,
+                # [New in Heze]
+                exclude_slashed=True,
+            )[0]
+            for seed in seeds
+        ]
+    )
+```
+
+#### Modified `compute_ptc`
+
+*Note*: `compute_ptc` is modified to pass `exclude_slashed=False`.
+
+```python
+def compute_ptc(state: BeaconState, slot: Slot) -> PayloadTimelinessCommittee:
+    """
+    Get the payload timeliness committee, with possible duplicates, for the given ``slot``.
+    """
+    epoch = compute_epoch_at_slot(slot)
+    seed = sha256(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))
+    indices: list[ValidatorIndex] = []
+    # Concatenate all committees for this slot in order
+    committees_per_slot = get_committee_count_per_slot(state, epoch)
+    for i in range(committees_per_slot):
+        committee = get_beacon_committee(state, slot, CommitteeIndex(i))
+        indices.extend(committee)
+    return PayloadTimelinessCommittee(
+        data=compute_balance_weighted_selection(
+            state,
+            indices,
+            seed,
+            size=PTC_SIZE,
+            shuffle_indices=False,
+            # [New in Heze]
+            exclude_slashed=False,
+        )
+    )
+```
+
 ### Predicates
 
 #### New `is_valid_inclusion_list_signature`
@@ -257,6 +377,49 @@ def is_valid_inclusion_list_signature(
 ```
 
 ### Beacon state accessors
+
+#### Modified `get_beacon_proposer_indices`
+
+*Note*: `get_beacon_proposer_indices` is modified to pass all active validators
+to `compute_proposer_indices`. Slashed validators are rejected during sampling
+rather than filtered out of the candidate pool, so a slashing processed in the
+last block of an epoch cannot be used to reshuffle the newly computed proposer
+lookahead.
+
+```python
+def get_beacon_proposer_indices(state: BeaconState, epoch: Epoch) -> ProposerIndices:
+    """
+    Return the proposer indices for the given ``epoch``.
+    """
+    # [Modified in Heze]
+    indices = get_active_validator_indices(state, epoch)
+    seed = get_seed(state, epoch, DOMAIN_BEACON_PROPOSER)
+    return compute_proposer_indices(state, epoch, seed, indices)
+```
+
+#### Modified `get_next_sync_committee_indices`
+
+*Note*: `get_next_sync_committee_indices` is modified to pass
+`exclude_slashed=False`.
+
+```python
+def get_next_sync_committee_indices(state: BeaconState) -> Sequence[ValidatorIndex]:
+    """
+    Return the sync committee indices, with possible duplicates, for the next sync committee.
+    """
+    epoch = get_current_epoch(state) + 1
+    seed = get_seed(state, epoch, DOMAIN_SYNC_COMMITTEE)
+    indices = get_active_validator_indices(state, epoch)
+    return compute_balance_weighted_selection(
+        state,
+        indices,
+        seed,
+        size=SYNC_COMMITTEE_SIZE,
+        shuffle_indices=True,
+        # [New in Heze]
+        exclude_slashed=False,
+    )
+```
 
 #### New `get_inclusion_list_committee`
 
