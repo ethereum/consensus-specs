@@ -133,9 +133,10 @@ Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
      - `INVALIDATED`: the block's execution payload is known invalid.
      - `NOT_VALIDATED`: the block's execution payload has not yet been
        validated.
-     - For `beacon_block` gossip validation, `NOT_VALIDATED` represents the
-       optimistic case where no valid/invalid payload result is yet available
-       for the parent block.
+     - For `beacon_block`, `blob_sidecar`, `data_column_sidecar`, and
+       `partial_data_column_sidecar` gossip validation, `NOT_VALIDATED`
+       represents the optimistic case where no valid/invalid payload result is
+       yet available for the parent block.
 3. If `meta.finalized_checkpoint` is specified, use it as the finalized
    checkpoint wherever validation consults finalization (in place of both the
    store's finalized checkpoint and any state-based finalized checkpoint view).
