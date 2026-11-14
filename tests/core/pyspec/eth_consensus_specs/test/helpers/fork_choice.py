@@ -507,6 +507,67 @@ def add_payload_attestation_message(spec, store, ptc_message, test_steps, valid=
     test_steps.append(step)
 
 
+def get_inclusion_list_file_name(signed_inclusion_list):
+    return f"inclusion_list_{encode_hex(signed_inclusion_list.hash_tree_root())}"
+
+
+def run_on_inclusion_list(spec, store, signed_inclusion_list, valid=True):
+    if not valid:
+        expect_assertion_error(lambda: spec.on_inclusion_list(store, signed_inclusion_list))
+        return
+
+    spec.on_inclusion_list(store, signed_inclusion_list)
+
+
+def add_inclusion_list(spec, store, signed_inclusion_list, test_steps, valid=True):
+    inclusion_list_file_name = get_inclusion_list_file_name(signed_inclusion_list)
+    yield inclusion_list_file_name, signed_inclusion_list
+
+    run_on_inclusion_list(spec, store, signed_inclusion_list, valid=valid)
+    step = {"inclusion_list": inclusion_list_file_name}
+
+    if not valid:
+        step["valid"] = False
+        test_steps.append(step)
+        return
+
+    test_steps.append(step)
+    add_inclusion_list_entry_check(spec, signed_inclusion_list.message, test_steps)
+
+
+def add_inclusion_list_entry_check(spec, inclusion_list, test_steps):
+    inclusion_list_store = spec.get_inclusion_list_store()
+    key = (inclusion_list.slot, inclusion_list.dependent_root)
+    entry = inclusion_list_store.inclusion_lists[key][inclusion_list.validator_index]
+    equivocators = inclusion_list_store.equivocators.get(key, set())
+    test_steps.append(
+        {
+            "checks": {
+                "inclusion_list_entry": {
+                    "slot": int(inclusion_list.slot),
+                    "dependent_root": encode_hex(inclusion_list.dependent_root),
+                    "validator_index": int(inclusion_list.validator_index),
+                    "timely": bool(entry.timely),
+                    "equivocator": inclusion_list.validator_index in equivocators,
+                },
+            }
+        }
+    )
+
+
+def add_payload_inclusion_list_satisfaction_check(store, block_root, test_steps):
+    test_steps.append(
+        {
+            "checks": {
+                "payload_inclusion_list_satisfaction": {
+                    "block_root": encode_hex(block_root),
+                    "satisfied": bool(store.payload_inclusion_list_satisfaction[block_root]),
+                },
+            }
+        }
+    )
+
+
 def add_payload_vote_checks(store, block_root, test_steps):
     timeliness = [None if v is None else bool(v) for v in store.payload_timeliness_vote[block_root]]
     availability = [
@@ -721,6 +782,19 @@ def add_signed_empty_block(spec, store, state, test_steps):
 
     root = signed_block.message.hash_tree_root()
     return root, store.block_states[root], signed_block
+
+
+def setup_genesis_store(spec, state):
+    """
+    Bootstrap a fork choice store with the genesis anchor.
+    """
+    test_steps = []
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
+
+    return store, test_steps
 
 
 def setup_one_block_store(spec, state):
