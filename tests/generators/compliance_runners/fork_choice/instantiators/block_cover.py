@@ -17,6 +17,9 @@ from eth_consensus_specs.test.helpers.state import (
     transition_to,
 )
 from eth_consensus_specs.utils import bls
+from tests.generators.compliance_runners.runner.payload_attestation import (
+    payload_attestation_to_messages,
+)
 
 from .helpers import (
     advance_state_to_anchor_epoch,
@@ -24,7 +27,6 @@ from .helpers import (
     BranchTip,
     build_random_payload_attestation_messages,
     FCTestData,
-    payload_attestation_to_messages,
     produce_block,
     ProtocolMessage,
 )
