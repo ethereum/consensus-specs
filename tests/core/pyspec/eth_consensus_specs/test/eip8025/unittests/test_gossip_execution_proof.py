@@ -61,15 +61,18 @@ def make_signed_execution_proof_envelope(
     )
 
 
-def validate(spec, seen, store, signed_proof, proof_engine=None):
+def validate(spec, seen, store, signed_proof, proof_engine=None, subnet_id=None):
     if proof_engine is None:
         proof_engine = MockProofEngine()
+    if subnet_id is None:
+        subnet_id = spec.compute_subnet_for_execution_proof(signed_proof.message.proof_type)
     return run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_proof_envelope=signed_proof,
         proof_engine=proof_engine,
+        subnet_id=subnet_id,
     )
 
 
@@ -362,6 +365,44 @@ def test_gossip_rejects_unsupported_high_proof_type_without_caching(spec, state)
     )
     assert seen.execution_proof_roots == {}
     assert seen.execution_proof_provers == set()
+
+
+@with_eip8025_and_later
+@spec_state_test
+def test_compute_subnet_for_execution_proof(spec, state):
+    """
+    Map each supported proof type to its own subnet.
+    """
+    subnets = {
+        spec.compute_subnet_for_execution_proof(proof_type)
+        for proof_type in spec.get_supported_proof_types()
+    }
+    assert len(subnets) == len(spec.get_supported_proof_types())
+    assert all(subnet < spec.EXECUTION_PROOF_SUBNET_COUNT for subnet in subnets)
+
+
+@with_eip8025_and_later
+@spec_state_test
+def test_gossip_rejects_execution_proof_on_wrong_subnet_without_caching(spec, state):
+    """
+    Reject a proof received on the subnet of another proof type without updating the seen cache.
+    """
+    store, block_root = setup_store_with_block(spec, state)
+    signed_proof = make_signed_execution_proof_envelope(spec, state, block_root)
+    wrong_subnet = spec.compute_subnet_for_execution_proof(
+        spec.ProofType(ALTERNATE_TEST_PROOF_TYPE)
+    )
+
+    seen = get_seen(spec)
+    assert validate(spec, seen, store, signed_proof, subnet_id=wrong_subnet) == (
+        "reject",
+        "execution proof is for wrong subnet",
+    )
+    assert seen.execution_proof_roots == {}
+    assert seen.execution_proof_provers == set()
+
+    # The same proof is accepted on its own subnet.
+    assert validate(spec, seen, store, signed_proof) == ("valid", None)
 
 
 @with_eip8025_and_later
