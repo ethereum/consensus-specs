@@ -205,8 +205,8 @@ def prepare_execution_payload(
 ### Inclusion list proposal
 
 A validator is expected to propose a
-[`SignedInclusionList`](./beacon-chain.md#signedinclusionlist) at the beginning
-of any `slot` for which
+[`SignedInclusionList`](./beacon-chain.md#signedinclusionlist) during any `slot`
+for which
 `get_inclusion_list_committee_assignment(state, epoch, validator_index)`
 returns.
 
