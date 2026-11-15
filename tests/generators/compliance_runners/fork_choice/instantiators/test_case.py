@@ -485,6 +485,28 @@ def derive_effective_seed(seed: int, solution_index: int) -> int:
     return random.Random(f"{seed}:{solution_index}").randint(0, 1_000_000_000)
 
 
+def generate_variation_seeds(initial_seed: int, nr_variations: int) -> list[int]:
+    max_seed = 10000
+    max_variations = max_seed + int(not 1 <= initial_seed <= max_seed)
+    if not 1 <= nr_variations <= max_variations:
+        raise ValueError(f"nr_variations must be between 1 and {max_variations}")
+
+    if nr_variations == 1:
+        return [initial_seed]
+
+    rnd = random.Random(initial_seed)
+    # Preserve the historical sequence, including the overwritten first draw.
+    seeds = [rnd.randint(1, max_seed) for _ in range(nr_variations)]
+    seeds[0] = initial_seed
+    seen = set()
+    for i, seed in enumerate(seeds):
+        while seed in seen:
+            seed = rnd.randint(1, max_seed)
+        seen.add(seed)
+        seeds[i] = seed
+    return seeds
+
+
 def get_mutation_group_suffix(nr_mutations: int, group_cases: tuple[MutationGroupCase, ...]) -> str:
     group_case_ids = [group_case.case_id for group_case in group_cases]
     full_case_ids = list(range(nr_mutations + 1))
@@ -539,11 +561,7 @@ def enumerate_mutation_groups(config_dir, test_name, params) -> Iterable[Mutatio
     solutions = _load_yaml(str(Path(config_dir) / instances_path))
     test_kind = get_test_kind(test_type, with_attester_slashings, with_invalid_messages)
 
-    seeds = [initial_seed]
-    if nr_variations > 1:
-        rnd = random.Random(initial_seed)
-        seeds = [rnd.randint(1, 10000) for _ in range(nr_variations)]
-        seeds[0] = initial_seed
+    seeds = generate_variation_seeds(initial_seed, nr_variations)
 
     for i, solution in enumerate(solutions):
         for seed in seeds:

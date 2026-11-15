@@ -150,6 +150,8 @@ jobs:
             group_slice_index=0 \
             group_slice_count=40 \
             comptests_dir=./comptests-sample
+      - name: Test fork choice variation seed generation
+        run: uv run pytest tests/generators/compliance_runners/fork_choice/test_variation_seeds.py
 
   website:
     needs: [lint]
