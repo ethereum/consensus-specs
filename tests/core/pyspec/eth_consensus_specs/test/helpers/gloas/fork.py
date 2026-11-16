@@ -99,6 +99,12 @@ def run_fork_test(post_spec, pre_state):
     assert post_state.latest_payload_root == pre_header.hash_tree_root()
     assert post_state.latest_execution_payload_bid.payload_root == post_state.latest_payload_root
 
+    # Pre-fork payloads count as available, but the payload of the fork slot
+    # is not available until it is revealed.
+    fork_slot_index = post_state.slot % post_spec.SLOTS_PER_HISTORICAL_ROOT
+    for slot_index, available in enumerate(post_state.execution_payload_availability):
+        assert bool(available) == (slot_index != fork_slot_index)
+
     yield "post", post_state
 
     return post_state
