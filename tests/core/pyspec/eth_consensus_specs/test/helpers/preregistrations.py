@@ -1,5 +1,5 @@
-from eth_consensus_specs.test.helpers.keys import get_vrf_root, privkeys, xmss_pubkeys
-from eth_consensus_specs.utils import bls, xmss
+from eth_consensus_specs.test.helpers.keys import get_vrf_root, xmss_pubkeys
+from eth_consensus_specs.utils import bls
 
 
 def preregistration_withdrawal_credentials(spec, address_byte=b"\x59"):
@@ -31,42 +31,29 @@ def build_preregistration_request(
     )
 
 
-def build_pq_preregistration_request(
-    spec, state, index, withdrawal_credentials, vrf_root=None, leaf_index=0
-):
+def build_pq_preregistration_request(spec, index, withdrawal_credentials, vrf_root=None):
     """
     Build a ``PreregistrationRequest`` for the XMSS key at ``index``, binding it
     to ``withdrawal_credentials`` and ``vrf_root``, by default the key's own VRF
-    root. It is signed at ``leaf_index``, by default the first reserved leaf.
+    root.
     """
     if vrf_root is None:
         vrf_root = get_vrf_root(index)
-    preregistration = spec.ValidatorPreregistration(
-        pubkey=xmss_pubkeys[index],
-        withdrawal_credentials=withdrawal_credentials,
-        vrf_root=vrf_root,
-    )
-    domain = spec.compute_domain(
-        spec.DOMAIN_PREREGISTRATION,
-        genesis_validators_root=state.genesis_validators_root,
-    )
-    signing_root = spec.compute_signing_root(preregistration, domain)
     return spec.PreregistrationRequest(
         pubkey=xmss_pubkeys[index],
         withdrawal_credentials=withdrawal_credentials,
         vrf_root=vrf_root,
-        signature=xmss.Sign(privkeys[index], leaf_index, signing_root),
     )
 
 
-def build_pq_stored_preregistration(spec, index, expiry_slot, withdrawal_credentials=None):
+def build_pq_preregistration(spec, index, expiry_slot, withdrawal_credentials=None):
     """
-    Build a ``StoredPreregistration`` for the XMSS key at ``index`` that expires
+    Build a ``Preregistration`` for the XMSS key at ``index`` that expires
     at ``expiry_slot``.
     """
     if withdrawal_credentials is None:
         withdrawal_credentials = preregistration_withdrawal_credentials(spec)
-    return spec.StoredPreregistration(
+    return spec.Preregistration(
         pubkey=xmss_pubkeys[index],
         withdrawal_credentials=withdrawal_credentials,
         vrf_root=get_vrf_root(index),

@@ -3,8 +3,8 @@ from eth_consensus_specs.test.helpers.constants import MINIMAL, PQ
 from eth_consensus_specs.test.helpers.deposits import prepare_deposit_request
 from eth_consensus_specs.test.helpers.keys import get_vrf_root, privkeys, pubkeys
 from eth_consensus_specs.test.helpers.preregistrations import (
+    build_pq_preregistration,
     build_pq_preregistration_request,
-    build_pq_stored_preregistration,
     preregistration_withdrawal_credentials,
 )
 
@@ -23,7 +23,7 @@ def run_preregistration_request_processing(spec, state, request):
 def fill_preregistrations(spec, state, count, expiry_slot):
     for index in range(count):
         state.validator_preregistrations.append(
-            build_pq_stored_preregistration(spec, FRESH_INDEX - 1 - index, expiry_slot)
+            build_pq_preregistration(spec, FRESH_INDEX - 1 - index, expiry_slot)
         )
 
 
@@ -31,7 +31,7 @@ def fill_preregistrations(spec, state, count, expiry_slot):
 @spec_state_test
 def test_preregistration_stored(spec, state):
     withdrawal_credentials = preregistration_withdrawal_credentials(spec)
-    request = build_pq_preregistration_request(spec, state, FRESH_INDEX, withdrawal_credentials)
+    request = build_pq_preregistration_request(spec, FRESH_INDEX, withdrawal_credentials)
 
     yield from run_preregistration_request_processing(spec, state, request)
 
@@ -45,42 +45,9 @@ def test_preregistration_stored(spec, state):
 
 @with_phases([PQ])
 @spec_state_test
-def test_preregistration_signed_at_last_reserved_leaf(spec, state):
-    request = build_pq_preregistration_request(
-        spec,
-        state,
-        FRESH_INDEX,
-        preregistration_withdrawal_credentials(spec),
-        leaf_index=spec.XMSS_RESERVED_LEAVES - 1,
-    )
-
-    yield from run_preregistration_request_processing(spec, state, request)
-
-    assert len(state.validator_preregistrations) == 1
-    assert state.validator_preregistrations[0].pubkey == request.pubkey
-
-
-@with_phases([PQ])
-@spec_state_test
-def test_preregistration_signed_past_reserved_leaves_ignored(spec, state):
-    request = build_pq_preregistration_request(
-        spec,
-        state,
-        FRESH_INDEX,
-        preregistration_withdrawal_credentials(spec),
-        leaf_index=spec.XMSS_RESERVED_LEAVES,
-    )
-
-    yield from run_preregistration_request_processing(spec, state, request)
-
-    assert len(state.validator_preregistrations) == 0
-
-
-@with_phases([PQ])
-@spec_state_test
 def test_preregistration_existing_validator_ignored(spec, state):
     request = build_pq_preregistration_request(
-        spec, state, 0, preregistration_withdrawal_credentials(spec)
+        spec, 0, preregistration_withdrawal_credentials(spec)
     )
     assert request.pubkey == state.validators[0].pubkey
 
@@ -102,7 +69,7 @@ def test_preregistration_pending_deposit_ignored(spec, state):
     )
     spec.process_deposit_request(state, deposit_request)
     request = build_pq_preregistration_request(
-        spec, state, FRESH_INDEX, preregistration_withdrawal_credentials(spec)
+        spec, FRESH_INDEX, preregistration_withdrawal_credentials(spec)
     )
 
     yield from run_preregistration_request_processing(spec, state, request)
@@ -113,12 +80,12 @@ def test_preregistration_pending_deposit_ignored(spec, state):
 @with_phases([PQ])
 @spec_state_test
 def test_preregistration_active_binding_ignored(spec, state):
-    stored = build_pq_stored_preregistration(
+    stored = build_pq_preregistration(
         spec, FRESH_INDEX, state.slot + spec.PREREGISTRATION_EXPIRY_SLOTS
     )
     state.validator_preregistrations.append(stored)
     request = build_pq_preregistration_request(
-        spec, state, FRESH_INDEX, preregistration_withdrawal_credentials(spec, b"\x77")
+        spec, FRESH_INDEX, preregistration_withdrawal_credentials(spec, b"\x77")
     )
 
     yield from run_preregistration_request_processing(spec, state, request)
@@ -130,10 +97,10 @@ def test_preregistration_active_binding_ignored(spec, state):
 @spec_state_test
 def test_preregistration_replaces_expired_binding(spec, state):
     state.validator_preregistrations.append(
-        build_pq_stored_preregistration(spec, FRESH_INDEX, state.latest_execution_payload_bid.slot)
+        build_pq_preregistration(spec, FRESH_INDEX, state.latest_execution_payload_bid.slot)
     )
     withdrawal_credentials = preregistration_withdrawal_credentials(spec, b"\x77")
-    request = build_pq_preregistration_request(spec, state, FRESH_INDEX, withdrawal_credentials)
+    request = build_pq_preregistration_request(spec, FRESH_INDEX, withdrawal_credentials)
 
     yield from run_preregistration_request_processing(spec, state, request)
 
@@ -154,7 +121,7 @@ def test_preregistration_state_full_ignored(spec, state):
         state.slot + spec.PREREGISTRATION_EXPIRY_SLOTS,
     )
     request = build_pq_preregistration_request(
-        spec, state, FRESH_INDEX, preregistration_withdrawal_credentials(spec)
+        spec, FRESH_INDEX, preregistration_withdrawal_credentials(spec)
     )
 
     yield from run_preregistration_request_processing(spec, state, request)
@@ -171,7 +138,7 @@ def test_preregistration_admitted_when_full_of_expired_records(spec, state):
         spec, state, spec.PREREGISTRATIONS_LIMIT, state.latest_execution_payload_bid.slot
     )
     request = build_pq_preregistration_request(
-        spec, state, FRESH_INDEX, preregistration_withdrawal_credentials(spec)
+        spec, FRESH_INDEX, preregistration_withdrawal_credentials(spec)
     )
 
     yield from run_preregistration_request_processing(spec, state, request)
@@ -184,9 +151,7 @@ def test_preregistration_admitted_when_full_of_expired_records(spec, state):
 @with_presets([MINIMAL], reason="mainnet preregistration limit is too large to fill")
 @spec_state_test
 def test_preregistration_replacement_respects_active_limit(spec, state):
-    expired = build_pq_stored_preregistration(
-        spec, FRESH_INDEX, state.latest_execution_payload_bid.slot
-    )
+    expired = build_pq_preregistration(spec, FRESH_INDEX, state.latest_execution_payload_bid.slot)
     state.validator_preregistrations.append(expired)
     fill_preregistrations(
         spec,
@@ -195,7 +160,7 @@ def test_preregistration_replacement_respects_active_limit(spec, state):
         state.slot + spec.PREREGISTRATION_EXPIRY_SLOTS,
     )
     request = build_pq_preregistration_request(
-        spec, state, FRESH_INDEX, preregistration_withdrawal_credentials(spec, b"\x77")
+        spec, FRESH_INDEX, preregistration_withdrawal_credentials(spec, b"\x77")
     )
 
     yield from run_preregistration_request_processing(spec, state, request)

@@ -44,7 +44,7 @@ def run_parent_execution_payload_processing(spec, state, requests, valid=True):
 @spec_state_test
 def test_parent_payload_preregistration_stored(spec, state):
     request = build_pq_preregistration_request(
-        spec, state, FRESH_INDEX, preregistration_withdrawal_credentials(spec)
+        spec, FRESH_INDEX, preregistration_withdrawal_credentials(spec)
     )
     requests = spec.ExecutionRequests(
         preregistrations=spec.PreregistrationRequests(data=[request]),
@@ -72,7 +72,7 @@ def test_parent_payload_deposit_first_for_same_pubkey(spec, state):
         withdrawal_credentials=preregistration_withdrawal_credentials(spec, b"\x77"),
     )
     preregistration_request = build_pq_preregistration_request(
-        spec, state, FRESH_INDEX, preregistration_withdrawal_credentials(spec)
+        spec, FRESH_INDEX, preregistration_withdrawal_credentials(spec)
     )
     requests = spec.ExecutionRequests(
         deposits=spec.DepositRequests(data=[deposit_request]),

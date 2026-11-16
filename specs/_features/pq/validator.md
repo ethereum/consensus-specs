@@ -140,10 +140,10 @@ and VRF root in its deposit instead, see [Submit deposit](#submit-deposit).
 A deposit carries no signature, so anyone who sees the first deposit for a new
 XMSS public key before it is included could get in first with a deposit of their
 own withdrawal credentials and VRF root. To prevent this, a validator first
-submits a `PreregistrationRequest` that binds its XMSS public key to its
-withdrawal credentials and VRF root. It signs the `ValidatorPreregistration`
-under `DOMAIN_PREREGISTRATION`, computed with `compute_domain` and the chain's
-`genesis_validators_root`, at a reserved leaf.
+preregisters, binding its XMSS public key to its withdrawal credentials and VRF
+root. It signs the binding at a reserved leaf and submits it with the signature
+to the system contract, which verifies the signature and emits a
+`PreregistrationRequest` without it.
 
 The validator waits until its binding is in `state.validator_preregistrations`,
 then submits its deposit before the binding's `expiry_slot`. If the binding is

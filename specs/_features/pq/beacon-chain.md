@@ -18,7 +18,6 @@
   - [XMSS leaf offsets](#xmss-leaf-offsets)
   - [Deposits](#deposits)
   - [Legacy domains](#legacy-domains)
-  - [Domains](#domains)
   - [Execution-layer triggered requests](#execution-layer-triggered-requests)
 - [Presets](#presets)
   - [XMSS](#xmss-1)
@@ -47,9 +46,8 @@
     - [`Validator`](#validator)
     - [`WithdrawalRequest`](#withdrawalrequest)
   - [New containers](#new-containers)
-    - [`ValidatorPreregistration`](#validatorpreregistration)
     - [`PreregistrationRequest`](#preregistrationrequest)
-    - [`StoredPreregistration`](#storedpreregistration)
+    - [`Preregistration`](#preregistration)
 - [Dataclasses](#dataclasses)
   - [New dataclasses](#new-dataclasses)
     - [`XMSSAggregateStatement`](#xmssaggregatestatement)
@@ -69,18 +67,17 @@
     - [New `is_builder_bid_leaf_index`](#new-is_builder_bid_leaf_index)
     - [New `is_legacy_pubkey`](#new-is_legacy_pubkey)
     - [New `is_reserved_leaf_index`](#new-is_reserved_leaf_index)
-    - [New `is_valid_preregistration_signature`](#new-is_valid_preregistration_signature)
     - [New `is_valid_vrf_proof`](#new-is_valid_vrf_proof)
     - [Modified `is_pending_validator`](#modified-is_pending_validator)
     - [Modified `is_valid_indexed_attestation`](#modified-is_valid_indexed_attestation)
   - [Beacon state accessors](#beacon-state-accessors)
     - [Modified `get_indexed_attestation`](#modified-get_indexed_attestation)
     - [New `get_attestation_statements`](#new-get_attestation_statements)
-    - [New `get_stored_preregistration_index`](#new-get_stored_preregistration_index)
+    - [New `get_preregistration_index`](#new-get_preregistration_index)
     - [New `get_active_preregistration`](#new-get_active_preregistration)
   - [Beacon state mutators](#beacon-state-mutators)
     - [Modified `queue_excess_active_balance`](#modified-queue_excess_active_balance)
-    - [New `remove_stored_preregistration`](#new-remove_stored_preregistration)
+    - [New `remove_preregistration`](#new-remove_preregistration)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Modified `verify_block_signature`](#modified-verify_block_signature)
   - [Epoch processing](#epoch-processing)
@@ -178,8 +175,9 @@ Without deposit signatures, anyone who sees the first deposit for a new XMSS
 public key could get in first with a deposit of their own withdrawal credentials
 and VRF root. As in [EIP-8205](../eip8205/beacon-chain.md), the holder of a key
 can first bind the key to its withdrawal credentials and VRF root with a
-preregistration request signed by the key. While the binding is active, a
-deposit for the key is discarded unless it matches the binding.
+preregistration signed by the key. The system contract verifies the signature,
+so the preregistration request it emits carries none. While the binding is
+active, a deposit for the key is discarded unless it matches the binding.
 
 `BLSToExecutionChange` is disabled, because its BLS signature could be forged.
 
@@ -253,7 +251,7 @@ class PreregistrationRequests(ProgressiveList[PreregistrationRequest]):
 ### New `ValidatorPreregistrations`
 
 ```python
-class ValidatorPreregistrations(ProgressiveList[StoredPreregistration]):
+class ValidatorPreregistrations(ProgressiveList[Preregistration]):
     """
     The preregistrations stored in the beacon state, including expired
     records not yet garbage-collected.
@@ -300,15 +298,6 @@ class ValidatorPreregistrations(ProgressiveList[StoredPreregistration]):
 | --------------------------- | ---------------- |
 | `LEGACY_XMSS_PUBKEY_DOMAIN` | `Bytes1("0x00")` |
 | `LEGACY_VRF_ROOT_DOMAIN`    | `Bytes1("0x01")` |
-
-### Domains
-
-*Note*: As in EIP-8205, preregistration signatures use a fork-agnostic domain
-bound to the chain through `genesis_validators_root`.
-
-| Name                     | Value                      |
-| ------------------------ | -------------------------- |
-| `DOMAIN_PREREGISTRATION` | `DomainType("0x11000000")` |
 
 ### Execution-layer triggered requests
 
@@ -647,35 +636,27 @@ class WithdrawalRequest(Container):
 
 ### New containers
 
-#### `ValidatorPreregistration`
-
-*Note*: This is the signing container for preregistration signatures.
-
-```python
-class ValidatorPreregistration(Container):
-    pubkey: XMSSPubkey
-    withdrawal_credentials: Bytes32
-    vrf_root: Root
-```
-
 #### `PreregistrationRequest`
+
+*Note*: Before it emits a request, the system contract verifies that the binding
+is signed by `pubkey` at a reserved leaf. The request therefore carries no
+signature.
 
 ```python
 class PreregistrationRequest(Container):
     pubkey: XMSSPubkey
     withdrawal_credentials: Bytes32
     vrf_root: Root
-    signature: XMSSSignature
 ```
 
-#### `StoredPreregistration`
+#### `Preregistration`
 
 *Note*: `expiry_slot` is the absolute deadline computed when the preregistration
 is stored. A later change to `PREREGISTRATION_EXPIRY_SLOTS` therefore affects
 only newly stored records.
 
 ```python
-class StoredPreregistration(Container):
+class Preregistration(Container):
     pubkey: XMSSPubkey
     withdrawal_credentials: Bytes32
     vrf_root: Root
@@ -827,7 +808,7 @@ payload, whose execution requests are the ones being applied during block
 processing.
 
 ```python
-def is_active_preregistration(state: BeaconState, preregistration: StoredPreregistration) -> bool:
+def is_active_preregistration(state: BeaconState, preregistration: Preregistration) -> bool:
     """
     Check if ``preregistration`` has not expired.
     """
@@ -869,29 +850,6 @@ def is_reserved_leaf_index(leaf_index: Uint64) -> bool:
     a leaf of their own.
     """
     return leaf_index < XMSS_RESERVED_LEAVES
-```
-
-#### New `is_valid_preregistration_signature`
-
-```python
-def is_valid_preregistration_signature(state: BeaconState, request: PreregistrationRequest) -> bool:
-    """
-    Check if ``request`` is signed by its key.
-    """
-    preregistration = ValidatorPreregistration(
-        pubkey=request.pubkey,
-        withdrawal_credentials=request.withdrawal_credentials,
-        vrf_root=request.vrf_root,
-    )
-    domain = compute_domain(
-        DOMAIN_PREREGISTRATION,
-        genesis_validators_root=state.genesis_validators_root,
-    )
-    signing_root = compute_signing_root(preregistration, domain)
-    leaf_index = xmss.GetLeafIndex(request.signature)
-    if not is_reserved_leaf_index(leaf_index):
-        return False
-    return xmss.Verify(request.pubkey, leaf_index, signing_root, request.signature)
 ```
 
 #### New `is_valid_vrf_proof`
@@ -1021,12 +979,12 @@ def get_attestation_statements(
     return statements
 ```
 
-#### New `get_stored_preregistration_index`
+#### New `get_preregistration_index`
 
 ```python
-def get_stored_preregistration_index(state: BeaconState, pubkey: XMSSPubkey) -> Uint64 | None:
+def get_preregistration_index(state: BeaconState, pubkey: XMSSPubkey) -> Uint64 | None:
     """
-    Return the index of the stored preregistration of ``pubkey``, if any.
+    Return the index of the preregistration of ``pubkey``, if any.
     """
     for index, preregistration in enumerate(state.validator_preregistrations):
         if preregistration.pubkey == pubkey:
@@ -1037,13 +995,11 @@ def get_stored_preregistration_index(state: BeaconState, pubkey: XMSSPubkey) -> 
 #### New `get_active_preregistration`
 
 ```python
-def get_active_preregistration(
-    state: BeaconState, pubkey: XMSSPubkey
-) -> StoredPreregistration | None:
+def get_active_preregistration(state: BeaconState, pubkey: XMSSPubkey) -> Preregistration | None:
     """
     Return the active preregistration of ``pubkey``, if any.
     """
-    index = get_stored_preregistration_index(state, pubkey)
+    index = get_preregistration_index(state, pubkey)
     if index is None:
         return None
     preregistration = state.validator_preregistrations[index]
@@ -1078,15 +1034,15 @@ def queue_excess_active_balance(state: BeaconState, index: ValidatorIndex) -> No
         )
 ```
 
-#### New `remove_stored_preregistration`
+#### New `remove_preregistration`
 
 *Note*: Removal preserves the order of the remaining records, which the state
 root commits to.
 
 ```python
-def remove_stored_preregistration(state: BeaconState, pubkey: XMSSPubkey) -> None:
+def remove_preregistration(state: BeaconState, pubkey: XMSSPubkey) -> None:
     """
-    Remove the stored preregistration of ``pubkey``.
+    Remove the preregistration of ``pubkey``.
     """
     state.validator_preregistrations = ValidatorPreregistrations(
         data=[
@@ -1638,7 +1594,7 @@ def process_deposit_request(state: BeaconState, deposit_request: DepositRequest)
             return
         if Root(deposit_request.signature[:32]) != preregistration.vrf_root:
             return
-        remove_stored_preregistration(state, pubkey)
+        remove_preregistration(state, pubkey)
 
     state.pending_deposits.append(
         PendingDeposit(
@@ -2039,16 +1995,13 @@ def process_preregistration_request(state: BeaconState, request: Preregistration
     if len(active_preregistrations) >= PREREGISTRATIONS_LIMIT:
         return
 
-    if not is_valid_preregistration_signature(state, request):
-        return
-
-    preregistration = StoredPreregistration(
+    preregistration = Preregistration(
         pubkey=pubkey,
         withdrawal_credentials=request.withdrawal_credentials,
         vrf_root=request.vrf_root,
         expiry_slot=state.slot + PREREGISTRATION_EXPIRY_SLOTS,
     )
-    index = get_stored_preregistration_index(state, pubkey)
+    index = get_preregistration_index(state, pubkey)
     if index is not None:
         # Replace the expired record in place
         state.validator_preregistrations[index] = preregistration
