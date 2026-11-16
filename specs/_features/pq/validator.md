@@ -144,7 +144,7 @@ own withdrawal credentials and VRF root. To prevent this, a validator first
 preregisters, binding its XMSS public key to its withdrawal credentials and VRF
 root. It signs the binding at a reserved leaf and submits it with the signature
 to the system contract, which verifies the signature and emits a
-`PreregistrationRequest` without it.
+`ValidatorPreregistrationRequest` without it.
 
 The validator waits until its binding is in `state.validator_preregistrations`,
 then submits its deposit before the binding's `expiry_slot`. If the binding is
@@ -161,8 +161,9 @@ After the upgrade, a deposit carries no signature. Its `pubkey` is
 `XMSS_DEPOSIT_PREFIX`, 16 zero bytes, followed by the validator's XMSS public
 key, and its `signature` holds the validator's VRF root followed by 64 zero
 bytes. A deposit whose XMSS public key is already in `state.validators` tops up
-that validator. While the key has an active preregistration, a deposit for it is
-discarded unless its withdrawal credentials and VRF root match the binding.
+that validator. While the key has an active validator preregistration, a deposit
+for it is discarded unless its withdrawal credentials and VRF root match the
+binding.
 
 *Note*: A deposit whose `pubkey` does not start with 16 zero bytes is treated as
 a legacy deposit, so the validator it creates is exited at once.
@@ -291,7 +292,8 @@ zero bytes, and the `bid.value` MUST be zero. All other conditions on
 ##### Execution requests
 
 *Note*: The function `get_execution_requests` is modified to no longer parse PQ
-registration requests and to parse preregistration and voluntary exit requests.
+registration requests and to parse validator preregistration, builder
+preregistration, and voluntary exit requests.
 
 ```python
 def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
@@ -300,8 +302,10 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
     consolidations = ConsolidationRequests()
     builder_deposits = BuilderDepositRequests()
     builder_exits = BuilderExitRequests()
-    # [New in EIP8205]
-    preregistrations = PreregistrationRequests()
+    # [New in PQ:EIP8205]
+    validator_preregistrations = ValidatorPreregistrationRequests()
+    # [New in PQ:EIP8205]
+    builder_preregistrations = BuilderPreregistrationRequests()
     # [New in PQ]
     voluntary_exits = VoluntaryExitRequests()
 
@@ -315,8 +319,10 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         # Removed `VALIDATOR_PQ_REGISTRATION_REQUEST_TYPE`
         # [Modified in PQ]
         # Removed `BUILDER_PQ_REGISTRATION_REQUEST_TYPE`
-        # [New in EIP8205]
-        PREREGISTRATION_REQUEST_TYPE,
+        # [New in PQ:EIP8205]
+        VALIDATOR_PREREGISTRATION_REQUEST_TYPE,
+        # [New in PQ:EIP8205]
+        BUILDER_PREREGISTRATION_REQUEST_TYPE,
         # [New in PQ]
         VOLUNTARY_EXIT_REQUEST_TYPE,
     ]
@@ -344,9 +350,14 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
             builder_deposits = ssz_deserialize(BuilderDepositRequests, request_data)
         elif request_type == BUILDER_EXIT_REQUEST_TYPE:
             builder_exits = ssz_deserialize(BuilderExitRequests, request_data)
-        # [New in EIP8205]
-        elif request_type == PREREGISTRATION_REQUEST_TYPE:
-            preregistrations = ssz_deserialize(PreregistrationRequests, request_data)
+        # [New in PQ:EIP8205]
+        elif request_type == VALIDATOR_PREREGISTRATION_REQUEST_TYPE:
+            validator_preregistrations = ssz_deserialize(
+                ValidatorPreregistrationRequests, request_data
+            )
+        # [New in PQ:EIP8205]
+        elif request_type == BUILDER_PREREGISTRATION_REQUEST_TYPE:
+            builder_preregistrations = ssz_deserialize(BuilderPreregistrationRequests, request_data)
         # [New in PQ]
         elif request_type == VOLUNTARY_EXIT_REQUEST_TYPE:
             voluntary_exits = ssz_deserialize(VoluntaryExitRequests, request_data)
@@ -361,8 +372,10 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         # Removed `validator_pq_registrations`
         # [Modified in PQ]
         # Removed `builder_pq_registrations`
-        # [New in EIP8205]
-        preregistrations=preregistrations,
+        # [New in PQ:EIP8205]
+        validator_preregistrations=validator_preregistrations,
+        # [New in PQ:EIP8205]
+        builder_preregistrations=builder_preregistrations,
         # [New in PQ]
         voluntary_exits=voluntary_exits,
     )

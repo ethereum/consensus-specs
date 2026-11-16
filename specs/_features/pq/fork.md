@@ -341,8 +341,10 @@ def upgrade_to_pq(pre: eip8483.BeaconState) -> BeaconState:
         # Removed `validator_pq_registrations`
         # [Modified in PQ]
         # Removed `builder_pq_registrations`
-        # [New in EIP8205]
+        # [New in PQ:EIP8205]
         validator_preregistrations=ValidatorPreregistrations(),
+        # [New in PQ:EIP8205]
+        builder_preregistrations=BuilderPreregistrations(),
     )
 
     # [New in PQ]

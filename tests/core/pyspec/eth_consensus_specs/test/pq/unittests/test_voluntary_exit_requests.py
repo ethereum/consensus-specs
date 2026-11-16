@@ -7,14 +7,16 @@ from eth_consensus_specs.test.helpers.constants import PQ
 @single_phase
 def test_voluntary_exit_requests_serialization_round_trip(spec):
     requests = spec.ExecutionRequests(
-        preregistrations=spec.PreregistrationRequests(data=[spec.PreregistrationRequest()]),
+        validator_preregistrations=spec.ValidatorPreregistrationRequests(
+            data=[spec.ValidatorPreregistrationRequest()]
+        ),
         voluntary_exits=spec.VoluntaryExitRequests(data=[spec.VoluntaryExitRequest()]),
     )
 
     serialized = spec.get_execution_requests_list(requests)
 
     assert [request[0:1] for request in serialized] == [
-        spec.PREREGISTRATION_REQUEST_TYPE,
+        spec.VALIDATOR_PREREGISTRATION_REQUEST_TYPE,
         spec.VOLUNTARY_EXIT_REQUEST_TYPE,
     ]
     assert spec.get_execution_requests(serialized) == requests

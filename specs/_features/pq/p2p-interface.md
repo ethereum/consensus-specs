@@ -174,10 +174,21 @@ def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> N
     # [Modified in PQ]
     # Removed the validator and builder PQ registration request limits
 
-    # [New in EIP8205]
-    # [REJECT] The preregistration request count is within the limit
-    if len(execution_requests.preregistrations) > MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD:
-        raise GossipReject("too many preregistration requests")
+    # [New in PQ:EIP8205]
+    # [REJECT] The validator preregistration request count is within the limit
+    if (
+        len(execution_requests.validator_preregistrations)
+        > MAX_VALIDATOR_PREREGISTRATION_REQUESTS_PER_PAYLOAD
+    ):
+        raise GossipReject("too many validator preregistration requests")
+
+    # [New in PQ:EIP8205]
+    # [REJECT] The builder preregistration request count is within the limit
+    if (
+        len(execution_requests.builder_preregistrations)
+        > MAX_BUILDER_PREREGISTRATION_REQUESTS_PER_PAYLOAD
+    ):
+        raise GossipReject("too many builder preregistration requests")
 
     # [New in PQ]
     # [REJECT] The voluntary exit request count is within the limit

@@ -9,6 +9,14 @@ def get_max_builder_exit_requests(spec):
     return spec.MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD
 
 
+def get_max_validator_preregistration_requests(spec):
+    return spec.MAX_VALIDATOR_PREREGISTRATION_REQUESTS_PER_PAYLOAD
+
+
+def get_max_builder_preregistration_requests(spec):
+    return spec.MAX_BUILDER_PREREGISTRATION_REQUESTS_PER_PAYLOAD
+
+
 def get_max_voluntary_exit_requests(spec):
     return spec.MAX_VOLUNTARY_EXIT_REQUESTS_PER_PAYLOAD
 

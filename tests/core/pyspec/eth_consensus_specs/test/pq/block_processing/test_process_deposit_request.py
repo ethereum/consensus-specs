@@ -3,7 +3,7 @@ from eth_consensus_specs.test.helpers.constants import PQ
 from eth_consensus_specs.test.helpers.deposits import prepare_deposit_request
 from eth_consensus_specs.test.helpers.keys import get_vrf_root, privkeys, pubkeys
 from eth_consensus_specs.test.helpers.preregistrations import (
-    build_pq_preregistration,
+    build_pq_validator_preregistration,
     preregistration_withdrawal_credentials,
 )
 
@@ -26,7 +26,9 @@ def prepare_fresh_deposit_request(spec, state, withdrawal_credentials, index=FRE
 
 def add_active_preregistration(spec, state, index=FRESH_INDEX):
     state.validator_preregistrations.append(
-        build_pq_preregistration(spec, index, state.slot + spec.PREREGISTRATION_EXPIRY_SLOTS)
+        build_pq_validator_preregistration(
+            spec, index, state.slot + spec.PREREGISTRATION_EXPIRY_SLOTS
+        )
     )
 
 
@@ -90,7 +92,9 @@ def test_deposit_request_preregistration_mismatched_vrf_root_discarded(spec, sta
 @spec_state_test
 def test_deposit_request_expired_preregistration_not_enforced(spec, state):
     state.validator_preregistrations.append(
-        build_pq_preregistration(spec, FRESH_INDEX, state.latest_execution_payload_bid.slot)
+        build_pq_validator_preregistration(
+            spec, FRESH_INDEX, state.latest_execution_payload_bid.slot
+        )
     )
     deposit_request = prepare_fresh_deposit_request(
         spec, state, preregistration_withdrawal_credentials(spec, b"\x77")

@@ -6,6 +6,7 @@
 
 - [Introduction](#introduction)
 - [Becoming a builder](#becoming-a-builder)
+  - [Preregister](#preregister)
   - [Submit deposit](#submit-deposit)
   - [Exiting](#exiting)
 - [Builder activities](#builder-activities)
@@ -33,16 +34,39 @@ bid leaves exits and joins again with a new key.
 At the upgrade, each builder that registered an XMSS public key with a builder
 PQ registration request takes it in place of its BLS public key. A builder
 without a registration has its balance withdrawn at the upgrade. A new builder
-joins with a deposit instead, see [Submit deposit](#submit-deposit).
+preregisters and then joins with a deposit instead, see
+[Becoming a builder](#becoming-a-builder).
 
 ## Becoming a builder
+
+### Preregister
+
+A builder deposit carries no signature, so anyone who sees the first deposit for
+a new XMSS public key before it is included could get in first with a builder
+deposit of their own withdrawal credentials. To prevent this, a builder first
+preregisters, binding its XMSS public key to its withdrawal credentials. It
+signs the binding at a reserved leaf, one of the first `XMSS_RESERVED_LEAVES`
+leaves, and submits it with the signature to the system contract, which verifies
+the signature and emits a `BuilderPreregistrationRequest` without it. Its signer
+MUST use each reserved leaf at most once.
+
+The builder waits until its binding is in `state.builder_preregistrations`, then
+submits its deposit before the binding's `expiry_slot`. If the binding is not
+stored, a builder with the key may already exist, so the builder generates a new
+key and preregisters that one instead.
+
+To renew an expired binding, the builder resubmits the same request. To change
+its binding, it generates a new key, since anyone can resubmit the old binding
+once it expires.
 
 ### Submit deposit
 
 After the upgrade, a builder deposit carries no signature. Its `pubkey` is
 `XMSS_DEPOSIT_PREFIX`, 16 zero bytes, followed by the builder's XMSS public key,
 and its `signature` is ignored. A deposit whose XMSS public key is already in
-`state.builders` tops up that builder.
+`state.builders` tops up that builder. While the key has an active builder
+preregistration, a builder deposit for it is discarded unless its withdrawal
+credentials match the binding.
 
 *Note*: A builder deposit whose `pubkey` does not start with 16 zero bytes is
 treated as a legacy deposit, so the builder it creates initiates its exit at
