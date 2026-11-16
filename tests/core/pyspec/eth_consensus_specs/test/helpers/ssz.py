@@ -10,6 +10,7 @@ from eth_consensus_specs.test.helpers.consolidations import get_max_consolidatio
 from eth_consensus_specs.test.helpers.deposits import get_max_deposits
 from eth_consensus_specs.test.helpers.execution_requests import (
     get_max_builder_exit_requests,
+    get_max_voluntary_exit_requests,
     get_max_withdrawal_requests,
 )
 from eth_consensus_specs.test.helpers.forks import (
@@ -34,8 +35,9 @@ def get_soft_list_length_limits(spec):
         spec.AttesterSlashings: get_max_attester_slashings(spec),
         spec.Attestations: get_max_attestations(spec),
         spec.Deposits: get_max_deposits(spec),
-        spec.VoluntaryExits: get_max_voluntary_exits(spec),
     }
+    if not is_post_pq(spec):
+        limits[spec.VoluntaryExits] = get_max_voluntary_exits(spec)
     if is_post_capella(spec):
         if not is_post_pq(spec):
             limits[spec.BLSToExecutionChanges] = get_max_bls_to_execution_changes(spec)
@@ -48,4 +50,6 @@ def get_soft_list_length_limits(spec):
             limits[spec.PayloadAttestations] = get_max_payload_attestations(spec)
         limits[spec.BuilderDepositRequests] = get_max_builder_deposit_requests(spec)
         limits[spec.BuilderExitRequests] = get_max_builder_exit_requests(spec)
+    if is_post_pq(spec):
+        limits[spec.VoluntaryExitRequests] = get_max_voluntary_exit_requests(spec)
     return limits

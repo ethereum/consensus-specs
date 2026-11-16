@@ -43,7 +43,7 @@ Operations:
 | `block_header`                   | `BeaconBlock`                        | **`block`**                      | `process_block_header(state, block)`                                                              |
 | `deposit`                        | `Deposit`                            | `deposit`                        | `process_deposit(state, deposit)` (removed in Fulu)                                               |
 | `proposer_slashing`              | `ProposerSlashing`                   | `proposer_slashing`              | `process_proposer_slashing(state, proposer_slashing)`                                             |
-| `voluntary_exit`                 | `SignedVoluntaryExit`                | `voluntary_exit`                 | `process_voluntary_exit(state, voluntary_exit)`                                                   |
+| `voluntary_exit`                 | `SignedVoluntaryExit`                | `voluntary_exit`                 | `process_voluntary_exit(state, voluntary_exit)` (removed in PQ)                                   |
 | `sync_aggregate`                 | `SyncAggregate`                      | `sync_aggregate`                 | `process_sync_aggregate(state, sync_aggregate)` (new in Altair)                                   |
 | `execution_payload`              | `BeaconBlockBody`                    | **`body`**                       | `process_execution_payload(state, body)` (new in Bellatrix, removed in Gloas)                     |
 | `withdrawals`                    | `ExecutionPayload`                   | `execution_payload`              | `process_withdrawals(state, execution_payload)` (new in Capella)                                  |
@@ -57,6 +57,7 @@ Operations:
 | `builder_deposit_request`        | `BuilderDepositRequest`              | `builder_deposit_request`        | `process_builder_deposit_request(state, builder_deposit_request)` (new in Gloas)                  |
 | `builder_exit_request`           | `BuilderExitRequest`                 | `builder_exit_request`           | `process_builder_exit_request(state, builder_exit_request)` (new in Gloas)                        |
 | `randao_commitment_registration` | `SignedRandaoCommitmentRegistration` | `randao_commitment_registration` | `process_randao_commitment_registration(state, randao_commitment_registration)` (new in EIP-8321) |
+| `voluntary_exit_request`         | `VoluntaryExitRequest`               | `voluntary_exit_request`         | `process_voluntary_exit_request(state, voluntary_exit_request)` (new in PQ)                       |
 
 Note that `block_header` is not strictly an operation (and is a full `Block`),
 but processed in the same manner, and hence included here.

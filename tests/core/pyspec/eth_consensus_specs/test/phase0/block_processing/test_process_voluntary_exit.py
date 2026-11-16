@@ -4,12 +4,12 @@ from eth_consensus_specs.test.context import (
     single_phase,
     spec_state_test,
     spec_test,
-    with_all_phases,
+    with_all_phases_except,
     with_custom_state,
     with_presets,
 )
 from eth_consensus_specs.test.helpers.churn import get_validator_exit_count_per_epoch
-from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.constants import MINIMAL, PQ
 from eth_consensus_specs.test.helpers.keys import pubkey_to_privkey
 from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.voluntary_exits import (
@@ -18,7 +18,7 @@ from eth_consensus_specs.test.helpers.voluntary_exits import (
 )
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 def test_basic(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -42,7 +42,7 @@ def test_basic(spec, state):
     ].exit_epoch == spec.compute_activation_exit_epoch(current_epoch)
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 @always_bls
 def test_invalid_incorrect_signature(spec, state):
@@ -111,13 +111,13 @@ def run_test_success_exit_queue(spec, state):
         )
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 def test_success_exit_queue__min_churn(spec, state):
     yield from run_test_success_exit_queue(spec, state)
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @with_presets(
     [MINIMAL],
     reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated",
@@ -134,7 +134,7 @@ def test_success_exit_queue__scaled_churn(spec, state):
     yield from run_test_success_exit_queue(spec, state)
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 def test_default_exit_epoch_subsequent_exit(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -162,7 +162,7 @@ def test_default_exit_epoch_subsequent_exit(spec, state):
     ].exit_epoch == spec.compute_activation_exit_epoch(current_epoch)
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 def test_invalid_validator_exit_in_future(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -181,7 +181,7 @@ def test_invalid_validator_exit_in_future(spec, state):
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=False)
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 def test_invalid_validator_incorrect_validator_index(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -200,7 +200,7 @@ def test_invalid_validator_incorrect_validator_index(spec, state):
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=False)
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 def test_invalid_validator_not_active(spec, state):
     current_epoch = spec.get_current_epoch(state)
@@ -219,7 +219,7 @@ def test_invalid_validator_not_active(spec, state):
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=False)
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 def test_invalid_validator_already_exited(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow validator able to exit
@@ -242,7 +242,7 @@ def test_invalid_validator_already_exited(spec, state):
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=False)
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 def test_invalid_validator_not_active_long_enough(spec, state):
     current_epoch = spec.get_current_epoch(state)

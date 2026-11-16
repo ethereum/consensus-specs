@@ -671,7 +671,7 @@ def test_gossip_beacon_block__reject_contains_deposits(spec, state):
     )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_gossip_beacon_block__valid_max_voluntary_exits(spec, state):
     """A block with the maximum number of voluntary exits is valid."""
@@ -684,7 +684,7 @@ def test_gossip_beacon_block__valid_max_voluntary_exits(spec, state):
     yield from _assert_beacon_block_gossip(spec, state, mutate, "valid")
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_gossip_beacon_block__reject_too_many_voluntary_exits(spec, state):
     """A block with more voluntary exits than the limit is rejected."""

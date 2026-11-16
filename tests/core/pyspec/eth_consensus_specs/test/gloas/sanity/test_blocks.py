@@ -673,7 +673,7 @@ def test_invalid_too_many_deposits(spec, state):
     yield "post", None
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_max_voluntary_exits(spec, state):
     next_slots(spec, state, spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH)
@@ -693,7 +693,7 @@ def test_max_voluntary_exits(spec, state):
     yield "post", state
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_invalid_too_many_voluntary_exits(spec, state):
     next_slots(spec, state, spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH)
@@ -995,7 +995,7 @@ def test_attestations_after_missed_slot_use_applied_parent_payload_availability(
         )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_voluntary_exit_fails_after_parent_payload_withdrawal_request(spec, state):
     """

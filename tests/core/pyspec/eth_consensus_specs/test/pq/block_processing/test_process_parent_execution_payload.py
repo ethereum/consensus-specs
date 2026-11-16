@@ -109,3 +109,43 @@ def test_invalid_too_many_preregistration_requests(spec, state):
     )
 
     yield from run_parent_execution_payload_processing(spec, state, requests, valid=False)
+
+
+@with_phases([PQ])
+@spec_state_test
+def test_parent_payload_voluntary_exit_request(spec, state):
+    state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
+    validator_index = 0
+    requests = spec.ExecutionRequests(
+        voluntary_exits=spec.VoluntaryExitRequests(
+            data=[spec.VoluntaryExitRequest(pubkey=state.validators[validator_index].pubkey)]
+        ),
+    )
+
+    yield from run_parent_execution_payload_processing(spec, state, requests)
+
+    assert state.validators[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
+
+
+@with_phases([PQ])
+@spec_state_test
+def test_max_voluntary_exit_requests(spec, state):
+    requests = spec.ExecutionRequests(
+        voluntary_exits=spec.VoluntaryExitRequests(
+            data=[spec.VoluntaryExitRequest()] * spec.MAX_VOLUNTARY_EXIT_REQUESTS_PER_PAYLOAD
+        ),
+    )
+
+    yield from run_parent_execution_payload_processing(spec, state, requests)
+
+
+@with_phases([PQ])
+@spec_state_test
+def test_invalid_too_many_voluntary_exit_requests(spec, state):
+    requests = spec.ExecutionRequests(
+        voluntary_exits=spec.VoluntaryExitRequests(
+            data=[spec.VoluntaryExitRequest()] * (spec.MAX_VOLUNTARY_EXIT_REQUESTS_PER_PAYLOAD + 1)
+        ),
+    )
+
+    yield from run_parent_execution_payload_processing(spec, state, requests, valid=False)

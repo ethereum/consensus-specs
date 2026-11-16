@@ -4,14 +4,12 @@ from eth_consensus_specs.test.bellatrix.block_processing.test_process_voluntary_
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
-    with_deneb_and_later,
+    with_all_phases_from_except,
 )
-from eth_consensus_specs.test.helpers.constants import (
-    DENEB,
-)
+from eth_consensus_specs.test.helpers.constants import DENEB, PQ
 
 
-@with_deneb_and_later
+@with_all_phases_from_except(DENEB, [PQ])
 @spec_state_test
 @always_bls
 def test_invalid_voluntary_exit_with_current_fork_version_not_is_before_fork_epoch(spec, state):
@@ -28,7 +26,7 @@ def test_invalid_voluntary_exit_with_current_fork_version_not_is_before_fork_epo
     )
 
 
-@with_deneb_and_later
+@with_all_phases_from_except(DENEB, [PQ])
 @spec_state_test
 @always_bls
 def test_voluntary_exit_with_previous_fork_version_not_is_before_fork_epoch(spec, state):
@@ -58,7 +56,7 @@ def test_voluntary_exit_with_previous_fork_version_not_is_before_fork_epoch(spec
         )
 
 
-@with_deneb_and_later
+@with_all_phases_from_except(DENEB, [PQ])
 @spec_state_test
 @always_bls
 def test_voluntary_exit_with_previous_fork_version_is_before_fork_epoch(spec, state):

@@ -9,6 +9,7 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     spec_test,
     with_all_phases,
+    with_all_phases_except,
     with_all_phases_from_to,
     with_custom_state,
     with_phases,
@@ -27,7 +28,7 @@ from eth_consensus_specs.test.helpers.block import (
     sign_block,
     transition_unsigned_block,
 )
-from eth_consensus_specs.test.helpers.constants import FULU, HEZE, MINIMAL, PHASE0
+from eth_consensus_specs.test.helpers.constants import FULU, HEZE, MINIMAL, PHASE0, PQ
 from eth_consensus_specs.test.helpers.deposits import prepare_state_and_deposit
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
@@ -1097,7 +1098,7 @@ def test_duplicate_attestation_same_block(spec, state):
         )
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 def test_voluntary_exit(spec, state):
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
@@ -1125,7 +1126,7 @@ def test_voluntary_exit(spec, state):
     assert get_validators(spec, state)[validator_index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 def test_invalid_duplicate_validator_exit_same_block(spec, state):
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
@@ -1148,7 +1149,7 @@ def test_invalid_duplicate_validator_exit_same_block(spec, state):
     yield "post", None
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 def test_multiple_different_validator_exits_same_block(spec, state):
     validator_indices = [
@@ -1179,14 +1180,14 @@ def test_multiple_different_validator_exits_same_block(spec, state):
         assert get_validators(spec, state)[index].exit_epoch < spec.FAR_FUTURE_EPOCH
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 def test_slash_and_exit_same_index(spec, state):
     validator_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]
     yield from run_slash_and_exit(spec, state, validator_index, validator_index, valid=False)
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 def test_slash_and_exit_diff_index(spec, state):
     slash_index = spec.get_active_validator_indices(state, spec.get_current_epoch(state))[-1]

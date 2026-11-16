@@ -1,13 +1,10 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
-    with_bellatrix_and_later,
+    with_all_phases_from_except,
     with_phases,
 )
-from eth_consensus_specs.test.helpers.constants import (
-    BELLATRIX,
-    CAPELLA,
-)
+from eth_consensus_specs.test.helpers.constants import BELLATRIX, CAPELLA, PQ
 from eth_consensus_specs.test.helpers.keys import pubkey_to_privkey
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
@@ -49,7 +46,7 @@ def run_voluntary_exit_processing_test(spec, state, fork_version, is_before_fork
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit, valid=valid)
 
 
-@with_bellatrix_and_later
+@with_all_phases_from_except(BELLATRIX, [PQ])
 @spec_state_test
 @always_bls
 def test_invalid_voluntary_exit_with_current_fork_version_is_before_fork_epoch(spec, state):
@@ -103,7 +100,7 @@ def test_invalid_voluntary_exit_with_previous_fork_version_not_is_before_fork_ep
     )
 
 
-@with_bellatrix_and_later
+@with_all_phases_from_except(BELLATRIX, [PQ])
 @spec_state_test
 @always_bls
 def test_invalid_voluntary_exit_with_genesis_fork_version_is_before_fork_epoch(spec, state):
@@ -121,7 +118,7 @@ def test_invalid_voluntary_exit_with_genesis_fork_version_is_before_fork_epoch(s
     )
 
 
-@with_bellatrix_and_later
+@with_all_phases_from_except(BELLATRIX, [PQ])
 @spec_state_test
 @always_bls
 def test_invalid_voluntary_exit_with_genesis_fork_version_not_is_before_fork_epoch(spec, state):

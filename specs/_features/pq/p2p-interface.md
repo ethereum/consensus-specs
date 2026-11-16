@@ -21,7 +21,7 @@
     - [Global topics](#global-topics)
       - [Modified `beacon_block`](#modified-beacon_block)
       - [Modified `beacon_aggregate_and_proof`](#modified-beacon_aggregate_and_proof)
-      - [Modified `voluntary_exit`](#modified-voluntary_exit)
+      - [Removed `voluntary_exit`](#removed-voluntary_exit)
       - [Modified `proposer_slashing`](#modified-proposer_slashing)
       - [Removed `sync_committee_contribution_and_proof`](#removed-sync_committee_contribution_and_proof)
       - [Modified `payload_attestation_message`](#modified-payload_attestation_message)
@@ -135,9 +135,8 @@ def verify_block_body_operation_limits(body: BeaconBlockBody) -> None:
     if len(body.deposits) != 0:
         raise GossipReject("block must not contain deposits")
 
-    # [REJECT] The voluntary exit count is within the limit
-    if len(body.voluntary_exits) > MAX_VOLUNTARY_EXITS:
-        raise GossipReject("too many voluntary exits")
+    # [Modified in PQ]
+    # Removed the voluntary exit limit
 
     # [Modified in PQ]
     # Removed the BLS to execution change limit
@@ -179,6 +178,11 @@ def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> N
     # [REJECT] The preregistration request count is within the limit
     if len(execution_requests.preregistrations) > MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD:
         raise GossipReject("too many preregistration requests")
+
+    # [New in PQ]
+    # [REJECT] The voluntary exit request count is within the limit
+    if len(execution_requests.voluntary_exits) > MAX_VOLUNTARY_EXIT_REQUESTS_PER_PAYLOAD:
+        raise GossipReject("too many voluntary exit requests")
 ```
 
 ### Modified `compute_attestation_subnet_prefix_bits`
@@ -218,7 +222,8 @@ def compute_subscribed_subnet(node_id: NodeID, epoch: Epoch, index: int) -> Subn
 Topics follow the same specification as in prior upgrades. Every topic whose
 message holds a validator or builder signature is updated to the modified type,
 which carries an XMSS signature instead. The `bls_to_execution_change` topic is
-removed, because `BLSToExecutionChange` is disabled.
+removed, because `BLSToExecutionChange` is disabled. The `voluntary_exit` topic
+is removed, because voluntary exits are execution layer requests.
 
 #### Global topics
 
@@ -468,70 +473,10 @@ def validate_beacon_aggregate_and_proof_gossip(
     seen.aggregate_data_roots[aggregate_cache_key].add(aggregate_bits)
 ```
 
-##### Modified `voluntary_exit`
+##### Removed `voluntary_exit`
 
-```python
-def validate_voluntary_exit_gossip(
-    seen: Seen,
-    store: Store,
-    signed_voluntary_exit: SignedVoluntaryExit,
-    current_time_ms: Uint64,
-) -> None:
-    """
-    Validate a SignedVoluntaryExit for gossip propagation.
-    Raises GossipIgnore or GossipReject on validation failure.
-    """
-    voluntary_exit = signed_voluntary_exit.message
-    validator_index = voluntary_exit.validator_index
-
-    # [IGNORE] The voluntary exit is the first valid voluntary exit received for the validator
-    if validator_index in seen.voluntary_exit_indices:
-        raise GossipIgnore("already seen voluntary exit for this validator")
-
-    # [IGNORE] The voluntary exit epoch is not in the future
-    if is_future_epoch(store, voluntary_exit.epoch, current_time_ms):
-        raise GossipIgnore("voluntary exit epoch is in the future")
-
-    state = store.block_states[get_head(store).root]
-
-    # [REJECT] The validator index is valid
-    if validator_index >= len(state.validators):
-        raise GossipReject("validator index out of range")
-
-    validator = state.validators[validator_index]
-    current_epoch = get_current_epoch(state)
-
-    # [IGNORE] The validator has not already initiated exit
-    if validator.exit_epoch != FAR_FUTURE_EPOCH:
-        raise GossipIgnore("validator has already initiated exit")
-
-    # [REJECT] The validator is active
-    if not is_active_validator(validator, current_epoch):
-        raise GossipReject("validator is not active")
-
-    # [REJECT] The validator has been active long enough
-    if current_epoch < validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
-        raise GossipReject("validator has not been active long enough")
-
-    # [IGNORE] The validator has no pending partial withdrawals
-    if get_pending_balance_to_withdraw(state, validator_index) != 0:
-        raise GossipIgnore("validator has pending partial withdrawals")
-
-    # [REJECT] The signature is valid
-    domain = compute_domain(
-        DOMAIN_VOLUNTARY_EXIT, CAPELLA_FORK_VERSION, state.genesis_validators_root
-    )
-    signing_root = compute_signing_root(voluntary_exit, domain)
-    # [Modified in PQ]
-    leaf_index = xmss.GetLeafIndex(signed_voluntary_exit.signature)
-    if not is_reserved_leaf_index(leaf_index):
-        raise GossipReject("voluntary exit signature is not at a reserved leaf")
-    if not xmss.Verify(validator.pubkey, leaf_index, signing_root, signed_voluntary_exit.signature):
-        raise GossipReject("invalid voluntary exit signature")
-
-    # Mark this voluntary exit as seen
-    seen.voluntary_exit_indices.add(validator_index)
-```
+Voluntary exits are execution layer requests in PQ, so this topic is no longer
+used.
 
 ##### Modified `proposer_slashing`
 

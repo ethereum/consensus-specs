@@ -1,10 +1,10 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
-    with_electra_and_later,
+    with_all_phases_from_except,
     with_presets,
 )
 from eth_consensus_specs.test.helpers.churn import get_exit_churn_limit
-from eth_consensus_specs.test.helpers.constants import MAINNET
+from eth_consensus_specs.test.helpers.constants import ELECTRA, MAINNET, PQ
 from eth_consensus_specs.test.helpers.deposits import get_placeholder_deposit_signature
 from eth_consensus_specs.test.helpers.keys import (
     get_request_pubkey,
@@ -21,7 +21,7 @@ from eth_consensus_specs.test.helpers.voluntary_exits import (
 #  ********************
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_min_balance_exit(spec, state):
     state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
@@ -58,7 +58,7 @@ def test_min_balance_exit(spec, state):
     assert state.earliest_exit_epoch == expected_exit_epoch
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_min_balance_exits_up_to_churn(spec, state):
     state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
@@ -102,7 +102,7 @@ def test_min_balance_exits_up_to_churn(spec, state):
     assert state.earliest_exit_epoch == expected_exit_epoch
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_min_balance_exits_above_churn(spec, state):
     state.slot += spec.Uint64(spec.config.SHARD_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
@@ -148,7 +148,7 @@ def test_min_balance_exits_above_churn(spec, state):
     assert state.earliest_exit_epoch == expected_exit_epoch + 1
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @with_presets(
     [MAINNET],
@@ -191,7 +191,7 @@ def test_max_balance_exit(spec, state):
     assert state.earliest_exit_epoch == expected_exit_epoch
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @with_presets(
     [MAINNET],
@@ -230,7 +230,7 @@ def test_exit_with_balance_equal_to_churn_limit(spec, state):
     assert state.earliest_exit_epoch == expected_exit_epoch
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @with_presets(
     [MAINNET],
@@ -272,7 +272,7 @@ def test_exit_with_balance_multiple_of_churn_limit(spec, state):
     assert state.earliest_exit_epoch == expected_exit_epoch
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @with_presets(
     [MAINNET],
@@ -319,7 +319,7 @@ def test_exit_existing_churn_and_churn_limit_balance(spec, state):
     assert state.earliest_exit_epoch == expected_exit_epoch
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @with_presets(
     [MAINNET],
@@ -368,7 +368,7 @@ def test_exit_existing_churn_and_balance_multiple_of_churn_limit(spec, state):
     assert state.earliest_exit_epoch == expected_exit_epoch
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_voluntary_exit_with_pending_deposit(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit
@@ -399,7 +399,7 @@ def test_voluntary_exit_with_pending_deposit(spec, state):
     yield from run_voluntary_exit_processing(spec, state, signed_voluntary_exit)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_invalid_validator_has_pending_withdrawal(spec, state):
     # move state forward SHARD_COMMITTEE_PERIOD epochs to allow for exit

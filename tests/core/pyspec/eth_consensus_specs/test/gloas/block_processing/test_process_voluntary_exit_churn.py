@@ -5,11 +5,11 @@ from eth_consensus_specs.test.context import (
     single_phase,
     spec_state_test,
     spec_test,
+    with_all_phases_from_except,
     with_custom_state,
-    with_gloas_and_later,
     with_presets,
 )
-from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.constants import GLOAS, MINIMAL, PQ
 from eth_consensus_specs.test.helpers.keys import pubkey_to_privkey
 from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.voluntary_exits import (
@@ -58,7 +58,7 @@ def run_exit_at_churn_boundary(spec, state):
     assert state.earliest_exit_epoch == expected_exit_epoch
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_exit_churn__less_than_activation_cap(spec, state):
     """Default state: exit churn is at the floor, equal to activation churn."""
@@ -68,7 +68,7 @@ def test_exit_churn__less_than_activation_cap(spec, state):
     yield from run_exit_at_churn_boundary(spec, state)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @with_presets(
     [MINIMAL],
     reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated",
@@ -88,7 +88,7 @@ def test_exit_churn__equal_to_activation_cap(spec, state):
     yield from run_exit_at_churn_boundary(spec, state)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @with_presets(
     [MINIMAL],
     reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated",

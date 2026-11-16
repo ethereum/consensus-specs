@@ -1,8 +1,9 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
-    with_deneb_and_later,
+    with_all_phases_from_except,
 )
+from eth_consensus_specs.test.helpers.constants import DENEB, PQ
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
@@ -24,7 +25,7 @@ def create_signed_voluntary_exit(spec, state, validator_index, epoch=None, fork_
     )
 
 
-@with_deneb_and_later
+@with_all_phases_from_except(DENEB, [PQ])
 @spec_state_test
 def test_gossip_voluntary_exit__valid_capella_signature(spec, state):
     """
@@ -68,7 +69,7 @@ def test_gossip_voluntary_exit__valid_capella_signature(spec, state):
     )
 
 
-@with_deneb_and_later
+@with_all_phases_from_except(DENEB, [PQ])
 @spec_state_test
 @always_bls
 def test_gossip_voluntary_exit__reject_deneb_signature(spec, state):

@@ -19,6 +19,7 @@ from eth_consensus_specs.utils.ssz.bytes import Bytes16
         return {
             "BUILDER_PQ_REGISTRATION_REQUEST_TYPE",
             "CURRENT_SYNC_COMMITTEE_GINDEX_GLOAS",
+            "DOMAIN_VOLUNTARY_EXIT",
             "G2_POINT_AT_INFINITY",
             "NEXT_SYNC_COMMITTEE_GINDEX_GLOAS",
             "TARGET_AGGREGATORS_PER_COMMITTEE",
@@ -37,6 +38,7 @@ from eth_consensus_specs.utils.ssz.bytes import Bytes16
             "MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE",
             "MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE",
             "MAX_VALIDATOR_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD",
+            "MAX_VOLUNTARY_EXITS",
             "MIN_SYNC_COMMITTEE_PARTICIPANTS",
             "SYNC_COMMITTEE_SIZE",
             "UPDATE_TIMEOUT",
@@ -77,6 +79,7 @@ from eth_consensus_specs.utils.ssz.bytes import Bytes16
             "PayloadTimelinessCommitteeIndices",
             "SignedBLSToExecutionChange",
             "SignedContributionAndProof",
+            "SignedVoluntaryExit",
             "SyncAggregate",
             "SyncAggregatorSelectionData",
             "SyncCommittee",
@@ -89,6 +92,8 @@ from eth_consensus_specs.utils.ssz.bytes import Bytes16
             "ValidatorPQRegistrationRequest",
             "ValidatorPQRegistrationRequests",
             "ValidatorPQRegistrations",
+            "VoluntaryExit",
+            "VoluntaryExits",
         }
 
     @classmethod
@@ -147,6 +152,7 @@ from eth_consensus_specs.utils.ssz.bytes import Bytes16
             "process_sync_committee_contributions",
             "process_sync_committee_updates",
             "process_validator_pq_registration_request",
+            "process_voluntary_exit",
             "upgrade_attestation_to_gloas",
             "upgrade_attester_slashing_to_gloas",
             "upgrade_indexed_attestation_to_gloas",
@@ -161,4 +167,5 @@ from eth_consensus_specs.utils.ssz.bytes import Bytes16
             "validate_light_client_update",
             "validate_sync_committee_contribution_and_proof_gossip",
             "validate_sync_committee_message_gossip",
+            "validate_voluntary_exit_gossip",
         }

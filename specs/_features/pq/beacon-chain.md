@@ -11,6 +11,7 @@
   - [New `XMSSPubkey`](#new-xmsspubkey)
   - [New `XMSSSignature`](#new-xmsssignature)
   - [New `PreregistrationRequests`](#new-preregistrationrequests)
+  - [New `VoluntaryExitRequests`](#new-voluntaryexitrequests)
   - [New `ValidatorPreregistrations`](#new-validatorpreregistrations)
 - [Constants](#constants)
   - [XMSS](#xmss)
@@ -41,13 +42,13 @@
     - [`SignedBeaconBlockHeader`](#signedbeaconblockheader)
     - [`SignedExecutionPayloadBid`](#signedexecutionpayloadbid)
     - [`SignedExecutionPayloadEnvelope`](#signedexecutionpayloadenvelope)
-    - [`SignedVoluntaryExit`](#signedvoluntaryexit)
     - [`SingleAttestation`](#singleattestation)
     - [`Validator`](#validator)
     - [`WithdrawalRequest`](#withdrawalrequest)
   - [New containers](#new-containers)
     - [`PreregistrationRequest`](#preregistrationrequest)
     - [`Preregistration`](#preregistration)
+    - [`VoluntaryExitRequest`](#voluntaryexitrequest)
 - [Dataclasses](#dataclasses)
   - [New dataclasses](#new-dataclasses)
     - [`XMSSAggregateStatement`](#xmssaggregatestatement)
@@ -98,7 +99,6 @@
       - [Modified `process_operations`](#modified-process_operations)
       - [New `process_stark`](#new-process_stark)
       - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
-      - [Modified `process_voluntary_exit`](#modified-process_voluntary_exit)
       - [Attestations](#attestations)
         - [Modified `process_attestation`](#modified-process_attestation)
       - [Deposit requests](#deposit-requests)
@@ -117,6 +117,8 @@
         - [Modified `process_consolidation_request`](#modified-process_consolidation_request)
       - [Preregistration requests](#preregistration-requests)
         - [New `process_preregistration_request`](#new-process_preregistration_request)
+      - [Voluntary exit requests](#voluntary-exit-requests)
+        - [New `process_voluntary_exit_request`](#new-process_voluntary_exit_request)
     - [Parent execution payload](#parent-execution-payload)
       - [Modified `apply_parent_execution_payload`](#modified-apply_parent_execution_payload)
 
@@ -178,6 +180,11 @@ can first bind the key to its withdrawal credentials and VRF root with a
 preregistration signed by the key. The system contract verifies the signature,
 so the preregistration request it emits carries none. While the binding is
 active, a deposit for the key is discarded unless it matches the binding.
+
+Voluntary exits are execution layer requests. A validator signs its exit, and
+the system contract verifies the signature, so the voluntary exit request it
+emits carries none. Anyone can submit a signed exit, not only the validator's
+withdrawal address. The block body no longer has `voluntary_exits`.
 
 `BLSToExecutionChange` is disabled, because its BLS signature could be forged.
 
@@ -248,6 +255,15 @@ class PreregistrationRequests(ProgressiveList[PreregistrationRequest]):
     """
 ```
 
+### New `VoluntaryExitRequests`
+
+```python
+class VoluntaryExitRequests(ProgressiveList[VoluntaryExitRequest]):
+    """
+    The voluntary exit requests pertaining to a single execution payload.
+    """
+```
+
 ### New `ValidatorPreregistrations`
 
 ```python
@@ -304,6 +320,7 @@ class ValidatorPreregistrations(ProgressiveList[Preregistration]):
 | Name                           | Value            |
 | ------------------------------ | ---------------- |
 | `PREREGISTRATION_REQUEST_TYPE` | `Bytes1("0x07")` |
+| `VOLUNTARY_EXIT_REQUEST_TYPE`  | `Bytes1("0x08")` |
 
 ## Presets
 
@@ -330,6 +347,7 @@ The reference concatenation fits at most
 | `MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD` | `Uint64(2**2)` (= 4)        |
 | `PREREGISTRATIONS_LIMIT`                   | `Uint64(2**19)` (= 524,288) |
 | `PREREGISTRATION_EXPIRY_SLOTS`             | `Slot(2**18)` (= 262,144)   |
+| `MAX_VOLUNTARY_EXIT_REQUESTS_PER_PAYLOAD`  | `Uint64(2**4)` (= 16)       |
 
 ## Containers
 
@@ -352,7 +370,7 @@ class Attestation(ProgressiveContainer):
 
 ```python
 class BeaconBlockBody(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=14, gaps=(8, 9, 11))
+    ACTIVE_FIELDS = active_fields(width=14, gaps=(7, 8, 9, 11))
 
     # [Modified in PQ]
     randao_reveal: VRFProof
@@ -362,7 +380,8 @@ class BeaconBlockBody(ProgressiveContainer):
     attester_slashings: AttesterSlashings
     attestations: Attestations
     deposits: Deposits
-    voluntary_exits: VoluntaryExits
+    # [Modified in PQ]
+    # Removed `voluntary_exits`
     # [Modified in PQ]
     # Removed `sync_aggregate`
     # [Modified in PQ]
@@ -499,7 +518,7 @@ class DepositRequest(Container):
 
 ```python
 class ExecutionRequests(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=8, gaps=(5, 6))
+    ACTIVE_FIELDS = active_fields(width=9, gaps=(5, 6))
 
     deposits: DepositRequests
     withdrawals: WithdrawalRequests
@@ -512,6 +531,8 @@ class ExecutionRequests(ProgressiveContainer):
     # Removed `builder_pq_registrations`
     # [New in EIP8205]
     preregistrations: PreregistrationRequests
+    # [New in PQ]
+    voluntary_exits: VoluntaryExitRequests
 ```
 
 #### `IndexedAttestation`
@@ -587,15 +608,6 @@ class SignedExecutionPayloadEnvelope(Container):
     signature: XMSSSignature
 ```
 
-#### `SignedVoluntaryExit`
-
-```python
-class SignedVoluntaryExit(Container):
-    message: VoluntaryExit
-    # [Modified in PQ]
-    signature: XMSSSignature
-```
-
 #### `SingleAttestation`
 
 ```python
@@ -661,6 +673,17 @@ class Preregistration(Container):
     withdrawal_credentials: Bytes32
     vrf_root: Root
     expiry_slot: Slot
+```
+
+#### `VoluntaryExitRequest`
+
+*Note*: Before it emits a request, the system contract verifies that the exit is
+signed by `pubkey` at a reserved leaf. The request therefore carries no
+signature.
+
+```python
+class VoluntaryExitRequest(Container):
+    pubkey: XMSSPubkey
 ```
 
 ## Dataclasses
@@ -1278,6 +1301,8 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
         # Removed `BUILDER_PQ_REGISTRATION_REQUEST_TYPE`
         # [New in EIP8205]
         (PREREGISTRATION_REQUEST_TYPE, execution_requests.preregistrations),
+        # [New in PQ]
+        (VOLUNTARY_EXIT_REQUEST_TYPE, execution_requests.voluntary_exits),
     ]
 
     return [
@@ -1405,7 +1430,8 @@ def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: S
     assert len(body.attester_slashings) <= MAX_ATTESTER_SLASHINGS_ELECTRA
     # [Modified in PQ]
     assert len(body.attestations) <= MAX_ATTESTATIONS_PQ
-    assert len(body.voluntary_exits) <= MAX_VOLUNTARY_EXITS
+    # [Modified in PQ]
+    # Removed the voluntary exit limit
     # [Modified in PQ]
     # Removed the BLS to execution change limit
     # [Modified in PQ]
@@ -1416,7 +1442,8 @@ def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: S
     for_ops(body.attestations, process_attestation, parent_slot)
     # [New in PQ]
     process_stark(state, body)
-    for_ops(body.voluntary_exits, process_voluntary_exit)
+    # [Modified in PQ]
+    # Removed `process_voluntary_exit`
     # [Modified in PQ]
     # Removed `process_bls_to_execution_change`
     # [Modified in PQ]
@@ -1465,35 +1492,6 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
         assert xmss.Verify(proposer.pubkey, leaf_index, signing_root, signed_header.signature)
 
     slash_validator(state, header_1.proposer_index)
-```
-
-##### Modified `process_voluntary_exit`
-
-```python
-def process_voluntary_exit(state: BeaconState, signed_voluntary_exit: SignedVoluntaryExit) -> None:
-    voluntary_exit = signed_voluntary_exit.message
-    validator = state.validators[voluntary_exit.validator_index]
-    # Verify the validator is active
-    assert is_active_validator(validator, get_current_epoch(state))
-    # Verify exit has not been initiated
-    assert validator.exit_epoch == FAR_FUTURE_EPOCH
-    # Exits must specify an epoch when they become valid; they are not valid before then
-    assert get_current_epoch(state) >= voluntary_exit.epoch
-    # Verify the validator has been active long enough
-    assert get_current_epoch(state) >= validator.activation_epoch + SHARD_COMMITTEE_PERIOD
-    # Only exit validator if it has no pending withdrawals in the queue
-    assert get_pending_balance_to_withdraw(state, voluntary_exit.validator_index) == 0
-    # Verify signature
-    domain = compute_domain(
-        DOMAIN_VOLUNTARY_EXIT, CAPELLA_FORK_VERSION, state.genesis_validators_root
-    )
-    signing_root = compute_signing_root(voluntary_exit, domain)
-    # [Modified in PQ]
-    leaf_index = xmss.GetLeafIndex(signed_voluntary_exit.signature)
-    assert is_reserved_leaf_index(leaf_index)
-    assert xmss.Verify(validator.pubkey, leaf_index, signing_root, signed_voluntary_exit.signature)
-    # Initiate exit
-    initiate_validator_exit(state, voluntary_exit.validator_index)
 ```
 
 ##### Attestations
@@ -2009,6 +2007,30 @@ def process_preregistration_request(state: BeaconState, request: Preregistration
         state.validator_preregistrations.append(preregistration)
 ```
 
+##### Voluntary exit requests
+
+###### New `process_voluntary_exit_request`
+
+```python
+def process_voluntary_exit_request(state: BeaconState, request: VoluntaryExitRequest) -> None:
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
+    if request.pubkey not in validator_pubkeys:
+        return
+    index = ValidatorIndex(validator_pubkeys.index(request.pubkey))
+    validator = state.validators[index]
+
+    if not is_active_validator(validator, get_current_epoch(state)):
+        return
+    if validator.exit_epoch != FAR_FUTURE_EPOCH:
+        return
+    if get_current_epoch(state) < validator.activation_epoch + SHARD_COMMITTEE_PERIOD:
+        return
+    if get_pending_balance_to_withdraw(state, index) != 0:
+        return
+
+    initiate_validator_exit(state, index)
+```
+
 #### Parent execution payload
 
 ##### Modified `apply_parent_execution_payload`
@@ -2035,6 +2057,8 @@ def apply_parent_execution_payload(
     # Removed the validator and builder PQ registration request limits
     # [New in EIP8205]
     assert len(requests.preregistrations) <= MAX_PREREGISTRATION_REQUESTS_PER_PAYLOAD
+    # [New in PQ]
+    assert len(requests.voluntary_exits) <= MAX_VOLUNTARY_EXIT_REQUESTS_PER_PAYLOAD
 
     # Settle the builder payment before the requests so that a builder exit
     # request is rejected while the payment is pending
@@ -2072,6 +2096,8 @@ def apply_parent_execution_payload(
     # Removed `process_builder_pq_registration_request`
     # [New in EIP8205]
     for_ops(requests.preregistrations, process_preregistration_request)
+    # [New in PQ]
+    for_ops(requests.voluntary_exits, process_voluntary_exit_request)
 
     # Update parent payload availability and latest block hash
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)

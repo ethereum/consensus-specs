@@ -1,7 +1,8 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
-    with_electra_and_later,
+    with_all_phases_from_except,
 )
+from eth_consensus_specs.test.helpers.constants import ELECTRA, PQ
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
@@ -24,7 +25,7 @@ def create_signed_voluntary_exit(spec, state, validator_index, epoch=None):
     return sign_voluntary_exit(spec, state, voluntary_exit, privkeys[validator_index])
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 def test_gossip_voluntary_exit__ignore_pending_partial_withdrawal(spec, state):
     """

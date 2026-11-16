@@ -1,14 +1,15 @@
 from eth_consensus_specs.test.context import (
     expect_assertion_error,
     spec_state_test,
-    with_gloas_and_later,
+    with_all_phases_from_except,
 )
+from eth_consensus_specs.test.helpers.constants import GLOAS, PQ
 from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey
 from eth_consensus_specs.test.helpers.state import next_slots
 from eth_consensus_specs.test.helpers.voluntary_exits import sign_voluntary_exit
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_voluntary_exit__invalid__builder_index(spec, state):
     """

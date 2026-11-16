@@ -18,6 +18,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_fulu,
     is_post_gloas,
     is_post_heze,
+    is_post_pq,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys
 from eth_consensus_specs.test.helpers.proposer_slashings import get_valid_proposer_slashing
@@ -262,6 +263,10 @@ def build_random_block_from_state_for_next_slot(spec, state, rng=None, deposits=
     block.body.attestations = spec.Attestations(data=get_random_attestations(spec, state, rng))
     if deposits:
         block.body.deposits = spec.Deposits(data=deposits)
+
+    # Validators exit through execution requests after PQ
+    if is_post_pq(spec):
+        return block
 
     # cannot include to be slashed indices as exits
     slashed_indices = {

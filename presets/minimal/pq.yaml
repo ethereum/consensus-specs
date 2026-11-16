@@ -10,6 +10,11 @@ MAX_STARK_PROOF_SIZE: 1048576
 # 2**4 (= 16)
 MAX_ATTESTATIONS_PQ: 16
 
+# Execution
+# ---------------------------------------------------------------
+# 2**4 (= 16)
+MAX_VOLUNTARY_EXIT_REQUESTS_PER_PAYLOAD: 16
+
 # Type-specific SSZ bounds
 # ---------------------------------------------------------------
 # [customized] 1,053,182 bytes, ~1 MiB

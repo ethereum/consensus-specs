@@ -24,6 +24,7 @@
       - [Randao reveal](#randao-reveal)
       - [Attestations](#attestations)
       - [Proof](#proof)
+      - [Voluntary exits](#voluntary-exits)
       - [Sync committee](#sync-committee)
       - [BLS to execution changes](#bls-to-execution-changes)
       - [Payload attestations](#payload-attestations)
@@ -258,6 +259,14 @@ holds the `proof` of each network aggregate behind `body.attestations`, ordered
 as the attestations are and, within each, by committee index. The merged proof
 then proves the statements that `process_stark` checks.
 
+##### Voluntary exits
+
+The block body no longer has `voluntary_exits`. To exit, a validator signs its
+exit at a reserved leaf and submits it with the signature to the system
+contract, which verifies the signature and emits a `VoluntaryExitRequest`
+without it. Anyone can submit a signed exit, not only the validator's withdrawal
+address.
+
 ##### Sync committee
 
 Sync committees are removed in PQ, so the block body no longer has a
@@ -282,7 +291,7 @@ zero bytes, and the `bid.value` MUST be zero. All other conditions on
 ##### Execution requests
 
 *Note*: The function `get_execution_requests` is modified to no longer parse PQ
-registration requests and to parse preregistration requests.
+registration requests and to parse preregistration and voluntary exit requests.
 
 ```python
 def get_execution_requests(execution_requests_list: Sequence[bytes]) -> ExecutionRequests:
@@ -293,6 +302,8 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
     builder_exits = BuilderExitRequests()
     # [New in EIP8205]
     preregistrations = PreregistrationRequests()
+    # [New in PQ]
+    voluntary_exits = VoluntaryExitRequests()
 
     request_types = [
         DEPOSIT_REQUEST_TYPE,
@@ -306,6 +317,8 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         # Removed `BUILDER_PQ_REGISTRATION_REQUEST_TYPE`
         # [New in EIP8205]
         PREREGISTRATION_REQUEST_TYPE,
+        # [New in PQ]
+        VOLUNTARY_EXIT_REQUEST_TYPE,
     ]
 
     prev_request_type = None
@@ -334,6 +347,9 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         # [New in EIP8205]
         elif request_type == PREREGISTRATION_REQUEST_TYPE:
             preregistrations = ssz_deserialize(PreregistrationRequests, request_data)
+        # [New in PQ]
+        elif request_type == VOLUNTARY_EXIT_REQUEST_TYPE:
+            voluntary_exits = ssz_deserialize(VoluntaryExitRequests, request_data)
 
     return ExecutionRequests(
         deposits=deposits,
@@ -347,6 +363,8 @@ def get_execution_requests(execution_requests_list: Sequence[bytes]) -> Executio
         # Removed `builder_pq_registrations`
         # [New in EIP8205]
         preregistrations=preregistrations,
+        # [New in PQ]
+        voluntary_exits=voluntary_exits,
     )
 ```
 
