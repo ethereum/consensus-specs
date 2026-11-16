@@ -33,9 +33,8 @@ class QueueItem:
             self.dependencies = [block.parent_root]
             self.is_from_block = False
         elif kind == QueueItemKind.EXECUTION_PAYLOAD:
-            payload = message.message
-            self.effective_slot = payload.payload.slot_number
-            self.dependencies = [payload.beacon_block_root]
+            self.effective_slot = message.payload.slot_number
+            self.dependencies = [message.beacon_block_root]
             self.is_from_block = False
         else:
             assert kind == QueueItemKind.PAYLOAD_ATTESTATION
