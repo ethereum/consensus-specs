@@ -1126,3 +1126,62 @@ def test_fork_builder_deposit_at_onboarding_cutoff_stays_pending(spec, phases, s
     # The deposit at the cutoff stays pending, to be applied as a validator deposit
     assert len(post_state.pending_deposits) == 1
     assert post_state.pending_deposits[0] == at_cutoff
+
+
+def drain_pending_deposits(spec, state):
+    """Apply pending deposits until the queue is empty, ignoring epoch boundaries."""
+    for _ in range(64):
+        if len(state.pending_deposits) == 0:
+            return
+        spec.process_pending_deposits(state)
+    assert len(state.pending_deposits) == 0
+
+
+def fork_two_branches(spec, post_spec, state, applied_before_fork):
+    """
+    Upgrade two branches that share ``state`` as their finalized state. Branch ``x`` applied the
+    first ``applied_before_fork`` pending deposits before the fork, branch ``y`` applied none. Both
+    branches then drain the remaining pending deposits after the fork.
+    """
+    state_x = state.copy()
+    for deposit in list(state_x.pending_deposits)[:applied_before_fork]:
+        spec.apply_pending_deposit(state_x, deposit)
+    state_x.pending_deposits = spec.PendingDeposits.of(
+        *list(state_x.pending_deposits)[applied_before_fork:]
+    )
+    post_x = post_spec.upgrade_to_gloas(state_x)
+    post_y = post_spec.upgrade_to_gloas(state.copy())
+    drain_pending_deposits(post_spec, post_x)
+    drain_pending_deposits(post_spec, post_y)
+    return post_x, post_y
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+def test_fork_validator_indices_match_across_branches(spec, phases, state):
+    """
+    Test a finalized builder deposit that one branch applied before the fork, and the other did
+    not, leaves every validator index with the same pubkey on both branches.
+    """
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_ACTIVATION_BALANCE
+    num_validators = len(state.validators)
+
+    builder_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkeys[0], amount)
+    builder_deposit.slot = spec.GENESIS_SLOT
+    validator_deposit = create_pending_deposit_for_unregistered_validator(
+        post_spec, builder_pubkeys[1], amount
+    )
+    state.pending_deposits = spec.PendingDeposits.of(builder_deposit, validator_deposit)
+
+    yield "pre", state
+    post_x, post_y = fork_two_branches(spec, post_spec, state, applied_before_fork=1)
+
+    pubkeys_x = [validator.pubkey for validator in post_x.validators]
+    pubkeys_y = [validator.pubkey for validator in post_y.validators]
+    assert pubkeys_x == pubkeys_y
+    assert pubkeys_x[num_validators:] == [builder_pubkeys[0], builder_pubkeys[1]]
+
+    yield "post", post_y
