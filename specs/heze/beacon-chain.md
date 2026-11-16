@@ -121,11 +121,13 @@ class SignedInclusionList(Container):
 
 ```python
 class ExecutionPayloadBid(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=14)
+    ACTIVE_FIELDS = active_fields(width=15)
 
     parent_block_hash: Hash32
+    parent_payload_root: Root
     parent_block_root: Root
     block_hash: Hash32
+    payload_root: Root
     prev_randao: Bytes32
     fee_recipient: ExecutionAddress
     gas_limit: Uint64
@@ -135,7 +137,6 @@ class ExecutionPayloadBid(ProgressiveContainer):
     execution_payment: Gwei
     blob_kzg_commitments: BlobKZGCommitments
     execution_requests_root: Root
-    payload_root: Root
     # [New in Heze:EIP7805]
     inclusion_list_bits: InclusionListBits
 ```
@@ -177,7 +178,7 @@ class BeaconBlockBody(ProgressiveContainer):
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=46, gaps=(8, 9, 10, 28))
+    ACTIVE_FIELDS = active_fields(width=47, gaps=(8, 9, 10, 29))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -207,6 +208,7 @@ class BeaconState(ProgressiveContainer):
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     latest_block_hash: Hash32
+    latest_payload_root: Root
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: HistoricalSummaries

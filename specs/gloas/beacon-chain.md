@@ -747,11 +747,13 @@ class IndexedPayloadAttestation(ProgressiveContainer):
 
 ```python
 class ExecutionPayloadBid(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=13)
+    ACTIVE_FIELDS = active_fields(width=14)
 
     parent_block_hash: Hash32
+    parent_payload_root: Root
     parent_block_root: Root
     block_hash: Hash32
+    payload_root: Root
     prev_randao: Bytes32
     fee_recipient: ExecutionAddress
     gas_limit: Uint64
@@ -761,7 +763,6 @@ class ExecutionPayloadBid(ProgressiveContainer):
     execution_payment: Gwei
     blob_kzg_commitments: BlobKZGCommitments
     execution_requests_root: Root
-    payload_root: Root
 ```
 
 #### `SignedExecutionPayloadBid`
@@ -865,7 +866,7 @@ class BeaconBlockBody(ProgressiveContainer):
 ```python
 # [Modified in Gloas:EIP7688]
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=46)
+    ACTIVE_FIELDS = active_fields(width=47)
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -900,6 +901,8 @@ class BeaconState(ProgressiveContainer):
     # Removed `latest_execution_payload_header`
     # [New in Gloas:EIP7732]
     latest_block_hash: Hash32
+    # [New in Gloas:EIP7732]
+    latest_payload_root: Root
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: HistoricalSummaries
@@ -1778,8 +1781,9 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 *Note*: This function queues the builder payment, processes the parent's
 execution requests, updates payload availability, and updates the latest block
-hash. It is called by `process_parent_execution_payload` during block processing
-and by the validator during block production before computing withdrawals.
+hash and the latest payload root. It is called by
+`process_parent_execution_payload` during block processing and by the validator
+during block production before computing withdrawals.
 
 ```python
 def apply_parent_execution_payload(
@@ -1826,9 +1830,10 @@ def apply_parent_execution_payload(
     for_ops(requests.builder_deposits, process_builder_deposit_request)
     for_ops(requests.builder_exits, process_builder_exit_request)
 
-    # Update parent payload availability and latest block hash
+    # Update parent payload availability, latest block hash and latest payload root
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
     state.latest_block_hash = parent_bid.block_hash
+    state.latest_payload_root = parent_bid.payload_root
 ```
 
 ##### New `process_parent_execution_payload`
@@ -1844,7 +1849,7 @@ def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> 
     parent_bid = state.latest_execution_payload_bid
     requests = block.body.parent_execution_requests
 
-    if bid.parent_block_hash != parent_bid.block_hash:
+    if bid.parent_payload_root != parent_bid.payload_root:
         # Parent was EMPTY -- no execution requests expected
         assert requests == ExecutionRequests.empty()
         return
@@ -2046,9 +2051,9 @@ def update_next_withdrawal_builder_index(
 deterministic given the beacon state, any execution payload that has the
 corresponding block as parent beacon block is required to honor these
 withdrawals in the execution layer. `process_withdrawals` must be called after
-`process_parent_execution_payload` (which updates `state.latest_block_hash`) and
-before `process_execution_payload_bid` as the latter function affects validator
-balances.
+`process_parent_execution_payload` (which updates `state.latest_payload_root`)
+and before `process_execution_payload_bid` as the latter function affects
+validator balances.
 
 *Note*: Unlike deposits (which are applied at the child's slot via
 `apply_parent_execution_payload`), withdrawal balance deductions are applied
@@ -2072,7 +2077,7 @@ def process_withdrawals(
 ) -> None:
     # [New in Gloas:EIP7732]
     # Return early if the parent block is empty
-    if state.latest_block_hash != state.latest_execution_payload_bid.block_hash:
+    if state.latest_payload_root != state.latest_execution_payload_bid.payload_root:
         return
 
     # Get expected withdrawals
@@ -2190,10 +2195,12 @@ def process_execution_payload_bid(
     # Verify that the bid is for the current slot
     assert bid.slot == state.slot
     assert state.slot > GENESIS_SLOT
-    # Verify that the bid is for the right parent block
+    # Verify that the bid is for the right parent payload
     assert bid.parent_block_hash == state.latest_block_hash
-    # Verify that the bid's block hash differs from its parent block hash
+    assert bid.parent_payload_root == state.latest_payload_root
+    # Verify that the bid's payload differs from its parent payload
     assert bid.block_hash != bid.parent_block_hash
+    assert bid.payload_root != bid.parent_payload_root
     assert bid.parent_block_root == get_block_root_at_slot(state, state.slot - 1)
     assert bid.prev_randao == get_randao_mix(state, get_current_epoch(state))
 

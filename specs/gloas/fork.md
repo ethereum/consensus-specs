@@ -176,6 +176,8 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         # Removed `latest_execution_payload_header`
         # [New in Gloas:EIP7732]
         latest_block_hash=pre.latest_execution_payload_header.block_hash,
+        # [New in Gloas:EIP7732]
+        latest_payload_root=hash_tree_root(pre.latest_execution_payload_header),
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         historical_summaries=pre.historical_summaries,
@@ -207,8 +209,10 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         # [New in Gloas:EIP7732]
         latest_execution_payload_bid=ExecutionPayloadBid(
             parent_block_hash=pre.latest_execution_payload_header.parent_hash,
+            parent_payload_root=Root(),
             parent_block_root=pre.latest_block_header.parent_root,
             block_hash=pre.latest_execution_payload_header.block_hash,
+            payload_root=hash_tree_root(pre.latest_execution_payload_header),
             prev_randao=pre.latest_execution_payload_header.prev_randao,
             fee_recipient=ExecutionAddress(),
             gas_limit=pre.latest_execution_payload_header.gas_limit,
@@ -218,7 +222,6 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
             execution_payment=Gwei(0),
             blob_kzg_commitments=BlobKZGCommitments(),
             execution_requests_root=hash_tree_root(ExecutionRequests.empty()),
-            payload_root=Root(),
         ),
         # [New in Gloas:EIP7732]
         payload_expected_withdrawals=Withdrawals(),

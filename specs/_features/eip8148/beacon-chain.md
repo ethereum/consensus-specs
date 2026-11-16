@@ -111,7 +111,7 @@ class SweepThresholds(ProgressiveList[Gwei]):
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=47, gaps=(8, 9, 10, 28))
+    ACTIVE_FIELDS = active_fields(width=48, gaps=(8, 9, 10, 29))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -135,6 +135,7 @@ class BeaconState(ProgressiveContainer):
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     latest_block_hash: Hash32
+    latest_payload_root: Root
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: HistoricalSummaries
@@ -537,7 +538,8 @@ def apply_parent_execution_payload(
     # [New in EIP8148]
     for_ops(requests.sweep_thresholds, process_set_sweep_threshold_request)
 
-    # Update parent payload availability and latest block hash
+    # Update parent payload availability, latest block hash and latest payload root
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
     state.latest_block_hash = parent_bid.block_hash
+    state.latest_payload_root = parent_bid.payload_root
 ```

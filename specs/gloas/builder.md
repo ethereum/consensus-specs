@@ -115,49 +115,52 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
 
 01. Set `bid.parent_block_hash` to be the parent hash of the constructed
     payload, that is `payload.parent_hash`.
-02. Set `bid.parent_block_root` to be the head of the consensus chain. This can
+02. Set `bid.parent_payload_root` to be the hash tree root of the parent
+    execution payload, that is the payload whose block hash is
+    `bid.parent_block_hash`.
+03. Set `bid.parent_block_root` to be the head of the consensus chain. This can
     be obtained from the beacon state as
-    `hash_tree_root(state.latest_block_header)`. The `parent_block_root` and
-    `parent_block_hash` must be compatible, in the sense that they both should
-    come from the same `state` and `store` by the method described in this and
-    the previous point.
-03. Construct an execution payload. This can be performed with an external
+    `hash_tree_root(state.latest_block_header)`. The `parent_block_root`,
+    `parent_block_hash` and `parent_payload_root` must be compatible, in the
+    sense that they should all come from the same `state` and `store` by the
+    method described in this and the previous points.
+04. Construct an execution payload. This can be performed with an external
     execution engine via a call to `engine_getPayloadV6`.
-04. Set `bid.block_hash` to be the block hash of the constructed payload, that
+05. Set `bid.block_hash` to be the block hash of the constructed payload, that
     is `payload.block_hash`.
-05. Set `bid.prev_randao` to be the previous RANDAO of the constructed payload,
+06. Set `bid.payload_root` to `hash_tree_root(payload)`, where `payload` is the
+    constructed payload.
+07. Set `bid.prev_randao` to be the previous RANDAO of the constructed payload,
     that is `payload.prev_randao`. This value **MUST** equal
     `get_randao_mix(parent_state, get_current_epoch(parent_state))`, where
     `parent_state` is the post-state of `bid.parent_block_root`.
-06. Set `bid.slot` to be the slot for which this bid is aimed. This slot
+08. Set `bid.slot` to be the slot for which this bid is aimed. This slot
     **MUST** be either the current slot or the next slot.
-07. Set `bid.fee_recipient` to be an execution address to receive the payment.
+09. Set `bid.fee_recipient` to be an execution address to receive the payment.
     The proposer's preferred fee recipient is obtained from the
     `SignedProposerPreferences` whose `message.proposal_slot` matches `bid.slot`
     and whose `message.dependent_root` matches
     `get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot))`,
     where `store` is the fork choice store.
-08. Set `bid.gas_limit` to be the gas limit of the constructed payload, which
+10. Set `bid.gas_limit` to be the gas limit of the constructed payload, which
     **MUST** satisfy
     `is_gas_limit_target_compatible(parent_gas_limit, bid.gas_limit, target_gas_limit)`,
     where `parent_gas_limit` is the `gas_limit` of the parent execution payload
     and `target_gas_limit` is the `target_gas_limit` in the
-    `SignedProposerPreferences` referenced in step 7.
-09. Set `bid.builder_index` to be the index of the builder performing these
+    `SignedProposerPreferences` referenced in step 9.
+11. Set `bid.builder_index` to be the index of the builder performing these
     actions.
-10. Set `bid.value` to be the value (in gwei) that the builder will pay the
+12. Set `bid.value` to be the value (in gwei) that the builder will pay the
     proposer if the bid is accepted. The builder **MUST** have enough excess
     balance to fulfill this bid and all pending payments.
-11. Set `bid.execution_payment` to zero. A non-zero value indicates a trusted
+13. Set `bid.execution_payment` to zero. A non-zero value indicates a trusted
     execution-layer payment. Bids with non-zero `execution_payment` **MUST NOT**
     be broadcast to the `execution_payload_bid` gossip topic.
-12. Set `bid.blob_kzg_commitments` to be the `blobsbundle.commitments` field
+14. Set `bid.blob_kzg_commitments` to be the `blobsbundle.commitments` field
     returned by `engine_getPayloadV6`.
-13. Set `bid.execution_requests_root` to `hash_tree_root(execution_requests)`,
+15. Set `bid.execution_requests_root` to `hash_tree_root(execution_requests)`,
     where `execution_requests` is the `ExecutionRequests` field returned by
     `engine_getPayloadV6`.
-14. Set `bid.payload_root` to `hash_tree_root(payload)`, where `payload` is the
-    constructed payload.
 
 After building the `bid`, the builder obtains a `signature` of the bid by using:
 

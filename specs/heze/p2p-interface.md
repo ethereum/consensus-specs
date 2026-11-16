@@ -40,7 +40,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                         | Value                         |
 | -------------------------------------------- | ----------------------------- |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `Uint64(196966)` (= ~192 KiB) |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `Uint64(196998)` (= ~192 KiB) |
 | `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `Uint64(41112)` (= ~40 KiB)   |
 
 ## Configs
@@ -84,11 +84,11 @@ class Seen:
     sync_message_validator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
     bls_to_execution_change_indices: set[ValidatorIndex]
     data_column_sidecar_tuples: set[tuple[Root, ColumnIndex]]
-    execution_payloads: dict[Hash32, ExecutionPayload]
+    execution_payloads: dict[Root, ExecutionPayload]
     execution_payload_envelopes: set[tuple[Root, BuilderIndex]]
     payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
-    execution_payload_bid_counts: Counter[tuple[Slot, Hash32, Root, BuilderIndex]]
-    best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
+    execution_payload_bid_counts: Counter[tuple[Slot, Root, Root, BuilderIndex]]
+    best_execution_payload_bid: dict[tuple[Slot, Root, Root], Gwei]
     proposer_preferences: dict[tuple[Slot, Root], ProposerPreferences]
     # [New in Heze:EIP7805]
     inclusion_list_counts: Counter[tuple[Slot, Root, ValidatorIndex]]
@@ -187,7 +187,7 @@ def validate_execution_payload_bid_gossip(
     bid = signed_execution_payload_bid.message
 
     # [IGNORE] This is the highest value bid seen for the slot and parent
-    best_bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root)
+    best_bid_key = (bid.slot, bid.parent_payload_root, bid.parent_block_root)
     if best_bid_key in seen.best_execution_payload_bid:
         if bid.value <= seen.best_execution_payload_bid[best_bid_key]:
             raise GossipIgnore("bid is not the highest value bid seen for this slot and parent")
@@ -203,6 +203,10 @@ def validate_execution_payload_bid_gossip(
     # [REJECT] The bid's block hash is not equal to its parent block hash
     if bid.block_hash == bid.parent_block_hash:
         raise GossipReject("bid's block hash equals its parent block hash")
+
+    # [REJECT] The bid's payload root is not equal to its parent payload root
+    if bid.payload_root == bid.parent_payload_root:
+        raise GossipReject("bid's payload root equals its parent payload root")
 
     # [REJECT] The bid's blob KZG commitment count is within the per-epoch limit
     proposal_epoch = compute_epoch_at_slot(bid.slot)
@@ -242,14 +246,19 @@ def validate_execution_payload_bid_gossip(
     if bid.fee_recipient != proposer_preferences.fee_recipient:
         raise GossipIgnore("bid's fee recipient does not match the proposer's preference")
 
-    # [IGNORE] The bid's parent block hash is the hash of a known execution payload
-    if bid.parent_block_hash not in seen.execution_payloads:
-        raise GossipIgnore("bid's parent block hash is not a known execution payload")
+    # [IGNORE] The bid's parent payload root is the root of a known execution payload
+    if bid.parent_payload_root not in seen.execution_payloads:
+        raise GossipIgnore("bid's parent payload root is not a known execution payload")
+
+    parent_payload = seen.execution_payloads[bid.parent_payload_root]
+
+    # [REJECT] The bid's parent block hash is the block hash of its parent payload
+    if bid.parent_block_hash != parent_payload.block_hash:
+        raise GossipReject("bid's parent block hash does not match its parent payload")
 
     # [IGNORE] The bid's gas limit is compatible with the proposer's target gas limit
-    parent_gas_limit = seen.execution_payloads[bid.parent_block_hash].gas_limit
     if not is_gas_limit_target_compatible(
-        parent_gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit
+        parent_payload.gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit
     ):
         raise GossipIgnore("bid's gas limit is not compatible with the proposer's target")
 
@@ -279,7 +288,7 @@ def validate_execution_payload_bid_gossip(
         raise GossipReject("builder is not active")
 
     # [IGNORE] The builder has not reached its bid limit for this slot and parent
-    bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
+    bid_key = (bid.slot, bid.parent_payload_root, bid.parent_block_root, bid.builder_index)
     bid_limit = get_builder_bid_limit(state, bid.builder_index)
     if seen.execution_payload_bid_counts[bid_key] >= bid_limit:
         raise GossipIgnore("builder has reached its bid limit for this slot and parent")
@@ -289,7 +298,7 @@ def validate_execution_payload_bid_gossip(
         raise GossipIgnore("builder cannot cover bid value")
 
     # [IGNORE] The parent's payload does not try to exit the builder
-    if bid.parent_block_hash == state.latest_execution_payload_bid.block_hash:
+    if bid.parent_payload_root == state.latest_execution_payload_bid.payload_root:
         envelope = store.payloads[bid.parent_block_root]
         for request in envelope.execution_requests.builder_exits:
             if request.pubkey == builder.pubkey:

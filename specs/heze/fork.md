@@ -46,8 +46,10 @@ def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
     epoch = gloas.get_current_epoch(pre)
     latest_execution_payload_bid = ExecutionPayloadBid(
         parent_block_hash=pre.latest_execution_payload_bid.parent_block_hash,
+        parent_payload_root=pre.latest_execution_payload_bid.parent_payload_root,
         parent_block_root=pre.latest_execution_payload_bid.parent_block_root,
         block_hash=pre.latest_execution_payload_bid.block_hash,
+        payload_root=pre.latest_execution_payload_bid.payload_root,
         prev_randao=pre.latest_execution_payload_bid.prev_randao,
         fee_recipient=pre.latest_execution_payload_bid.fee_recipient,
         gas_limit=pre.latest_execution_payload_bid.gas_limit,
@@ -57,7 +59,6 @@ def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
         execution_payment=pre.latest_execution_payload_bid.execution_payment,
         blob_kzg_commitments=pre.latest_execution_payload_bid.blob_kzg_commitments,
         execution_requests_root=pre.latest_execution_payload_bid.execution_requests_root,
-        payload_root=pre.latest_execution_payload_bid.payload_root,
         # [New in Heze:EIP7805]
         inclusion_list_bits=InclusionListBits(),
     )
@@ -96,6 +97,7 @@ def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         latest_block_hash=pre.latest_block_hash,
+        latest_payload_root=pre.latest_payload_root,
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         historical_summaries=pre.historical_summaries,

@@ -76,7 +76,7 @@ for the corresponding variable-size libp2p messages. The bound for
 | --------------------------------------- | ----------------------------- |
 | `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE`   | `Uint64(16829)` (= ~16 KiB)   |
 | `MAX_ATTESTER_SLASHING_SIZE`            | `Uint64(2097616)` (= ~2 MiB)  |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `Uint64(196964)` (= ~192 KiB) |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `Uint64(196996)` (= ~192 KiB) |
 
 ## Configs
 
@@ -207,15 +207,15 @@ class Seen:
     # [Modified in Gloas:EIP7732]
     # Removed `partial_data_column_headers`
     # [New in Gloas:EIP7732]
-    execution_payloads: dict[Hash32, ExecutionPayload]
+    execution_payloads: dict[Root, ExecutionPayload]
     # [New in Gloas:EIP7732]
     execution_payload_envelopes: set[tuple[Root, BuilderIndex]]
     # [New in Gloas:EIP7732]
     payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
     # [New in Gloas:EIP7732]
-    execution_payload_bid_counts: Counter[tuple[Slot, Hash32, Root, BuilderIndex]]
+    execution_payload_bid_counts: Counter[tuple[Slot, Root, Root, BuilderIndex]]
     # [New in Gloas:EIP7732]
-    best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
+    best_execution_payload_bid: dict[tuple[Slot, Root, Root], Gwei]
     # [New in Gloas:EIP7732]
     proposer_preferences: dict[tuple[Slot, Root], ProposerPreferences]
 ```
@@ -418,7 +418,7 @@ def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
     head_bid = head_block.body.signed_execution_payload_bid.message
 
     builds_on_parent_block = bid.parent_block_root == head_block.parent_root
-    builds_on_parent_payload = bid.parent_block_hash == head_bid.parent_block_hash
+    builds_on_parent_payload = bid.parent_payload_root == head_bid.parent_payload_root
 
     if builds_on_parent_block and builds_on_parent_payload:
         return True
@@ -426,7 +426,7 @@ def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
     if bid.parent_block_root != head_node.root:
         return False
 
-    builds_on_head_payload = bid.parent_block_hash == head_bid.block_hash
+    builds_on_head_payload = bid.parent_payload_root == head_bid.payload_root
 
     if should_build_on_full(store, head_node, bid.slot):
         return builds_on_head_payload
@@ -674,6 +674,8 @@ def validate_beacon_block_gossip(
     # [REJECT] If the parent is not full, the bid builds on the parent's execution head
     if not is_parent_node_full(store, block):
         if bid.parent_block_hash != parent_state.latest_block_hash:
+            raise GossipReject("bid does not build on the parent's execution head")
+        if bid.parent_payload_root != parent_state.latest_payload_root:
             raise GossipReject("bid does not build on the parent's execution head")
 
     # Mark this block as seen
@@ -923,7 +925,7 @@ def validate_execution_payload_envelope_gossip(
 
     # Mark this envelope as seen and store its payload
     seen.execution_payload_envelopes.add(envelope_key)
-    seen.execution_payloads[payload.block_hash] = payload
+    seen.execution_payloads[bid.payload_root] = payload
 ```
 
 ##### New `payload_attestation_message`
@@ -1017,7 +1019,7 @@ def validate_execution_payload_bid_gossip(
     bid = signed_execution_payload_bid.message
 
     # [IGNORE] This is the highest value bid seen for the slot and parent
-    best_bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root)
+    best_bid_key = (bid.slot, bid.parent_payload_root, bid.parent_block_root)
     if best_bid_key in seen.best_execution_payload_bid:
         if bid.value <= seen.best_execution_payload_bid[best_bid_key]:
             raise GossipIgnore("bid is not the highest value bid seen for this slot and parent")
@@ -1033,6 +1035,10 @@ def validate_execution_payload_bid_gossip(
     # [REJECT] The bid's block hash is not equal to its parent block hash
     if bid.block_hash == bid.parent_block_hash:
         raise GossipReject("bid's block hash equals its parent block hash")
+
+    # [REJECT] The bid's payload root is not equal to its parent payload root
+    if bid.payload_root == bid.parent_payload_root:
+        raise GossipReject("bid's payload root equals its parent payload root")
 
     # [REJECT] The bid's blob KZG commitment count is within the per-epoch limit
     proposal_epoch = compute_epoch_at_slot(bid.slot)
@@ -1072,14 +1078,19 @@ def validate_execution_payload_bid_gossip(
     if bid.fee_recipient != proposer_preferences.fee_recipient:
         raise GossipIgnore("bid's fee recipient does not match the proposer's preference")
 
-    # [IGNORE] The bid's parent block hash is the hash of a known execution payload
-    if bid.parent_block_hash not in seen.execution_payloads:
-        raise GossipIgnore("bid's parent block hash is not a known execution payload")
+    # [IGNORE] The bid's parent payload root is the root of a known execution payload
+    if bid.parent_payload_root not in seen.execution_payloads:
+        raise GossipIgnore("bid's parent payload root is not a known execution payload")
+
+    parent_payload = seen.execution_payloads[bid.parent_payload_root]
+
+    # [REJECT] The bid's parent block hash is the block hash of its parent payload
+    if bid.parent_block_hash != parent_payload.block_hash:
+        raise GossipReject("bid's parent block hash does not match its parent payload")
 
     # [IGNORE] The bid's gas limit is compatible with the proposer's target gas limit
-    parent_gas_limit = seen.execution_payloads[bid.parent_block_hash].gas_limit
     if not is_gas_limit_target_compatible(
-        parent_gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit
+        parent_payload.gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit
     ):
         raise GossipIgnore("bid's gas limit is not compatible with the proposer's target")
 
@@ -1109,7 +1120,7 @@ def validate_execution_payload_bid_gossip(
         raise GossipReject("builder is not active")
 
     # [IGNORE] The builder has not reached its bid limit for this slot and parent
-    bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
+    bid_key = (bid.slot, bid.parent_payload_root, bid.parent_block_root, bid.builder_index)
     bid_limit = get_builder_bid_limit(state, bid.builder_index)
     if seen.execution_payload_bid_counts[bid_key] >= bid_limit:
         raise GossipIgnore("builder has reached its bid limit for this slot and parent")
@@ -1119,7 +1130,7 @@ def validate_execution_payload_bid_gossip(
         raise GossipIgnore("builder cannot cover bid value")
 
     # [IGNORE] The parent's payload does not try to exit the builder
-    if bid.parent_block_hash == state.latest_execution_payload_bid.block_hash:
+    if bid.parent_payload_root == state.latest_execution_payload_bid.payload_root:
         envelope = store.payloads[bid.parent_block_root]
         for request in envelope.execution_requests.builder_exits:
             if request.pubkey == builder.pubkey:
@@ -1474,8 +1485,8 @@ being the response content type.
 Clients MUST respond with execution payload envelopes from their view of the
 current fork choice -- that is, envelopes of payloads that are part of the
 single chain defined by the current head. A payload is part of that chain if the
-next block in the chain builds on it, i.e. the `parent_block_hash` of that
-block's execution payload bid equals the `block_hash` of the payload. For the
+next block in the chain builds on it, i.e. the `parent_payload_root` of that
+block's execution payload bid equals the hash tree root of the payload. For the
 head block, the payload is part of the chain if the head `ForkChoiceNode` has
 `payload_status` equal to `PAYLOAD_STATUS_FULL`. Clients MUST NOT include
 envelopes for blocks whose `ForkChoiceNode` in that chain has `payload_status`
