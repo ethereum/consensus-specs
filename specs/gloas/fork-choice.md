@@ -317,6 +317,9 @@ def is_payload_verified(store: Store, root: Root) -> bool:
     root ``root`` has been locally delivered and verified via
     ``on_execution_payload_envelope``.
     """
+    # The execution payload of a pre-Gloas block is verified with its block
+    if root in store.blocks and compute_epoch_at_slot(store.blocks[root].slot) < GLOAS_FORK_EPOCH:
+        return True
     return root in store.payloads
 ```
 
@@ -367,6 +370,9 @@ def payload_data_availability(store: Store, root: Root, available: bool) -> bool
 ```python
 def get_parent_payload_status(store: Store, block: BeaconBlock) -> PayloadStatus:
     parent = store.blocks[block.parent_root]
+    # A pre-Gloas block contains its execution payload
+    if compute_epoch_at_slot(parent.slot) < GLOAS_FORK_EPOCH:
+        return PAYLOAD_STATUS_FULL
     parent_payload_root = block.body.signed_execution_payload_bid.message.parent_payload_root
     message_payload_root = parent.body.signed_execution_payload_bid.message.payload_root
     return (
