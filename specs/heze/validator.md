@@ -174,7 +174,7 @@ def prepare_execution_payload(
         head_block_hash = parent_bid.block_hash
     else:
         withdrawals = state.payload_expected_withdrawals
-        head_block_hash = parent_bid.parent_block_hash
+        head_block_hash = state.latest_block_hash
 
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(

@@ -671,8 +671,11 @@ def validate_beacon_block_gossip(
         raise GossipReject("block proposer_index does not match expected proposer")
 
     # [New in Gloas:EIP7732]
-    # [REJECT] If the parent is not full, the bid builds on the parent's execution head
-    if not is_parent_node_full(store, block):
+    # [REJECT] The bid builds on the parent's execution head
+    if is_parent_node_full(store, block):
+        if bid.parent_block_hash != parent_state.latest_execution_payload_bid.block_hash:
+            raise GossipReject("bid does not build on the parent's execution head")
+    else:
         if bid.parent_block_hash != parent_state.latest_block_hash:
             raise GossipReject("bid does not build on the parent's execution head")
         if bid.parent_payload_root != parent_state.latest_payload_root:
@@ -1477,6 +1480,13 @@ Specifications of request/response methods are equivalent to
 [BeaconBlocksByRange v2](#beaconblocksbyrange-v2), with the only difference
 being the response content type.
 
+Before consuming the next response chunk, the response reader SHOULD verify the
+execution payload envelope is for a requested beacon block and is correct w.r.t.
+that block, that is, the hash tree roots of its `payload` and
+`execution_requests` match the `payload_root` and `execution_requests_root` of
+the block's execution payload bid, and its `parent_beacon_block_root` matches
+the block's `parent_root`.
+
 Clients MUST respond with execution payload envelopes from their view of the
 current fork choice -- that is, envelopes of payloads that are part of the
 single chain defined by the current head. A payload is part of that chain if the
@@ -1525,6 +1535,13 @@ Requests execution payload envelopes by
 `ExecutionPayloadEnvelope` whose length is less than or equal to the number of
 requested execution payload envelopes. It may be less in the case that the
 responding peer is missing payload envelopes.
+
+Before consuming the next response chunk, the response reader SHOULD verify the
+execution payload envelope is for a requested beacon block and is correct w.r.t.
+that block, that is, the hash tree roots of its `payload` and
+`execution_requests` match the `payload_root` and `execution_requests_root` of
+the block's execution payload bid, and its `parent_beacon_block_root` matches
+the block's `parent_root`.
 
 No more than `MAX_REQUEST_PAYLOADS` may be requested at a time.
 

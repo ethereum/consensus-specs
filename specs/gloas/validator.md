@@ -217,7 +217,7 @@ top of a `state` MUST take the following actions in order to construct the
   - The `bid.parent_block_hash` equals
     `state.latest_execution_payload_bid.block_hash` if
     `should_build_on_full(store, head, state.slot)` is true, otherwise
-    `state.latest_execution_payload_bid.parent_block_hash`.
+    `state.latest_block_hash`.
   - The `bid.parent_payload_root` equals
     `state.latest_execution_payload_bid.payload_root` if
     `should_build_on_full(store, head, state.slot)` is true, otherwise
@@ -364,7 +364,7 @@ def prepare_execution_payload(
         head_block_hash = parent_bid.block_hash
     else:
         withdrawals = state.payload_expected_withdrawals
-        head_block_hash = parent_bid.parent_block_hash
+        head_block_hash = state.latest_block_hash
 
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(

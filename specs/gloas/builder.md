@@ -117,7 +117,10 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
     payload, that is `payload.parent_hash`.
 02. Set `bid.parent_payload_root` to be the hash tree root of the parent
     execution payload, that is the payload whose block hash is
-    `bid.parent_block_hash`.
+    `bid.parent_block_hash`. This can be obtained from the beacon state as
+    `state.latest_execution_payload_bid.payload_root` when building on the
+    payload of the block at the head of the consensus chain, and as
+    `state.latest_payload_root` otherwise.
 03. Set `bid.parent_block_root` to be the head of the consensus chain. This can
     be obtained from the beacon state as
     `hash_tree_root(state.latest_block_header)`. The `parent_block_root`,
