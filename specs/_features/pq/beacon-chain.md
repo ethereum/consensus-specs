@@ -67,7 +67,6 @@
     - [New `is_active_preregistration`](#new-is_active_preregistration)
     - [New `is_builder_bid_leaf_index`](#new-is_builder_bid_leaf_index)
     - [New `is_legacy_pubkey`](#new-is_legacy_pubkey)
-    - [New `is_reserved_leaf_index`](#new-is_reserved_leaf_index)
     - [New `is_valid_vrf_proof`](#new-is_valid_vrf_proof)
     - [Modified `is_pending_validator`](#modified-is_pending_validator)
     - [Modified `is_valid_indexed_attestation`](#modified-is_valid_indexed_attestation)
@@ -140,11 +139,12 @@ signing two different messages at the same leaf breaks the key. This upgrade
 therefore assigns every validator message a leaf derived from its slot and its
 type, see `compute_xmss_leaf_index`. An attestation instead uses the leaf of its
 target epoch, see `compute_xmss_attestation_leaf_index`. A message without a
-leaf of its own, such as a voluntary exit, instead uses any reserved leaf, see
-`is_reserved_leaf_index`. A bid instead uses any leaf reserved for bids, see
-`is_builder_bid_leaf_index`. An honest signer never equivocates and uses each
-leaf it chooses at most once, so it never reuses a leaf. Each signature carries
-its leaf index, and verification checks that the message may use it.
+leaf of its own, such as a voluntary exit, instead uses any reserved leaf, one
+of the first `XMSS_RESERVED_LEAVES` leaves. A bid instead uses any leaf reserved
+for bids, see `is_builder_bid_leaf_index`. An honest signer never equivocates
+and uses each leaf it chooses at most once, so it never reuses a leaf. Each
+signature carries its leaf index, and verification checks that the message may
+use it.
 
 XMSS has no native aggregation. A STARK instead proves many XMSS signatures at
 once, such as those of attestations in an `AttestationProof`.
@@ -793,9 +793,8 @@ def compute_deposit_vrf_root(deposit: PendingDeposit) -> Root:
 #### New `compute_xmss_attestation_leaf_index`
 
 *Note*: The attestation leaves follow the `XMSS_RESERVED_LEAVES` reserved
-leaves, see `is_reserved_leaf_index`. They hold one attestation per target
-epoch, since a validator that attests twice for the same target epoch is slashed
-for a double vote.
+leaves. They hold one attestation per target epoch, since a validator that
+attests twice for the same target epoch is slashed for a double vote.
 
 ```python
 def compute_xmss_attestation_leaf_index(epoch: Epoch) -> Uint64:
@@ -862,17 +861,6 @@ def is_legacy_pubkey(pubkey: Bytes48) -> bool:
     Check if ``pubkey`` is a BLS public key rather than an XMSS public key.
     """
     return pubkey[:16] != XMSS_DEPOSIT_PREFIX
-```
-
-#### New `is_reserved_leaf_index`
-
-```python
-def is_reserved_leaf_index(leaf_index: Uint64) -> bool:
-    """
-    Check if ``leaf_index`` is one of the leaves reserved for messages without
-    a leaf of their own.
-    """
-    return leaf_index < XMSS_RESERVED_LEAVES
 ```
 
 #### New `is_valid_vrf_proof`

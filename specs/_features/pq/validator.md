@@ -568,7 +568,7 @@ before signing it. Like the slashing protection database, this record must
 survive restarts and move with the key.
 
 A message without a leaf of its own, such as a voluntary exit, is signed at a
-reserved leaf, see `is_reserved_leaf_index`. The signer MUST use each reserved
-leaf at most once, for example by allocating them in increasing order. The
-record must include the leaf of the key's preregistration, which is signed
-before the validator exists.
+reserved leaf, one of the first `XMSS_RESERVED_LEAVES` leaves. The signer MUST
+use each reserved leaf at most once, for example by allocating them in
+increasing order. The record must include the leaf of the key's preregistration,
+which is signed before the validator exists.
