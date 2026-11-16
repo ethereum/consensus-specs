@@ -82,8 +82,14 @@ def test_fork_no_registrations(spec, phases, state):
     post_state = yield from run_fork_test(phases[PQ], state)
 
     post_spec = phases[PQ]
+    epoch = post_spec.get_current_epoch(post_state)
     for validator in post_state.validators:
         assert validator.exit_epoch != post_spec.FAR_FUTURE_EPOCH
+        assert post_spec.is_active_validator(validator, epoch)
+    # The exit churn spreads the exits over several epochs
+    exit_epochs = [validator.exit_epoch for validator in post_state.validators]
+    assert min(exit_epochs) == post_spec.compute_activation_exit_epoch(epoch)
+    assert max(exit_epochs) > min(exit_epochs)
 
 
 @with_phases(phases=[EIP8483], other_phases=[PQ])
@@ -109,14 +115,47 @@ def test_fork_slashed_validator_not_registered(spec, phases, state):
     slashed_index = 0
     spec.slash_validator(state, slashed_index)
     register_xmss_pubkeys(spec, state, range(1, len(state.validators)))
+    pre_exit_epoch = state.validators[slashed_index].exit_epoch
     pre_withdrawable_epoch = state.validators[slashed_index].withdrawable_epoch
     post_state = yield from run_fork_test(phases[PQ], state)
 
     validator = post_state.validators[slashed_index]
     assert validator.slashed
-    assert validator.exit_epoch <= post_state.fork.epoch
+    assert validator.exit_epoch == pre_exit_epoch
     assert validator.withdrawable_epoch == pre_withdrawable_epoch
-    assert validator.withdrawable_epoch > post_state.fork.epoch
+
+
+@with_phases(phases=[EIP8483], other_phases=[PQ])
+@spec_test
+@with_state
+@with_meta_tags(PQ_FORK_TEST_META_TAGS)
+def test_fork_exiting_validator_not_registered(spec, phases, state):
+    exiting_index = 0
+    spec.initiate_validator_exit(state, exiting_index)
+    register_xmss_pubkeys(spec, state, range(2, len(state.validators)))
+    pre_exit_epoch = state.validators[exiting_index].exit_epoch
+    pre_withdrawable_epoch = state.validators[exiting_index].withdrawable_epoch
+    post_state = yield from run_fork_test(phases[PQ], state)
+
+    validator = post_state.validators[exiting_index]
+    assert validator.exit_epoch == pre_exit_epoch
+    assert validator.withdrawable_epoch == pre_withdrawable_epoch
+    assert post_state.validators[1].exit_epoch >= pre_exit_epoch
+
+
+@with_phases(phases=[EIP8483], other_phases=[PQ])
+@spec_test
+@with_state
+@with_meta_tags(PQ_FORK_TEST_META_TAGS)
+def test_fork_not_registered_exit_queue_not_empty(spec, phases, state):
+    # Earlier exits fill the exit queue up to a later epoch
+    queue_epoch = spec.compute_activation_exit_epoch(spec.get_current_epoch(state)) + 10
+    state.earliest_exit_epoch = queue_epoch
+    state.exit_balance_to_consume = 0
+    register_xmss_pubkeys(spec, state, range(1, len(state.validators)))
+    post_state = yield from run_fork_test(phases[PQ], state)
+
+    assert post_state.validators[0].exit_epoch == queue_epoch + 1
 
 
 @with_phases(phases=[EIP8483], other_phases=[PQ])

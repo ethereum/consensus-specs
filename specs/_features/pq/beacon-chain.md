@@ -159,8 +159,9 @@ proof when it aggregates.
 
 A validator's record carries the XMSS public key and VRF root it registered with
 EIP-8483 before the fork in place of its BLS public key, and a builder's record
-the XMSS public key it registered. Validators and builders that did not register
-are withdrawn at the fork. See [the fork document](./fork.md) for details.
+the XMSS public key it registered. Validators that did not register begin to
+exit at the fork, through the exit queue, and builders that did not register are
+withdrawn at the fork. See [the fork document](./fork.md) for details.
 
 Execution layer requests keep their formats. A request's 48-byte public key
 field is 16 zero bytes followed by an XMSS public key. Deposits no longer carry

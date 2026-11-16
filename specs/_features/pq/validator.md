@@ -62,9 +62,10 @@ without a leaf of its own, such as a voluntary exit, which is signed at a
 reserved leaf, see [Protection best practices](#protection-best-practices). At
 the upgrade, each validator that registered an XMSS public key with EIP-8483
 takes it in place of its BLS public key. A validator without a registration
-becomes withdrawable at the upgrade, and its balance is withdrawn, unless it has
-`0x00` withdrawal credentials, in which case its balance stays locked. See
-[the fork document](./fork.md) for details.
+begins to exit at the upgrade, through the exit queue, and misses its duties
+until its exit epoch. Its balance is withdrawn once it is withdrawable, unless
+it has `0x00` withdrawal credentials, in which case its balance stays locked.
+See [the fork document](./fork.md) for details.
 
 ## Constants
 
