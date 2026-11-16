@@ -169,16 +169,16 @@ EIP-8205 beacon block type.
 **Protocol ID:**
 `/eth2/beacon_chain/req/execution_payload_envelopes_by_range/1/`
 
-EIP-8205 changes the SSZ type of `SignedExecutionPayloadEnvelope` through the
+EIP-8205 changes the SSZ type of `ExecutionPayloadEnvelope` through the
 `execution_requests` field. Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth_consensus_specs: skip -->
 
-| `fork_version`         | Chunk SSZ type                           |
-| ---------------------- | ---------------------------------------- |
-| `GLOAS_FORK_VERSION`   | `gloas.SignedExecutionPayloadEnvelope`   |
-| `HEZE_FORK_VERSION`    | `heze.SignedExecutionPayloadEnvelope`    |
-| `EIP8205_FORK_VERSION` | `eip8205.SignedExecutionPayloadEnvelope` |
+| `fork_version`         | Chunk SSZ type                     |
+| ---------------------- | ---------------------------------- |
+| `GLOAS_FORK_VERSION`   | `gloas.ExecutionPayloadEnvelope`   |
+| `HEZE_FORK_VERSION`    | `heze.ExecutionPayloadEnvelope`    |
+| `EIP8205_FORK_VERSION` | `eip8205.ExecutionPayloadEnvelope` |
 
 ##### ExecutionPayloadEnvelopesByRoot v1
 

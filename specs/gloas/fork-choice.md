@@ -684,14 +684,10 @@ def get_latest_message_epoch(latest_message: LatestMessage) -> Epoch:
 ```python
 def verify_execution_payload_envelope(
     state: BeaconState,
-    signed_envelope: SignedExecutionPayloadEnvelope,
+    envelope: ExecutionPayloadEnvelope,
     execution_engine: ExecutionEngine,
 ) -> None:
-    envelope = signed_envelope.message
     payload = envelope.payload
-
-    # Verify signature
-    assert verify_execution_payload_envelope_signature(state, signed_envelope)
 
     # Verify consistency with the beacon block
     header = state.latest_block_header.copy()
@@ -701,7 +697,6 @@ def verify_execution_payload_envelope(
 
     # Verify consistency with the committed bid
     bid = state.latest_execution_payload_bid
-    assert envelope.builder_index == bid.builder_index
     assert payload.prev_randao == bid.prev_randao
     assert payload.gas_limit == bid.gas_limit
     assert payload.block_hash == bid.block_hash
@@ -1110,16 +1105,13 @@ def on_block(store: Store, signed_block: SignedBeaconBlock) -> None:
 ### New `on_execution_payload_envelope`
 
 The handler `on_execution_payload_envelope` is called when the node receives a
-`SignedExecutionPayloadEnvelope` to sync.
+`ExecutionPayloadEnvelope` to sync.
 
 ```python
-def on_execution_payload_envelope(
-    store: Store, signed_envelope: SignedExecutionPayloadEnvelope
-) -> None:
+def on_execution_payload_envelope(store: Store, envelope: ExecutionPayloadEnvelope) -> None:
     """
     Run ``on_execution_payload_envelope`` upon receiving a new execution payload envelope.
     """
-    envelope = signed_envelope.message
     # The corresponding beacon block root needs to be known
     assert envelope.beacon_block_root in store.block_states
 
@@ -1130,7 +1122,7 @@ def on_execution_payload_envelope(
     state = store.block_states[envelope.beacon_block_root]
 
     # Verify the execution payload envelope
-    verify_execution_payload_envelope(state, signed_envelope, EXECUTION_ENGINE)
+    verify_execution_payload_envelope(state, envelope, EXECUTION_ENGINE)
 
     # Add execution payload envelope to the store
     store.payloads[envelope.beacon_block_root] = envelope

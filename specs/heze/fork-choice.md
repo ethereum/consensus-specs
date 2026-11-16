@@ -314,14 +314,10 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
 ### Modified `on_execution_payload_envelope`
 
 ```python
-def on_execution_payload_envelope(
-    store: Store, signed_envelope: SignedExecutionPayloadEnvelope
-) -> None:
+def on_execution_payload_envelope(store: Store, envelope: ExecutionPayloadEnvelope) -> None:
     """
     Run ``on_execution_payload_envelope`` upon receiving a new execution payload envelope.
     """
-    envelope = signed_envelope.message
-
     # [New in Heze:EIP7805]
     # Return early if the payload is already known
     if is_payload_verified(store, envelope.beacon_block_root):
@@ -337,7 +333,7 @@ def on_execution_payload_envelope(
     state = store.block_states[envelope.beacon_block_root]
 
     # Verify the execution payload envelope
-    verify_execution_payload_envelope(state, signed_envelope, EXECUTION_ENGINE)
+    verify_execution_payload_envelope(state, envelope, EXECUTION_ENGINE)
 
     # [New in Heze:EIP7805]
     # Check if this payload satisfies the inclusion list constraints

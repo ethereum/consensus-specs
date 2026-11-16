@@ -85,7 +85,7 @@ class Seen:
     bls_to_execution_change_indices: set[ValidatorIndex]
     data_column_sidecar_tuples: set[tuple[Root, ColumnIndex]]
     execution_payloads: dict[Root, ExecutionPayload]
-    execution_payload_envelopes: set[tuple[Root, BuilderIndex]]
+    execution_payload_envelopes: set[Root]
     payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
     execution_payload_bid_counts: Counter[tuple[Slot, Root, Root, BuilderIndex]]
     best_execution_payload_bid: dict[tuple[Slot, Root, Root], Gwei]

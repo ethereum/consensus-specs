@@ -422,10 +422,10 @@ The validator creates `payload_attestation_message` as follows:
 - Set `data.beacon_block_root` be the hash tree root of the beacon block seen
   for the assigned slot.
 - Set `data.slot` to be the assigned slot.
-- If a previously seen `SignedExecutionPayloadEnvelope` references the block
-  with root `data.beacon_block_root`, and it was seen before
-  `get_payload_due_ms()` milliseconds into the slot, set `data.payload_present`
-  to `True`; otherwise, set `data.payload_present` to `False`.
+- If a previously seen `ExecutionPayloadEnvelope` references the block with root
+  `data.beacon_block_root`, and it was seen before `get_payload_due_ms()`
+  milliseconds into the slot, set `data.payload_present` to `True`; otherwise,
+  set `data.payload_present` to `False`.
 - Set `data.blob_data_available` to `is_data_available(data.beacon_block_root)`.
   Only set it to `False` once `get_payload_attestation_due_ms()` milliseconds
   have elapsed, as the blob data may still arrive before then.
@@ -452,7 +452,7 @@ def get_payload_attestation_message_signature(
 *Note*: Validators do not need to check the full validity of the
 `ExecutionPayload` contained in within the envelope, but the checks in the
 [Networking](./p2p-interface.md) specifications should pass for the
-`SignedExecutionPayloadEnvelope`.
+`ExecutionPayloadEnvelope`.
 
 ## Modified functions
 
