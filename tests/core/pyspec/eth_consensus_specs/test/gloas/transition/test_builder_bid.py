@@ -72,6 +72,7 @@ def _build_first_gloas_block_with_builder_bid(post_spec, state, sign_bid):
         builder_index,
         slot=state.slot,
         parent_block_hash=state.latest_block_hash,
+        parent_payload_root=state.latest_payload_root,
         parent_block_root=block.parent_root,
         value=post_spec.Gwei(10**9),
         valid_signature=False,
