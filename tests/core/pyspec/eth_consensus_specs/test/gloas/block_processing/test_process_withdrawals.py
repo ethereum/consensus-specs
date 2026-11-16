@@ -426,6 +426,57 @@ def test_early_return_empty_parent_block(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+def test_early_return_empty_parent_block_with_matching_block_hash(spec, state):
+    """
+    Test early return when the parent block is empty by payload root, even if
+    the latest block hash is the block hash of the latest bid.
+    """
+    validator_indices = [1, 2]
+    prepare_process_withdrawals(
+        spec,
+        state,
+        full_withdrawal_indices=validator_indices,
+        parent_block_empty=True,
+    )
+    state.latest_block_hash = state.latest_execution_payload_bid.block_hash
+    assert state.latest_payload_root != state.latest_execution_payload_bid.payload_root
+
+    pre_state = state.copy()
+    yield from run_gloas_withdrawals_processing(spec, state)
+
+    assert_process_withdrawals(
+        spec,
+        state,
+        pre_state,
+        all_state_unchanged=True,
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_full_parent_block_with_other_block_hash(spec, state):
+    """
+    Test that withdrawals are processed when the parent block is full by
+    payload root, even if the latest block hash is not the block hash of the
+    latest bid.
+    """
+    validator_indices = [1, 2]
+    prepare_process_withdrawals(
+        spec,
+        state,
+        full_withdrawal_indices=validator_indices,
+    )
+    state.latest_block_hash = spec.Hash32(b"\x42" * 32)
+    assert state.latest_payload_root == state.latest_execution_payload_bid.payload_root
+    assert state.latest_block_hash != state.latest_execution_payload_bid.block_hash
+
+    yield from run_gloas_withdrawals_processing(spec, state)
+
+    assert len(state.payload_expected_withdrawals) == len(validator_indices)
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_compounding_validator_partial_withdrawal(spec, state):
     """
     Test compounding validator partial withdrawal support.

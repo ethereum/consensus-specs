@@ -315,6 +315,63 @@ def test_gossip_beacon_block__reject_bid_not_on_parent_execution_head(spec, stat
 
 @with_gloas_and_later
 @spec_state_test
+def test_gossip_beacon_block__reject_parent_empty_wrong_parent_block_hash(spec, state):
+    """A block building on an empty parent with a wrong parent block hash is rejected.
+
+    The bid's parent_payload_root is the parent state's latest_payload_root, so
+    the parent is empty and the root is the one of the parent's execution head,
+    but its parent_block_hash is not the parent state's latest_block_hash. Block
+    processing rejects such a block, so gossip must reject it too.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "beacon_block"
+
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    yield "state", anchor_state
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    seen = get_seen(spec)
+    block = build_empty_block_for_next_slot(spec, state)
+    # The root of the parent's execution head with an arbitrary block hash.
+    # Every other condition is satisfied, so any client rejects regardless of
+    # check order.
+    bid = block.body.signed_execution_payload_bid.message
+    bid.parent_block_hash = spec.Hash32(b"\xab" * 32)
+    assert not spec.is_parent_node_full(store, block)
+    assert bid.parent_payload_root == state.latest_payload_root
+    assert bid.parent_block_hash != state.latest_block_hash
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    yield get_filename(signed_block), signed_block
+
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, signed_block.message.slot)
+    messages = []
+
+    current_time_ms += 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_beacon_block=signed_block,
+        current_time_ms=current_time_ms,
+    )
+    assert result == "reject"
+    assert reason == "bid does not build on the parent's execution head"
+    messages.append(
+        {
+            "current_time_ms": int(current_time_ms),
+            "message": get_filename(signed_block),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_gossip_beacon_block__reject_too_many_blob_commitments(spec, state):
     """A block whose bid carries more KZG commitments than the per-epoch limit is rejected."""
     anchor_state = state.copy()

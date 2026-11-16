@@ -137,6 +137,61 @@ def test_process_parent_execution_payload__full_parent(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+def test_process_parent_execution_payload__empty_parent_with_parent_block_hash(spec, state):
+    """
+    Test that the parent block is empty when the bid does not build on the
+    parent's payload root, even if its parent block hash is the parent bid's
+    block hash.
+    """
+    set_parent_block_full(spec, state)
+    block = build_empty_block_for_next_slot(spec, state)
+
+    parent_bid = state.latest_execution_payload_bid.copy()
+    bid = block.body.signed_execution_payload_bid.message
+    bid.parent_payload_root = spec.Root(b"\x42" * 32)
+    assert bid.parent_block_hash == parent_bid.block_hash
+    assert bid.parent_payload_root != parent_bid.payload_root
+
+    parent_slot_index = parent_bid.slot % spec.SLOTS_PER_HISTORICAL_ROOT
+    state.execution_payload_availability[parent_slot_index] = 0b0
+
+    spec.process_slots(state, block.slot)
+    yield from run_parent_execution_payload_processing(spec, state, block)
+
+    assert not state.execution_payload_availability[parent_slot_index]
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_process_parent_execution_payload__full_parent_with_other_parent_block_hash(spec, state):
+    """
+    Test that the parent block is full when the bid builds on the parent's
+    payload root, even if its parent block hash is not the parent bid's block
+    hash. The bid is rejected for its parent block hash later, in
+    process_execution_payload_bid.
+    """
+    set_parent_block_full(spec, state)
+    block = build_empty_block_for_next_slot(spec, state)
+
+    parent_bid = state.latest_execution_payload_bid.copy()
+    bid = block.body.signed_execution_payload_bid.message
+    bid.parent_block_hash = spec.Hash32(b"\x42" * 32)
+    assert bid.parent_payload_root == parent_bid.payload_root
+    assert bid.parent_block_hash != parent_bid.block_hash
+
+    parent_slot_index = parent_bid.slot % spec.SLOTS_PER_HISTORICAL_ROOT
+    state.execution_payload_availability[parent_slot_index] = 0b0
+
+    spec.process_slots(state, block.slot)
+    yield from run_parent_execution_payload_processing(spec, state, block)
+
+    assert state.execution_payload_availability[parent_slot_index]
+    assert state.latest_block_hash == parent_bid.block_hash
+    assert state.latest_payload_root == parent_bid.payload_root
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_process_parent_execution_payload__empty_parent_requires_empty_requests(spec, state):
     """
     Test that when parent is empty, parent_execution_requests must be empty.
