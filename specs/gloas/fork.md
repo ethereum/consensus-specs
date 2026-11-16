@@ -133,6 +133,11 @@ If `state.slot % SLOTS_PER_EPOCH == 0` and
 `compute_epoch_at_slot(state.slot) == GLOAS_FORK_EPOCH`, an irregular state
 change is made to upgrade to Gloas.
 
+*Note*: The payload root of the last pre-Gloas execution payload is the hash
+tree root of `pre.latest_execution_payload_header`, which equals the hash tree
+root of that payload as a `fulu.ExecutionPayload`. It is not the hash tree root
+of that payload as a Gloas `ExecutionPayload`.
+
 ```python
 def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
     epoch = fulu.get_current_epoch(pre)

@@ -829,10 +829,15 @@ def validate_beacon_aggregate_and_proof_gossip(
 This topic is used to propagate execution payload messages as
 `ExecutionPayloadEnvelope`.
 
-*Note*: The envelope is not signed. Every field of the envelope is committed to
-by the beacon block with root `envelope.beacon_block_root`, through the
-execution payload bid which the block contains, so there is at most one valid
-envelope for a block.
+*Note*: The envelope is not signed. The beacon block with root
+`envelope.beacon_block_root` commits to every other field of the envelope, to
+the payload and the execution requests through its execution payload bid and to
+the parent beacon block root directly, so there is at most one valid envelope
+for a block.
+
+*Note*: An envelope cannot be validated before its beacon block is known. A node
+which queues such envelopes SHOULD bound the queue, for example by the number
+and total size of the envelopes it holds per peer and per block root.
 
 ```python
 def validate_execution_payload_envelope_gossip(
