@@ -66,7 +66,6 @@ def upgrade_to_eip8321(pre: heze.BeaconState) -> BeaconState:
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         latest_block_hash=pre.latest_block_hash,
-        latest_payload_root=pre.latest_payload_root,
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         historical_summaries=pre.historical_summaries,
@@ -87,6 +86,7 @@ def upgrade_to_eip8321(pre: heze.BeaconState) -> BeaconState:
         latest_execution_payload_bid=pre.latest_execution_payload_bid,
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
+        latest_payload_root=pre.latest_payload_root,
         # [New in EIP8321]
         randao_commitments=RandaoCommitments(
             data=[UNSET_RANDAO_COMMITMENT for _ in pre.validators]

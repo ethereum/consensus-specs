@@ -901,8 +901,6 @@ class BeaconState(ProgressiveContainer):
     # Removed `latest_execution_payload_header`
     # [New in Gloas:EIP7732]
     latest_block_hash: Hash32
-    # [New in Gloas:EIP7732]
-    latest_payload_root: Root
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: HistoricalSummaries
@@ -935,6 +933,8 @@ class BeaconState(ProgressiveContainer):
     payload_expected_withdrawals: Withdrawals
     # [New in Gloas:EIP7732]
     ptc_window: PayloadTimelinessCommitteeWindow
+    # [New in Gloas:EIP7732]
+    latest_payload_root: Root
 ```
 
 #### `ExecutionPayload`

@@ -66,7 +66,7 @@ offline balance.
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=48, gaps=(8, 9, 10, 29))
+    ACTIVE_FIELDS = active_fields(width=48, gaps=(8, 9, 10, 28))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -90,7 +90,6 @@ class BeaconState(ProgressiveContainer):
     current_sync_committee: SyncCommittee
     next_sync_committee: SyncCommittee
     latest_block_hash: Hash32
-    latest_payload_root: Root
     next_withdrawal_index: WithdrawalIndex
     next_withdrawal_validator_index: ValidatorIndex
     historical_summaries: HistoricalSummaries
@@ -111,6 +110,7 @@ class BeaconState(ProgressiveContainer):
     latest_execution_payload_bid: ExecutionPayloadBid
     payload_expected_withdrawals: Withdrawals
     ptc_window: PayloadTimelinessCommitteeWindow
+    latest_payload_root: Root
     # [New in EIP7716]
     smoothed_offline_balance: Gwei
 ```

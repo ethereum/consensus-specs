@@ -38,7 +38,6 @@ def run_fork_test(post_spec, pre_state):
         "current_sync_committee",
         "next_sync_committee",
         "latest_block_hash",
-        "latest_payload_root",
         "next_withdrawal_index",
         "next_withdrawal_validator_index",
         "historical_summaries",
@@ -58,6 +57,7 @@ def run_fork_test(post_spec, pre_state):
         "builder_pending_withdrawals",
         "payload_expected_withdrawals",
         "ptc_window",
+        "latest_payload_root",
     ]
     for field in stable_fields:
         assert getattr(pre_state, field) == getattr(post_state, field)

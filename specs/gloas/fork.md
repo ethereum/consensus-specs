@@ -176,8 +176,6 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         # Removed `latest_execution_payload_header`
         # [New in Gloas:EIP7732]
         latest_block_hash=pre.latest_execution_payload_header.block_hash,
-        # [New in Gloas:EIP7732]
-        latest_payload_root=hash_tree_root(pre.latest_execution_payload_header),
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         historical_summaries=pre.historical_summaries,
@@ -227,6 +225,8 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         payload_expected_withdrawals=Withdrawals(),
         # [New in Gloas:EIP7732]
         ptc_window=PayloadTimelinessCommitteeWindow(),
+        # [New in Gloas:EIP7732]
+        latest_payload_root=hash_tree_root(pre.latest_execution_payload_header),
     )
 
     # [New in Gloas:EIP7732]
