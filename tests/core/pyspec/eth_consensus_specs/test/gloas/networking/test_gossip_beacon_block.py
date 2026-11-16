@@ -39,10 +39,11 @@ def test_gossip_beacon_block__valid_parent_empty(spec, state):
 
     seen = get_seen(spec)
     block = build_empty_block_for_next_slot(spec, state)
-    # Claim the parent is empty by building on the pre-payload block hash,
-    # which does not match the parent bid's block_hash. The parent payload
+    # Claim the parent is empty by building on the pre-payload payload root,
+    # which does not match the parent bid's payload_root. The parent payload
     # check does not apply, so no envelope is needed for the block to be valid.
     block.body.signed_execution_payload_bid.message.parent_block_hash = state.latest_block_hash
+    block.body.signed_execution_payload_bid.message.parent_payload_root = state.latest_payload_root
     assert not spec.is_parent_node_full(store, block)
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
@@ -104,10 +105,11 @@ def test_gossip_beacon_block__valid_parent_full(spec, state):
 
     seen = get_seen(spec)
     block = build_empty_block_for_next_slot(spec, state)
-    # Claim the parent is full by matching the bid's parent_block_hash to the
-    # parent bid's block_hash.
+    # Claim the parent is full by matching the bid's parent_payload_root to the
+    # parent bid's payload_root.
     parent_bid = anchor_block.body.signed_execution_payload_bid.message
     block.body.signed_execution_payload_bid.message.parent_block_hash = parent_bid.block_hash
+    block.body.signed_execution_payload_bid.message.parent_payload_root = parent_bid.payload_root
     assert spec.is_parent_node_full(store, block)
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
@@ -151,11 +153,12 @@ def test_gossip_beacon_block__ignore_parent_payload_not_verified(spec, state):
 
     seen = get_seen(spec)
     block = build_empty_block_for_next_slot(spec, state)
-    # Claim the parent is full by matching the bid's parent_block_hash to the
-    # parent bid's block_hash. The parent's payload has not been verified
+    # Claim the parent is full by matching the bid's parent_payload_root to the
+    # parent bid's payload_root. The parent's payload has not been verified
     # (there is no envelope in the store), so the block must be ignored.
     parent_bid = anchor_block.body.signed_execution_payload_bid.message
     block.body.signed_execution_payload_bid.message.parent_block_hash = parent_bid.block_hash
+    block.body.signed_execution_payload_bid.message.parent_payload_root = parent_bid.payload_root
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
@@ -189,8 +192,8 @@ def test_gossip_beacon_block__ignore_parent_payload_not_verified(spec, state):
 def test_gossip_beacon_block__reject_bid_not_on_parent_execution_head(spec, state):
     """A block whose bid builds on an unrelated execution head is rejected.
 
-    The bid's parent_block_hash is neither the parent bid's block_hash (which
-    would make the parent full) nor the parent state's latest_block_hash (the
+    The bid's parent_payload_root is neither the parent bid's payload_root (which
+    would make the parent full) nor the parent state's latest_payload_root (the
     empty-parent branch), so it is classified as an empty parent yet does not
     build on the parent's execution head. Block processing rejects such a block,
     so gossip must reject it too.
@@ -206,13 +209,13 @@ def test_gossip_beacon_block__reject_bid_not_on_parent_execution_head(spec, stat
 
     seen = get_seen(spec)
     block = build_empty_block_for_next_slot(spec, state)
-    # An arbitrary execution head that is neither the parent's payload hash
-    # (full) nor the parent state's latest_block_hash (empty). Every other
+    # An arbitrary execution head that is neither the parent's payload root
+    # (full) nor the parent state's latest_payload_root (empty). Every other
     # condition is satisfied, so any client rejects regardless of check order.
     bid = block.body.signed_execution_payload_bid.message
-    bid.parent_block_hash = spec.Hash32(b"\xab" * 32)
+    bid.parent_payload_root = spec.Root(b"\xab" * 32)
     assert not spec.is_parent_node_full(store, block)
-    assert bid.parent_block_hash != state.latest_block_hash
+    assert bid.parent_payload_root != state.latest_payload_root
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block
 
@@ -410,6 +413,7 @@ def _assert_beacon_block_gossip(spec, state, mutate_block, expected, reason=None
     block = build_empty_block_for_next_slot(spec, state)
     # Treat the parent as empty so no parent payload envelope is required for validity.
     block.body.signed_execution_payload_bid.message.parent_block_hash = state.latest_block_hash
+    block.body.signed_execution_payload_bid.message.parent_payload_root = state.latest_payload_root
     mutate_block(spec, block)
     signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
     yield get_filename(signed_block), signed_block

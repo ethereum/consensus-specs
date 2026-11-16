@@ -31,6 +31,7 @@ def prepare_signed_execution_payload_bid(
     value=None,
     slot=None,
     parent_block_hash=None,
+    parent_payload_root=None,
     parent_block_root=None,
     fee_recipient=None,
     gas_limit=None,
@@ -56,6 +57,9 @@ def prepare_signed_execution_payload_bid(
 
     if parent_block_hash is None:
         parent_block_hash = state.latest_block_hash
+
+    if parent_payload_root is None:
+        parent_payload_root = state.latest_payload_root
 
     if parent_block_root is None:
         parent_block_root = state.latest_block_header.hash_tree_root()
@@ -86,6 +90,7 @@ def prepare_signed_execution_payload_bid(
 
     bid_kwargs = {
         "parent_block_hash": parent_block_hash,
+        "parent_payload_root": parent_payload_root,
         "parent_block_root": parent_block_root,
         "block_hash": block_hash,
         "prev_randao": prev_randao,

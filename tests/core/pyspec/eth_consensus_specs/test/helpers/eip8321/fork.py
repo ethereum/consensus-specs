@@ -35,6 +35,7 @@ def run_fork_test(post_spec, pre_state):
         "current_sync_committee",
         "next_sync_committee",
         "latest_block_hash",
+        "latest_payload_root",
         "next_withdrawal_index",
         "next_withdrawal_validator_index",
         "historical_summaries",

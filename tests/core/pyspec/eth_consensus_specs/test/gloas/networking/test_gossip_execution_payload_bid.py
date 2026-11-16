@@ -46,14 +46,14 @@ def _seed_bid_context(
     under test. The expected outcome then does not depend on the order in
     which a client checks independent conditions.
 
-    Returns (seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, current_time_ms).
+    Returns (seen, common_fee, parent_gas_limit, proposal_slot, parent_payload_root, current_time_ms).
     """
     seen = get_seen(spec)
     common_fee = spec.ExecutionAddress(b"\x11" * 20)
     # A target_gas_limit equal to the parent's payload gas_limit makes the
     # is_gas_limit_target_compatible check accept bid.gas_limit == target.
     parent_gas_limit = state.latest_execution_payload_bid.gas_limit
-    parent_block_hash = state.latest_execution_payload_bid.block_hash
+    parent_payload_root = state.latest_execution_payload_bid.payload_root
     proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
 
     if seed_prefs:
@@ -86,7 +86,7 @@ def _seed_bid_context(
 
     if seed_envelope:
         current_time_ms += 10
-        assert head_payload.message.payload.block_hash == parent_block_hash
+        assert spec.hash_tree_root(head_payload.message.payload) == parent_payload_root
         yield get_filename(head_payload), head_payload
         result, reason = run_validate_gossip(
             spec,
@@ -103,7 +103,7 @@ def _seed_bid_context(
             }
         )
 
-    return seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, current_time_ms
+    return seen, common_fee, parent_gas_limit, proposal_slot, parent_payload_root, current_time_ms
 
 
 @with_gloas_and_later
@@ -129,7 +129,7 @@ def test_gossip_execution_payload_bid__valid(spec, state):
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -138,7 +138,7 @@ def test_gossip_execution_payload_bid__valid(spec, state):
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -182,6 +182,9 @@ def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(s
     head_block.body.signed_execution_payload_bid.message.parent_block_hash = (
         parent_block.message.body.signed_execution_payload_bid.message.block_hash
     )
+    head_block.body.signed_execution_payload_bid.message.parent_payload_root = (
+        parent_block.message.body.signed_execution_payload_bid.message.payload_root
+    )
     head_block.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(
         b"\x03" + b"\x00" * 31
     )
@@ -202,7 +205,7 @@ def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(s
     head_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
     assert spec.get_head(store).root == head_root
     assert signed_head_block.message.parent_root == parent_root
-    assert head_bid.parent_block_hash == parent_payload.message.payload.block_hash
+    assert head_bid.parent_payload_root == spec.hash_tree_root(parent_payload.message.payload)
     assert parent_randao != head_randao
 
     yield "state", anchor_state
@@ -222,7 +225,7 @@ def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(s
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from (
         _seed_bid_context(spec, proposal_state, store, parent_payload, messages, current_time_ms)
@@ -238,7 +241,7 @@ def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(s
         parent_state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -296,7 +299,7 @@ def test_gossip_execution_payload_bid__valid_zero_value_first_bid(spec, state):
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -305,7 +308,7 @@ def test_gossip_execution_payload_bid__valid_zero_value_first_bid(spec, state):
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -352,7 +355,7 @@ def test_gossip_execution_payload_bid__ignore_slot_too_far_future(spec, state):
 
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
-    seen, common_fee, parent_gas_limit, _, parent_block_hash, current_time_ms = yield from (
+    seen, common_fee, parent_gas_limit, _, parent_payload_root, current_time_ms = yield from (
         _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
     )
 
@@ -362,7 +365,7 @@ def test_gossip_execution_payload_bid__ignore_slot_too_far_future(spec, state):
         state,
         builder_index=spec.BuilderIndex(0),
         slot=far_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -424,7 +427,7 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_lower_disparity(spec,
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
     assert proposal_slot == bid_slot
@@ -434,7 +437,7 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_lower_disparity(spec,
         state,
         builder_index=spec.BuilderIndex(0),
         slot=bid_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -536,7 +539,7 @@ def test_gossip_execution_payload_bid__valid_slot_at_lower_disparity(spec, state
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_payload_root=spec.hash_tree_root(head_payload.message.payload),
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -636,7 +639,7 @@ def test_gossip_execution_payload_bid__valid_slot_at_upper_disparity(spec, state
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_payload_root=spec.hash_tree_root(head_payload.message.payload),
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -692,7 +695,7 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_upper_disparity(spec,
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -701,7 +704,7 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_upper_disparity(spec,
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -764,7 +767,7 @@ def test_gossip_execution_payload_bid__ignore_builder_bid_limit_reached(spec, st
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -779,7 +782,7 @@ def test_gossip_execution_payload_bid__ignore_builder_bid_limit_reached(spec, st
             state,
             builder_index=builder_index,
             slot=proposal_slot,
-            parent_block_hash=parent_block_hash,
+            parent_payload_root=parent_payload_root,
             parent_block_root=parent_root,
             fee_recipient=common_fee,
             gas_limit=parent_gas_limit,
@@ -812,7 +815,7 @@ def test_gossip_execution_payload_bid__ignore_builder_bid_limit_reached(spec, st
         state,
         builder_index=builder_index,
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -869,7 +872,7 @@ def test_gossip_execution_payload_bid__ignore_not_highest_value(spec, state):
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -878,7 +881,7 @@ def test_gossip_execution_payload_bid__ignore_not_highest_value(spec, state):
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -911,7 +914,7 @@ def test_gossip_execution_payload_bid__ignore_not_highest_value(spec, state):
         state,
         builder_index=spec.BuilderIndex(1),
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -969,7 +972,7 @@ def test_gossip_execution_payload_bid__ignore_equal_value(spec, state):
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -978,7 +981,7 @@ def test_gossip_execution_payload_bid__ignore_equal_value(spec, state):
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -1011,7 +1014,7 @@ def test_gossip_execution_payload_bid__ignore_equal_value(spec, state):
         state,
         builder_index=spec.BuilderIndex(1),
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -1068,7 +1071,7 @@ def test_gossip_execution_payload_bid__valid_higher_value(spec, state):
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -1077,7 +1080,7 @@ def test_gossip_execution_payload_bid__valid_higher_value(spec, state):
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -1110,7 +1113,7 @@ def test_gossip_execution_payload_bid__valid_higher_value(spec, state):
         state,
         builder_index=spec.BuilderIndex(1),
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -1167,7 +1170,7 @@ def test_gossip_execution_payload_bid__reject_builder_index_out_of_range(spec, s
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -1177,7 +1180,7 @@ def test_gossip_execution_payload_bid__reject_builder_index_out_of_range(spec, s
         state,
         builder_index=out_of_range_index,
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -1237,7 +1240,7 @@ def test_gossip_execution_payload_bid__ignore_builder_cannot_cover(spec, state):
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -1246,7 +1249,7 @@ def test_gossip_execution_payload_bid__ignore_builder_cannot_cover(spec, state):
         state,
         builder_index=builder_index,
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -1299,7 +1302,7 @@ def test_gossip_execution_payload_bid__reject_execution_payment_nonzero(spec, st
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -1308,7 +1311,7 @@ def test_gossip_execution_payload_bid__reject_execution_payment_nonzero(spec, st
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -1360,7 +1363,7 @@ def test_gossip_execution_payload_bid__reject_builder_not_active(spec, state):
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -1374,7 +1377,7 @@ def test_gossip_execution_payload_bid__reject_builder_not_active(spec, state):
         state,
         builder_index=builder_index,
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -1436,7 +1439,7 @@ def test_gossip_execution_payload_bid__reject_builder_not_payload_version(spec, 
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -1445,7 +1448,7 @@ def test_gossip_execution_payload_bid__reject_builder_not_payload_version(spec, 
         state,
         builder_index=builder_index,
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -1516,7 +1519,7 @@ def test_gossip_execution_payload_bid__ignore_builder_exit_in_parent_payload(spe
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -1525,7 +1528,7 @@ def test_gossip_execution_payload_bid__ignore_builder_exit_in_parent_payload(spe
         state,
         builder_index=builder_index,
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -1596,7 +1599,7 @@ def test_gossip_execution_payload_bid__valid_parent_exit_unknown_pubkey(spec, st
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -1605,7 +1608,7 @@ def test_gossip_execution_payload_bid__valid_parent_exit_unknown_pubkey(spec, st
         state,
         builder_index=builder_index,
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -1675,7 +1678,7 @@ def test_gossip_execution_payload_bid__valid_parent_exit_wrong_source_address(sp
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -1684,7 +1687,7 @@ def test_gossip_execution_payload_bid__valid_parent_exit_wrong_source_address(sp
         state,
         builder_index=builder_index,
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -1755,7 +1758,7 @@ def test_gossip_execution_payload_bid__ignore_builder_exit_with_pending_balance(
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
     # The pending payment survives the advance to the bid's slot, which is what
@@ -1772,7 +1775,7 @@ def test_gossip_execution_payload_bid__ignore_builder_exit_with_pending_balance(
         state,
         builder_index=builder_index,
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -1825,7 +1828,7 @@ def test_gossip_execution_payload_bid__reject_too_many_blobs(spec, state):
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -1840,7 +1843,7 @@ def test_gossip_execution_payload_bid__reject_too_many_blobs(spec, state):
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -1898,7 +1901,7 @@ def test_gossip_execution_payload_bid__valid_max_blobs(spec, state):
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -1911,7 +1914,7 @@ def test_gossip_execution_payload_bid__valid_max_blobs(spec, state):
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -1970,7 +1973,7 @@ def test_gossip_execution_payload_bid__ignore_parent_block_unknown(spec, state):
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -1980,7 +1983,7 @@ def test_gossip_execution_payload_bid__ignore_parent_block_unknown(spec, state):
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=unknown_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -2037,7 +2040,7 @@ def test_gossip_execution_payload_bid__reject_slot_not_higher_than_parent(spec, 
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, bid_slot)
     current_time_ms -= spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY + 200
     messages = []
-    seen, common_fee, parent_gas_limit, _, parent_block_hash, current_time_ms = yield from (
+    seen, common_fee, parent_gas_limit, _, parent_payload_root, current_time_ms = yield from (
         _seed_bid_context(
             spec, state, store, head_payload, messages, current_time_ms, seed_prefs=False
         )
@@ -2077,7 +2080,7 @@ def test_gossip_execution_payload_bid__reject_slot_not_higher_than_parent(spec, 
         state,
         builder_index=spec.BuilderIndex(0),
         slot=bid_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -2111,12 +2114,12 @@ def test_gossip_execution_payload_bid__reject_slot_not_higher_than_parent(spec, 
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_execution_payload_bid__ignore_parent_block_hash_unknown(spec, state):
-    """A bid whose parent_block_hash is not in seen.execution_payloads is ignored.
+def test_gossip_execution_payload_bid__ignore_parent_payload_root_unknown(spec, state):
+    """A bid whose parent_payload_root is not in seen.execution_payloads is ignored.
 
     No envelope is seeded, which is exactly the condition under test. The gas
     limit compatibility check requires the parent payload, so it can only be
-    evaluated once the parent block hash is known.
+    evaluated once the parent payload is known.
     """
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
@@ -2138,7 +2141,7 @@ def test_gossip_execution_payload_bid__ignore_parent_block_hash_unknown(spec, st
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from (
         _seed_bid_context(
@@ -2151,7 +2154,7 @@ def test_gossip_execution_payload_bid__ignore_parent_block_hash_unknown(spec, st
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -2168,7 +2171,7 @@ def test_gossip_execution_payload_bid__ignore_parent_block_hash_unknown(spec, st
         current_time_ms=current_time_ms,
     )
     assert result == "ignore"
-    assert reason == "bid's parent block hash is not a known execution payload"
+    assert reason == "bid's parent payload root is not a known execution payload"
     messages.append(
         {
             "current_time_ms": int(current_time_ms),
@@ -2216,7 +2219,7 @@ def test_gossip_execution_payload_bid__ignore_parent_state_unavailable(spec, sta
     )
     messages = []
 
-    # Make the bid's parent block hash a known execution payload by validating
+    # Make the bid's parent payload root a known execution payload by validating
     # a real envelope for the head block. The pending parent is an empty
     # block, so the bid builds on the same payload.
     current_time_ms += 50
@@ -2241,7 +2244,7 @@ def test_gossip_execution_payload_bid__ignore_parent_state_unavailable(spec, sta
         state,
         builder_index=spec.BuilderIndex(0),
         slot=spec.Slot(signed_parent.message.slot + 1),
-        parent_block_hash=signed_envelope.message.payload.block_hash,
+        parent_payload_root=spec.hash_tree_root(signed_envelope.message.payload),
         parent_block_root=parent_root,
         value=spec.Gwei(1),
     )
@@ -2324,7 +2327,7 @@ def test_gossip_execution_payload_bid__ignore_slot_past_parent_lookahead(spec, s
         state,
         builder_index=spec.BuilderIndex(0),
         slot=future_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_payload_root=spec.hash_tree_root(head_payload.message.payload),
         parent_block_root=parent_root,
         value=spec.Gwei(1),
     )
@@ -2376,7 +2379,7 @@ def test_gossip_execution_payload_bid__ignore_preferences_not_seen(spec, state):
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    # Make the bid's parent block hash a known execution payload by validating
+    # Make the bid's parent payload root a known execution payload by validating
     # a real envelope for the parent block. Leave seen.proposer_preferences
     # empty.
     current_time_ms += 50
@@ -2400,7 +2403,7 @@ def test_gossip_execution_payload_bid__ignore_preferences_not_seen(spec, state):
         state,
         builder_index=builder_index,
         slot=next_slot_value,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_payload_root=spec.hash_tree_root(head_payload.message.payload),
         parent_block_root=parent_root,
         value=spec.Gwei(1),
     )
@@ -2498,7 +2501,7 @@ def test_gossip_execution_payload_bid__ignore_fee_recipient_mismatch(spec, state
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_payload_root=spec.hash_tree_root(head_payload.message.payload),
         parent_block_root=parent_root,
         fee_recipient=bid_fee,
         gas_limit=parent_gas_limit,
@@ -2599,7 +2602,7 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_payload_root=spec.hash_tree_root(head_payload.message.payload),
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=incompatible_gas_limit,
@@ -2703,7 +2706,7 @@ def test_gossip_execution_payload_bid__reject_incorrect_prev_randao(spec, state)
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_payload_root=spec.hash_tree_root(head_payload.message.payload),
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -2800,18 +2803,18 @@ def test_gossip_execution_payload_bid__reject_block_hash_equals_parent_block_has
 
     # All other checks pass and only block_hash is wrong: it equals the
     # parent_block_hash, which a real execution payload can never produce.
-    parent_block_hash = head_payload.message.payload.block_hash
+    parent_payload_root = spec.hash_tree_root(head_payload.message.payload)
     signed_bid = build_signed_bid(
         spec,
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
         value=spec.Gwei(1),
-        block_hash=parent_block_hash,
+        block_hash=head_payload.message.payload.block_hash,
     )
     yield get_filename(signed_bid), signed_bid
 
@@ -2825,6 +2828,212 @@ def test_gossip_execution_payload_bid__reject_block_hash_equals_parent_block_has
     )
     assert result == "reject"
     assert reason == "bid's block hash equals its parent block hash"
+    messages.append(
+        {
+            "current_time_ms": int(current_time_ms),
+            "message": get_filename(signed_bid),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__reject_payload_root_equals_parent_payload_root(spec, state):
+    """A bid whose payload_root equals its parent_payload_root is rejected."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
+    finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
+    head_payload = record_head_payload(spec, state, store, blocks)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
+    yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
+
+    seen = get_seen(spec)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
+    messages = []
+
+    common_fee = spec.ExecutionAddress(b"\x11" * 20)
+    parent_gas_limit = state.latest_execution_payload_bid.gas_limit
+    current_time_ms += 50
+    proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
+    signed_prefs = build_signed_proposer_preferences(
+        spec,
+        state,
+        proposal_slot=proposal_slot,
+        validator_index=validator_index,
+        fee_recipient=common_fee,
+        target_gas_limit=parent_gas_limit,
+    )
+    yield get_filename(signed_prefs), signed_prefs
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=current_time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(current_time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+        }
+    )
+
+    current_time_ms += 10
+    yield get_filename(head_payload), head_payload
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "message": get_filename(head_payload),
+            "expected": result,
+        }
+    )
+
+    # All other checks pass and only payload_root is wrong: it equals the
+    # parent_payload_root, which a real execution payload can never produce.
+    parent_payload_root = spec.hash_tree_root(head_payload.message.payload)
+    signed_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=spec.BuilderIndex(0),
+        slot=proposal_slot,
+        parent_payload_root=parent_payload_root,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(1),
+        payload_root=parent_payload_root,
+    )
+    yield get_filename(signed_bid), signed_bid
+
+    current_time_ms += 40
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=current_time_ms,
+    )
+    assert result == "reject"
+    assert reason == "bid's payload root equals its parent payload root"
+    messages.append(
+        {
+            "current_time_ms": int(current_time_ms),
+            "message": get_filename(signed_bid),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__reject_parent_block_hash_mismatch(spec, state):
+    """A bid whose parent_block_hash is not the block hash of its parent payload is rejected."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
+    finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
+    head_payload = record_head_payload(spec, state, store, blocks)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
+    yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
+
+    seen = get_seen(spec)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
+    messages = []
+
+    common_fee = spec.ExecutionAddress(b"\x11" * 20)
+    parent_gas_limit = state.latest_execution_payload_bid.gas_limit
+    current_time_ms += 50
+    proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
+    signed_prefs = build_signed_proposer_preferences(
+        spec,
+        state,
+        proposal_slot=proposal_slot,
+        validator_index=validator_index,
+        fee_recipient=common_fee,
+        target_gas_limit=parent_gas_limit,
+    )
+    yield get_filename(signed_prefs), signed_prefs
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_proposer_preferences=signed_prefs,
+        current_time_ms=current_time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "current_time_ms": int(current_time_ms),
+            "message": get_filename(signed_prefs),
+            "expected": result,
+        }
+    )
+
+    current_time_ms += 10
+    yield get_filename(head_payload), head_payload
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "message": get_filename(head_payload),
+            "expected": result,
+        }
+    )
+
+    # All other checks pass and only parent_block_hash is wrong: it is not the
+    # block hash of the payload with root parent_payload_root.
+    parent_payload_root = spec.hash_tree_root(head_payload.message.payload)
+    signed_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=spec.BuilderIndex(0),
+        slot=proposal_slot,
+        parent_payload_root=parent_payload_root,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(1),
+        parent_block_hash=spec.Hash32(b"\x42" * 32),
+    )
+    yield get_filename(signed_bid), signed_bid
+
+    current_time_ms += 40
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=current_time_ms,
+    )
+    assert result == "reject"
+    assert reason == "bid's parent block hash does not match its parent payload"
     messages.append(
         {
             "current_time_ms": int(current_time_ms),
@@ -2906,7 +3115,7 @@ def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_payload_root=spec.hash_tree_root(head_payload.message.payload),
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -3022,7 +3231,7 @@ def _run_bid_gas_limit_scenario(
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_payload_root=spec.hash_tree_root(head_payload.message.payload),
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=spec.Uint64(bid_gas_limit),
@@ -3081,7 +3290,8 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
     empty_parent_gas_limit = spec.Uint64(30_029_295)
     empty_parent = build_empty_block_for_next_slot(spec, state)
     empty_parent_bid = empty_parent.body.signed_execution_payload_bid.message
-    empty_parent_bid.parent_block_hash = payload_block_hash
+    empty_parent_bid.parent_block_hash = state.latest_execution_payload_bid.block_hash
+    empty_parent_bid.parent_payload_root = state.latest_execution_payload_bid.payload_root
     empty_parent_bid.gas_limit = empty_parent_gas_limit
     signed_empty_parent = state_transition_and_sign_block(spec, state, empty_parent)
     parent_root = record_block_in_store(spec, store, signed_empty_parent, state.copy())
@@ -3151,7 +3361,7 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=payload_block_hash,
+        parent_payload_root=spec.hash_tree_root(signed_envelope.message.payload),
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=empty_parent_gas_limit,
@@ -3411,7 +3621,7 @@ def test_gossip_execution_payload_bid__valid_requires_state_advanced_across_epoc
         state,
         builder_index=builder_index,
         slot=proposal_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_payload_root=spec.hash_tree_root(head_payload.message.payload),
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,

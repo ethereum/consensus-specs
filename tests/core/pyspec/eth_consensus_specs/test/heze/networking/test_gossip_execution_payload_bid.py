@@ -49,7 +49,7 @@ def _run_bid_inclusion_list_bits_scenario(
         common_fee,
         parent_gas_limit,
         proposal_slot,
-        parent_block_hash,
+        parent_payload_root,
         current_time_ms,
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
@@ -94,7 +94,7 @@ def _run_bid_inclusion_list_bits_scenario(
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,

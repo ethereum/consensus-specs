@@ -4,6 +4,7 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.execution_payload import (
+    build_execution_payload_for_latest_bid,
     build_signed_execution_payload_envelope,
     sign_execution_payload_envelope,
 )
@@ -560,10 +561,13 @@ def _assert_envelope_withdrawals(spec, state, count, expected, reason=None):
     store.payloads[anchor_root] = signed_anchor_envelope.message
 
     block = build_empty_block_for_next_slot(spec, state)
-    # Claim the parent is full by matching the bid's parent_block_hash to the
-    # parent bid's block_hash. The bid's block_hash must differ from it.
+    # Claim the parent is full by matching the bid's parent_block_hash and
+    # parent_payload_root to the parent bid's block_hash and payload_root. The
+    # bid's block_hash and payload_root must differ from them.
+    anchor_bid = anchor_block.body.signed_execution_payload_bid.message
     bid = block.body.signed_execution_payload_bid.message
-    bid.parent_block_hash = anchor_block.body.signed_execution_payload_bid.message.block_hash
+    bid.parent_block_hash = anchor_bid.block_hash
+    bid.parent_payload_root = anchor_bid.payload_root
     bid.block_hash = spec.Hash32(b"\x42" * 32)
 
     def update_payload(payload):
@@ -572,10 +576,16 @@ def _assert_envelope_withdrawals(spec, state, count, expected, reason=None):
         payload.withdrawals = spec.Withdrawals(data=withdrawals)
 
     # The bid commits to the payload with these withdrawals so that the payload
-    # root check passes.
-    signed_block = state_transition_and_sign_block(
-        spec, state, block, update_payload=update_payload
-    )
+    # root check passes. The payload depends on the block's post-state, so it
+    # is built on a copy of the state, with a placeholder payload root.
+    bid.payload_root = spec.Root(b"\x42" * 32)
+    post_state = state.copy()
+    spec.process_slots(post_state, block.slot)
+    spec.process_block(post_state, block)
+    payload = build_execution_payload_for_latest_bid(spec, post_state)
+    update_payload(payload)
+    bid.payload_root = spec.hash_tree_root(payload)
+    signed_block = state_transition_and_sign_block(spec, state, block)
     block_root = signed_block.message.hash_tree_root()
     store.blocks[block_root] = signed_block.message
     store.block_states[block_root] = state.copy()

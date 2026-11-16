@@ -385,7 +385,7 @@ def test_early_return_empty_parent_block(spec, state):
     Test early return when parent block is empty.
 
     Input State Configured:
-        - latest_block_hash: != latest_execution_payload_bid.block_hash (parent block EMPTY)
+        - latest_payload_root: != latest_execution_payload_bid.payload_root (parent block EMPTY)
         - builder_pending_withdrawals: Contains entry for builder 0
         - validators[1,2].withdrawable_epoch: = current_epoch (fully withdrawable)
         - balances[0,1,2]: Configured for withdrawals
@@ -1070,7 +1070,7 @@ def test_full_builder_payload_reserves_sweep_slot(spec, state):
 
     # Setup: Simulate parent being FULL so process_withdrawals runs (deferred
     # processing otherwise returns early when parent was EMPTY).
-    state.latest_block_hash = state.latest_execution_payload_bid.block_hash
+    state.latest_payload_root = state.latest_execution_payload_bid.payload_root
 
     # Verify setup: One slot reserved for sweep, so only MAX - 1 builder withdrawals
     expected_result = spec.get_expected_withdrawals(state)
@@ -1521,7 +1521,7 @@ def test_empty_parent_preserves_populated_expected_withdrawals(spec, state):
         - state.builders[0]: Builder with pending withdrawal (1 ETH)
         - payload_expected_withdrawals: Populated by a prior full-parent pass
         - next_withdrawal_index: Advanced by the prior pass
-        - latest_block_hash: != latest_execution_payload_bid.block_hash (parent EMPTY)
+        - latest_payload_root: != latest_execution_payload_bid.payload_root (parent EMPTY)
 
     Output State Verified:
         - All state fields UNCHANGED (early exit triggered):

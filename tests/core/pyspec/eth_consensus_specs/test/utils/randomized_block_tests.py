@@ -491,6 +491,7 @@ def _build_random_signed_bid(spec, state, block, rng):
 
     bid = spec.ExecutionPayloadBid(
         parent_block_hash=state.latest_block_hash,
+        parent_payload_root=state.latest_payload_root,
         parent_block_root=block.parent_root,
         block_hash=block_hash,
         prev_randao=spec.get_randao_mix(state, spec.get_current_epoch(state)),

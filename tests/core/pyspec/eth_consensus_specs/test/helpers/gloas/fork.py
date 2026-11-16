@@ -93,6 +93,12 @@ def run_fork_test(post_spec, pre_state):
     # availability of the attested payload.
     assert post_state.latest_execution_payload_bid.slot == pre_state.latest_block_header.slot
 
+    # The last Fulu payload is the execution head of the first Gloas block
+    pre_header = pre_state.latest_execution_payload_header
+    assert post_state.latest_block_hash == pre_header.block_hash
+    assert post_state.latest_payload_root == pre_header.hash_tree_root()
+    assert post_state.latest_execution_payload_bid.payload_root == post_state.latest_payload_root
+
     yield "post", post_state
 
     return post_state

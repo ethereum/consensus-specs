@@ -95,7 +95,9 @@ def _setup_missed_payload_with_withdrawals(spec, state, num_withdrawal_validator
     assert len(block_1_withdrawals) > 0
 
     # Payload for Block 1 was not delivered, so parent is empty for Block 2
-    is_parent_block_full = state.latest_block_hash == state.latest_execution_payload_bid.block_hash
+    is_parent_block_full = (
+        state.latest_payload_root == state.latest_execution_payload_bid.payload_root
+    )
     assert not is_parent_block_full
 
     return pre_state, signed_block_1, block_1_withdrawals
@@ -222,6 +224,9 @@ def test_missed_payload_recovery_resumes_with_remaining_withdrawals(spec, state)
     block_3.body.signed_execution_payload_bid.message.parent_block_hash = (
         state.latest_execution_payload_bid.block_hash
     )
+    block_3.body.signed_execution_payload_bid.message.parent_payload_root = (
+        state.latest_execution_payload_bid.payload_root
+    )
     block_3.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(b"\x42" * 32)
     signed_block_3 = state_transition_and_sign_block(spec, state, block_3)
 
@@ -278,6 +283,9 @@ def test_missed_payload_recovery_resumes_without_remaining_withdrawals(spec, sta
     block_3 = build_empty_block_for_next_slot(spec, state)
     block_3.body.signed_execution_payload_bid.message.parent_block_hash = (
         state.latest_execution_payload_bid.block_hash
+    )
+    block_3.body.signed_execution_payload_bid.message.parent_payload_root = (
+        state.latest_execution_payload_bid.payload_root
     )
     block_3.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(b"\x42" * 32)
     signed_block_3 = state_transition_and_sign_block(spec, state, block_3)
@@ -855,6 +863,7 @@ def test_builder_payment_after_missed_epochs(spec, state):
     bid.value = value
     bid.fee_recipient = fee_recipient
     bid.execution_requests_root = spec.hash_tree_root(spec.ExecutionRequests())
+    bid.payload_root = spec.Root(b"\x42" * 32)
 
     # Sign the bid with the builder's private key
     signature = spec.get_execution_payload_bid_signature(
@@ -892,7 +901,12 @@ def test_builder_payment_after_missed_epochs(spec, state):
     block_1_epoch = spec.compute_epoch_at_slot(block_1.slot)
     block_2_slot = spec.compute_start_slot_at_epoch(block_1_epoch + 2) + 1
     block_2 = build_empty_block(spec, state, slot=block_2_slot)
-    block_2.body.signed_execution_payload_bid.message.parent_block_hash = block_hash
+    block_2.body.signed_execution_payload_bid.message.parent_block_hash = (
+        state.latest_execution_payload_bid.block_hash
+    )
+    block_2.body.signed_execution_payload_bid.message.parent_payload_root = (
+        state.latest_execution_payload_bid.payload_root
+    )
     signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
 
     yield "blocks", [signed_block_1, signed_block_2]
@@ -917,8 +931,7 @@ def test_attestations_after_missed_slot_use_applied_parent_payload_availability(
 
     block_1 = build_empty_block_for_next_slot(spec, state)
     parent_slot = block_1.slot
-    parent_block_hash = spec.Hash32(b"\x42" * 32)
-    block_1.body.signed_execution_payload_bid.message.block_hash = parent_block_hash
+    block_1.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(b"\x42" * 32)
 
     yield "pre", state
 
@@ -969,7 +982,12 @@ def test_attestations_after_missed_slot_use_applied_parent_payload_availability(
     # Block 2 confirms Block 1's payload before processing the attestation.
     child_slot = attestation_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
     block_2 = build_empty_block(spec, state, slot=child_slot)
-    block_2.body.signed_execution_payload_bid.message.parent_block_hash = parent_block_hash
+    block_2.body.signed_execution_payload_bid.message.parent_block_hash = (
+        state.latest_execution_payload_bid.block_hash
+    )
+    block_2.body.signed_execution_payload_bid.message.parent_payload_root = (
+        state.latest_execution_payload_bid.payload_root
+    )
     block_2.body.attestations = spec.Attestations.of(matching_attestation, mismatching_attestation)
     signed_block_2 = state_transition_and_sign_block(spec, state, block_2)
 

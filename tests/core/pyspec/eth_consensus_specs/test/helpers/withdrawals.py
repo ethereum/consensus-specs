@@ -320,6 +320,11 @@ def set_parent_block_full(spec, state):
         state.latest_block_hash = b"\x01" * 32
         state.latest_execution_payload_bid.block_hash = state.latest_block_hash
 
+    # For testing purposes, ensure we have a payload root
+    if state.latest_execution_payload_bid.payload_root == spec.Root():
+        state.latest_execution_payload_bid.payload_root = spec.Root(b"\x01" * 32)
+    state.latest_payload_root = state.latest_execution_payload_bid.payload_root
+
 
 def set_parent_block_empty(spec, state):
     """
@@ -327,6 +332,8 @@ def set_parent_block_empty(spec, state):
     """
     state.latest_block_hash = b"\x00" * 32
     state.latest_execution_payload_bid.block_hash = b"\x01" * 32
+    state.latest_payload_root = spec.Root()
+    state.latest_execution_payload_bid.payload_root = spec.Root(b"\x01" * 32)
 
 
 def prepare_process_withdrawals(
@@ -899,7 +906,7 @@ def assert_process_withdrawals_pre_gloas(
     # and the withdrawal indices remain unchanged.
     if is_post_gloas(spec):
         is_parent_block_full = (
-            pre_state.latest_block_hash == pre_state.latest_execution_payload_bid.block_hash
+            pre_state.latest_payload_root == pre_state.latest_execution_payload_bid.payload_root
         )
         if not is_parent_block_full:
             assert post_state.next_withdrawal_index == pre_state.next_withdrawal_index

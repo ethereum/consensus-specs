@@ -43,6 +43,28 @@ def get_execution_payload_header(spec, execution_payload):
     return payload_header
 
 
+def get_parent_payload_root(spec, state, parent_hash):
+    """
+    Return the root of the payload with block hash ``parent_hash``, as seen
+    from ``state``, the pre-state of the block that builds on it.
+    """
+    parent_bid = state.latest_execution_payload_bid
+    if parent_hash == parent_bid.block_hash:
+        return parent_bid.payload_root
+    return state.latest_payload_root
+
+
+def get_parent_block_hash(spec, state, parent_payload_root):
+    """
+    Return the block hash of the payload with root ``parent_payload_root``, as
+    seen from ``state``, the pre-state of the block that builds on it.
+    """
+    parent_bid = state.latest_execution_payload_bid
+    if parent_payload_root == parent_bid.payload_root:
+        return parent_bid.block_hash
+    return state.latest_block_hash
+
+
 def get_execution_payload_bid(spec, state, execution_payload):
     if not is_post_gloas(spec):
         raise ValueError("get_execution_payload_bid only available for gloas and later")
@@ -53,6 +75,7 @@ def get_execution_payload_bid(spec, state, execution_payload):
 
     return spec.ExecutionPayloadBid(
         parent_block_hash=execution_payload.parent_hash,
+        parent_payload_root=get_parent_payload_root(spec, state, execution_payload.parent_hash),
         parent_block_root=parent_block_root,
         block_hash=execution_payload.block_hash,
         fee_recipient=execution_payload.fee_recipient,
@@ -307,6 +330,7 @@ def build_empty_post_gloas_execution_payload_bid(spec, state):
     prev_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
     return spec.ExecutionPayloadBid(
         parent_block_hash=state.latest_block_hash,
+        parent_payload_root=state.latest_payload_root,
         parent_block_root=parent_block_root,
         block_hash=empty_payload_hash,
         prev_randao=prev_randao,
@@ -518,8 +542,8 @@ def commit_self_build_bid_to_payload(spec, state, block, update_payload=None):
     Commit the self-build bid of ``block`` to the execution payload which tests
     reveal by default, after ``update_payload`` (if given) changes the payload,
     where ``state`` is the post-state of ``block``. The payload depends on that
-    post-state, and nothing in the state transition reads the bid's payload
-    root, so the commitment is set after the fact.
+    post-state, and nothing in the state transition of ``block`` reads its
+    bid's payload root, so the commitment is set after the fact.
     """
     bid = block.body.signed_execution_payload_bid.message
     if bid.builder_index != spec.BUILDER_INDEX_SELF_BUILD or bid.payload_root != spec.Root():
@@ -584,6 +608,7 @@ def compute_execution_payload_bid(spec, state, payload, execution_requests=None)
     builder_index = spec.BUILDER_INDEX_SELF_BUILD
     return spec.ExecutionPayloadBid(
         parent_block_hash=payload.parent_hash,
+        parent_payload_root=get_parent_payload_root(spec, state, payload.parent_hash),
         parent_block_root=parent_block_root,
         block_hash=payload.block_hash,
         prev_randao=payload.prev_randao,

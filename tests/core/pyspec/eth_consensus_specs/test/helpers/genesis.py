@@ -183,6 +183,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold, builder
 
     if is_post_gloas(spec):
         state.latest_block_hash = genesis_payload.block_hash
+        state.latest_payload_root = spec.hash_tree_root(genesis_payload)
         state.latest_execution_payload_bid = spec.ExecutionPayloadBid(
             # The genesis bid's block hash is the empty hash
             block_hash=spec.Hash32(),

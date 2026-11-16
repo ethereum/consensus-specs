@@ -5,6 +5,7 @@ from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_sl
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
     commit_builder_bid_to_payload,
+    get_parent_block_hash,
 )
 from eth_consensus_specs.test.helpers.execution_payload_bid import (
     prepare_signed_execution_payload_bid,
@@ -291,7 +292,7 @@ def build_signed_bid(
     state,
     builder_index,
     slot,
-    parent_block_hash,
+    parent_payload_root,
     parent_block_root,
     fee_recipient=None,
     gas_limit=None,
@@ -302,6 +303,8 @@ def build_signed_bid(
     inclusion_list_bits=None,
     valid_signature=True,
     block_hash=None,
+    payload_root=None,
+    parent_block_hash=None,
 ):
     """Construct a SignedExecutionPayloadBid."""
     if blob_kzg_commitments is None:
@@ -309,8 +312,11 @@ def build_signed_bid(
         # List would change the hash tree root and invalidate the signature
         # for consumers decoding the vector.
         blob_kzg_commitments = spec.BlobKZGCommitments()
+    if parent_block_hash is None:
+        parent_block_hash = get_parent_block_hash(spec, state, parent_payload_root)
     bid = spec.ExecutionPayloadBid(
         parent_block_hash=parent_block_hash,
+        parent_payload_root=parent_payload_root,
         parent_block_root=parent_block_root,
         block_hash=block_hash if block_hash is not None else spec.Hash32(b"\x02" + b"\x00" * 31),
         prev_randao=prev_randao
@@ -326,6 +332,7 @@ def build_signed_bid(
         execution_payment=execution_payment if execution_payment is not None else spec.Gwei(0),
         blob_kzg_commitments=spec.BlobKZGCommitments(data=blob_kzg_commitments),
         execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
+        payload_root=payload_root if payload_root is not None else spec.Root(),
     )
     if is_post_heze(spec):
         bid.inclusion_list_bits = (

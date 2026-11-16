@@ -39,6 +39,7 @@ def _assert_parent_preregistrations_gossip(spec, state, count, expected, reason=
     block = build_empty_block_for_next_slot(spec, state)
     # Treat the parent as empty so no parent payload envelope is required for validity
     block.body.signed_execution_payload_bid.message.parent_block_hash = state.latest_block_hash
+    block.body.signed_execution_payload_bid.message.parent_payload_root = state.latest_payload_root
     block.body.parent_execution_requests = spec.ExecutionRequests(
         preregistrations=spec.PreregistrationRequests(
             data=([spec.PreregistrationRequest()] * count)
