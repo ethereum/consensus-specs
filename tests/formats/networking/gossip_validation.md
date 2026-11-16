@@ -36,7 +36,7 @@ blocks: [{                   -- Optional. Blocks to import before validation (ol
                              -- "VALID" | "INVALIDATED" | "NOT_VALIDATED".
                              -- Maps to the corresponding `PAYLOAD_STATUS_*` value
                              -- in the relevant specification.
-    payload: string,         -- Optional. `SignedExecutionPayloadEnvelope` file for
+    payload: string,         -- Optional. `ExecutionPayloadEnvelope` file for
                              -- this block. The envelope has been received and
                              -- verified, as recorded by `on_execution_payload_envelope`.
 }]

@@ -7,7 +7,7 @@ from eth_consensus_specs.test.helpers.attestations import get_valid_attestation_
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.execution_payload import (
-    build_signed_execution_payload_envelope,
+    build_execution_payload_envelope,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_execution_payload,
@@ -66,7 +66,7 @@ def test_get_head_prunes_childless_unviable_full_variant(spec, state):
 
     # Deliver B's envelope so the FULL(B) variant exists
     b_state = store.block_states[b_root]
-    envelope = build_signed_execution_payload_envelope(spec, b_state, b_root, signed_b)
+    envelope = build_execution_payload_envelope(spec, b_state, b_root, signed_b)
     yield from add_execution_payload(spec, store, envelope, test_steps)
     assert spec.is_payload_verified(store, b_root)
 
@@ -213,7 +213,7 @@ def test_get_head_prunes_childless_unviable_empty_variant(spec, state):
 
     # Deliver B's envelope so the FULL(B) variant exists
     b_state = store.block_states[b_root]
-    envelope = build_signed_execution_payload_envelope(spec, b_state, b_root, signed_b)
+    envelope = build_execution_payload_envelope(spec, b_state, b_root, signed_b)
     yield from add_execution_payload(spec, store, envelope, test_steps)
     assert spec.is_payload_verified(store, b_root)
 
@@ -340,7 +340,7 @@ def test_get_filtered_node_tree_contains_both_viable_childless_variants(spec, st
 
     # Deliver B's envelope so both FULL(B) and EMPTY(B) variants exist in store
     b_state = store.block_states[b_root]
-    envelope = build_signed_execution_payload_envelope(spec, b_state, b_root, signed_b)
+    envelope = build_execution_payload_envelope(spec, b_state, b_root, signed_b)
     yield from add_execution_payload(spec, store, envelope, test_steps)
     assert spec.is_payload_verified(store, b_root)
 

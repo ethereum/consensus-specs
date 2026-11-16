@@ -188,12 +188,12 @@ the test.
 #### `on_execution_payload_envelope` execution step
 
 The parameter that is required for executing
-`on_execution_payload_envelope(store, signed_execution_payload_envelope)`.
+`on_execution_payload_envelope(store, envelope)`.
 
 ```yaml
 {
     execution_payload: string  -- the name of the `execution_payload_envelope_<32-byte-root>.ssz_snappy` file.
-                                  To execute `on_execution_payload_envelope(store, signed_envelope)` with the given envelope.
+                                  To execute `on_execution_payload_envelope(store, envelope)` with the given envelope.
     valid: bool                -- optional, default to `true`.
                                   If it's `false`, this execution step is expected to be invalid.
 }
@@ -307,9 +307,9 @@ Each file is an SSZ-snappy encoded `SignedBeaconBlock`.
 
 ### `execution_payload_envelope_<32-byte-root>.ssz_snappy`
 
-`<32-byte-root>` is the hash tree root of the given signed envelope.
+`<32-byte-root>` is the hash tree root of the given envelope.
 
-Each file is an SSZ-snappy encoded `SignedExecutionPayloadEnvelope`.
+Each file is an SSZ-snappy encoded `ExecutionPayloadEnvelope`.
 
 ### `payload_attestation_message_<32-byte-root>.ssz_snappy`
 
@@ -336,7 +336,7 @@ Each file is an SSZ-snappy encoded `PayloadAttestationMessage`.
        after executing `on_block(store, block)`.
      - For the `on_execution_payload_envelope` execution step: look up the
        corresponding `execution_payload_envelope_<root>.ssz_snappy` file and
-       execute `on_execution_payload_envelope(store, signed_envelope)`.
+       execute `on_execution_payload_envelope(store, envelope)`.
      - For the `on_payload_attestation_message` execution step: look up the
        corresponding `payload_attestation_message_<root>.ssz_snappy` file and
        execute `on_payload_attestation_message(store, ptc_message)`.

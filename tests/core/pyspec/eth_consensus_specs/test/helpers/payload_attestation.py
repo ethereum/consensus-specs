@@ -3,7 +3,7 @@ from eth_consensus_specs.test.gloas.block_processing.test_process_payload_attest
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.execution_payload import (
-    build_signed_execution_payload_envelope,
+    build_execution_payload_envelope,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_execution_payload,
@@ -73,7 +73,7 @@ def setup_verified_parent_with_distinct_ptc(spec, state):
     store, block_root, block_state, signed_block, test_steps = yield from setup_one_block_store(
         spec, state
     )
-    envelope = build_signed_execution_payload_envelope(spec, block_state, block_root, signed_block)
+    envelope = build_execution_payload_envelope(spec, block_state, block_root, signed_block)
     yield from add_execution_payload(spec, store, envelope, test_steps)
     return store, block_root, block_state, test_steps
 

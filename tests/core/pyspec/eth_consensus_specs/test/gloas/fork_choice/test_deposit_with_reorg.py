@@ -11,7 +11,7 @@ from eth_consensus_specs.test.helpers.deposits import (
     prepare_deposit_request,
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
-    build_signed_execution_payload_envelope,
+    build_execution_payload_envelope,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_execution_payload,
@@ -63,7 +63,7 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
     yield from tick_and_add_block(spec, store, signed_deposit_block, test_steps)
 
     # Reveal the execution payload envelope carrying the deposit request
-    deposit_envelope = build_signed_execution_payload_envelope(
+    deposit_envelope = build_execution_payload_envelope(
         spec,
         state,
         deposit_block_root,

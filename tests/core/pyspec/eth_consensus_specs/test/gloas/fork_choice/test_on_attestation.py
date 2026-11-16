@@ -4,7 +4,7 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.attestations import get_valid_attestation
 from eth_consensus_specs.test.helpers.execution_payload import (
-    build_signed_execution_payload_envelope,
+    build_execution_payload_envelope,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_attestation,
@@ -43,7 +43,7 @@ def test_validate_on_attestation_same_slot_full_vote_rejected(spec, state):
     store, block_root, block_state, signed_block, test_steps = yield from setup_one_block_store(
         spec, state
     )
-    envelope = build_signed_execution_payload_envelope(spec, block_state, block_root, signed_block)
+    envelope = build_execution_payload_envelope(spec, block_state, block_root, signed_block)
     yield from add_execution_payload(spec, store, envelope, test_steps)
 
     # Get valid full-node attestation at the anchor's slot.
@@ -64,7 +64,7 @@ def test_validate_on_attestation_later_slot_full_vote_valid(spec, state):
     store, block_root, block_state, signed_block, test_steps = yield from setup_one_block_store(
         spec, state
     )
-    envelope = build_signed_execution_payload_envelope(spec, block_state, block_root, signed_block)
+    envelope = build_execution_payload_envelope(spec, block_state, block_root, signed_block)
     yield from add_execution_payload(spec, store, envelope, test_steps)
 
     state_at_2 = block_state.copy()
@@ -125,9 +125,7 @@ def test_validate_on_attestation_beacon_root_payload_check(spec, state):
     )
 
     # Verify the target's payload
-    envelope = build_signed_execution_payload_envelope(
-        spec, target_state, target_root, target_block
-    )
+    envelope = build_execution_payload_envelope(spec, target_state, target_root, target_block)
     yield from add_execution_payload(spec, store, envelope, test_steps)
 
     # Build a full-node vote past the head

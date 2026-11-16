@@ -1,5 +1,4 @@
 from eth_consensus_specs.test.context import (
-    always_bls,
     spec_state_test,
     with_gloas_and_later,
 )
@@ -7,8 +6,8 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
+    build_execution_payload_envelope,
     build_execution_payload_for_latest_bid,
-    build_signed_execution_payload_envelope,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_execution_payload,
@@ -18,7 +17,6 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     tick_and_add_block,
     tick_store_to_slot,
 )
-from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -26,12 +24,11 @@ from eth_consensus_specs.test.helpers.state import (
 
 def _build_invalid_envelope(spec, state, block_root, signed_block, **overrides):
     """
-    Build a signed envelope with optional field overrides to make it invalid.
+    Build an envelope with optional field overrides to make it invalid.
     The ``update_payload`` override changes the payload in the way the block's
     bid committed to, so that the payload root check passes and a later check
     is the one under test.
     """
-    builder_index = signed_block.message.body.signed_execution_payload_bid.message.builder_index
     bid = state.latest_execution_payload_bid
 
     payload = build_execution_payload_for_latest_bid(spec, state)
@@ -54,26 +51,14 @@ def _build_invalid_envelope(spec, state, block_root, signed_block, **overrides):
         if key in overrides:
             setattr(payload, key, overrides.pop(key))
 
-    envelope = spec.ExecutionPayloadEnvelope(
+    return spec.ExecutionPayloadEnvelope(
         payload=payload,
         execution_requests=overrides.pop("execution_requests", spec.ExecutionRequests()),
-        builder_index=overrides.pop("builder_index", builder_index),
         beacon_block_root=overrides.pop("beacon_block_root", block_root),
         parent_beacon_block_root=overrides.pop(
             "parent_beacon_block_root", state.latest_block_header.parent_root
         ),
     )
-
-    if overrides.pop("valid_signature", True):
-        if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
-            privkey = privkeys[signed_block.message.proposer_index]
-        else:
-            privkey = builder_privkeys[envelope.builder_index]
-        signature = spec.get_execution_payload_envelope_signature(state, envelope, privkey)
-    else:
-        signature = spec.BLSSignature()
-
-    return spec.SignedExecutionPayloadEnvelope(message=envelope, signature=signature)
 
 
 #
@@ -94,7 +79,7 @@ def test_on_execution_payload_envelope_valid(spec, state):
     assert spec.get_head(store).payload_status == spec.PAYLOAD_STATUS_EMPTY
 
     # Builder reveals execution payload
-    envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
+    envelope = build_execution_payload_envelope(spec, state, block_root, signed_block)
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=True)
 
     assert block_root in store.payloads
@@ -106,29 +91,6 @@ def test_on_execution_payload_envelope_valid(spec, state):
 #
 # Invalid cases — ordered to match asserts in verify_execution_payload_envelope
 #
-
-
-@with_gloas_and_later
-@spec_state_test
-@always_bls
-def test_on_execution_payload_envelope_wrong_signature(spec, state):
-    """
-    Test that an envelope with an invalid BLS signature is rejected.
-    """
-    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(spec, state)
-
-    envelope = _build_invalid_envelope(
-        spec,
-        state,
-        block_root,
-        signed_block,
-        valid_signature=False,
-    )
-    yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
-
-    assert block_root not in store.payloads
-
-    yield "steps", test_steps
 
 
 @with_gloas_and_later
@@ -205,28 +167,6 @@ def test_on_execution_payload_envelope_wrong_slot(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-def test_on_execution_payload_envelope_wrong_builder_index(spec, state):
-    """
-    Test that an envelope whose builder_index doesn't match the bid is rejected.
-    """
-    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(spec, state)
-
-    envelope = _build_invalid_envelope(
-        spec,
-        state,
-        block_root,
-        signed_block,
-        builder_index=1,
-    )
-    yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
-
-    assert block_root not in store.payloads
-
-    yield "steps", test_steps
-
-
-@with_gloas_and_later
-@spec_state_test
 def test_on_execution_payload_envelope_wrong_prev_randao(spec, state):
     """
     Test that an envelope whose payload.prev_randao doesn't match the bid is rejected.
@@ -256,12 +196,8 @@ def test_on_execution_payload_envelope_wrong_payload_root(spec, state):
     store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(spec, state)
 
     # Change a payload field which no other check covers
-    envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
-    envelope.message.payload.extra_data = spec.ExtraData(data=list(b"\x42"))
-    privkey = privkeys[signed_block.message.proposer_index]
-    envelope.signature = spec.get_execution_payload_envelope_signature(
-        state, envelope.message, privkey
-    )
+    envelope = build_execution_payload_envelope(spec, state, block_root, signed_block)
+    envelope.payload.extra_data = spec.ExtraData(data=list(b"\x42"))
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 
     assert block_root not in store.payloads
@@ -478,7 +414,6 @@ def test_on_execution_payload_envelope_wrong_timestamp(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
-@always_bls
 def test_on_execution_payload_envelope_invalid_full_child(spec, state):
     """
     Test that a rejected invalid envelope cannot mark the parent payload as
@@ -493,7 +428,7 @@ def test_on_execution_payload_envelope_invalid_full_child(spec, state):
         block_state,
         block_root,
         signed_block,
-        valid_signature=False,
+        block_hash=spec.Hash32(b"\x99" * 32),
     )
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 

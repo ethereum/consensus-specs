@@ -180,12 +180,12 @@ class MessageScheduler:
             self.process_block_messages(signed_block)
         return valid, applied_events
 
-    def process_payload(self, signed_payload) -> bool:
+    def process_payload(self, envelope) -> bool:
         try:
-            self.spec.on_execution_payload_envelope(self.store, signed_payload)
+            self.spec.on_execution_payload_envelope(self.store, envelope)
             return True
         except AssertionError:
-            item = QueueItem(signed_payload, QueueItemKind.EXECUTION_PAYLOAD)
+            item = QueueItem(envelope, QueueItemKind.EXECUTION_PAYLOAD)
             if self.is_early_message(item):
                 self.enqueue_message(item)
             return False

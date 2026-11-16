@@ -12,7 +12,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_electra,
     is_post_gloas,
 )
-from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
+from eth_consensus_specs.test.helpers.keys import builder_privkeys
 from eth_consensus_specs.test.helpers.withdrawals import get_expected_withdrawals
 
 
@@ -510,20 +510,6 @@ def build_state_with_execution_payload_bid(spec, state, execution_payload_bid):
     return pre_state
 
 
-def sign_execution_payload_envelope(spec, state, signed_block, envelope):
-    # Sign the envelope: self-builds use proposer key, external builds use builder key
-    if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
-        privkey = privkeys[signed_block.message.proposer_index]
-    else:
-        privkey = builder_privkeys[envelope.builder_index]
-    signature = spec.get_execution_payload_envelope_signature(state, envelope, privkey)
-
-    return spec.SignedExecutionPayloadEnvelope(
-        message=envelope,
-        signature=signature,
-    )
-
-
 def build_execution_payload_for_latest_bid(spec, state):
     """
     Build the execution payload which tests reveal by default for the bid of
@@ -572,28 +558,21 @@ def commit_builder_bid_to_payload(spec, state, block):
     block.body.signed_execution_payload_bid = sign_execution_payload_bid(spec, post_state, bid)
 
 
-def build_signed_execution_payload_envelope(
+def build_execution_payload_envelope(
     spec, state, block_root, signed_block, execution_requests=None
 ):
-    # Get builder_index from the block's execution payload bid
-    builder_index = signed_block.message.body.signed_execution_payload_bid.message.builder_index
-
     # Create execution payload with fields matching the bid's commitments
     payload = build_execution_payload_for_latest_bid(spec, state)
 
     if execution_requests is None:
         execution_requests = spec.ExecutionRequests()
 
-    # Create the execution payload envelope message
-    envelope_message = spec.ExecutionPayloadEnvelope(
+    return spec.ExecutionPayloadEnvelope(
         payload=payload,
         execution_requests=execution_requests,
-        builder_index=builder_index,
         beacon_block_root=block_root,
         parent_beacon_block_root=signed_block.message.parent_root,
     )
-
-    return sign_execution_payload_envelope(spec, state, signed_block, envelope_message)
 
 
 def compute_execution_payload_bid(spec, state, payload, execution_requests=None):
@@ -629,25 +608,18 @@ def compute_and_sign_execution_payload_bid(spec, state, payload, execution_reque
     return sign_execution_payload_bid(spec, state, bid)
 
 
-def compute_and_sign_execution_payload_envelope(
+def compute_execution_payload_envelope(
     spec, state, block_root, signed_block, payload, execution_requests=None
 ):
-    # Get builder_index from the block's execution payload bid
-    builder_index = signed_block.message.body.signed_execution_payload_bid.message.builder_index
-
     if execution_requests is None:
         execution_requests = spec.ExecutionRequests()
 
-    # Create the execution payload envelope message
-    envelope = spec.ExecutionPayloadEnvelope(
+    return spec.ExecutionPayloadEnvelope(
         payload=payload,
         execution_requests=execution_requests,
-        builder_index=builder_index,
         beacon_block_root=block_root,
         parent_beacon_block_root=signed_block.message.parent_root,
     )
-
-    return sign_execution_payload_envelope(spec, state, signed_block, envelope)
 
 
 def get_random_tx(spec, rng):
