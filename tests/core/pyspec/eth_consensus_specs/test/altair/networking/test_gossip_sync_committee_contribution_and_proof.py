@@ -295,13 +295,33 @@ def test_gossip_sync_committee_contribution_and_proof__missed_period_boundary_sl
                     return validator_index, subcommittee_index, pubkeys
         raise AssertionError("no period-specific aggregator found")
 
+    def find_repositioned_old_aggregator():
+        for subcommittee_index in range(spec.SYNC_COMMITTEE_SUBNET_COUNT):
+            start = subcommittee_index * subcommittee_size
+            old_pubkeys = state.current_sync_committee.pubkeys[start : start + subcommittee_size]
+            new_pubkeys = state.next_sync_committee.pubkeys[start : start + subcommittee_size]
+            for validator_index, validator in enumerate(state.validators):
+                pubkey = validator.pubkey
+                if pubkey not in old_pubkeys or pubkey not in new_pubkeys:
+                    continue
+                if new_pubkeys[old_pubkeys.index(pubkey)] == pubkey:
+                    continue
+                selection_proof = spec.get_sync_committee_selection_proof(
+                    state, contribution_slot, subcommittee_index, privkeys[validator_index]
+                )
+                if spec.is_sync_committee_aggregator(selection_proof):
+                    return validator_index, subcommittee_index, old_pubkeys
+        raise AssertionError("no aggregator with a changed committee position found")
+
     new_aggregator = find_aggregator(state.next_sync_committee, state.current_sync_committee)
     old_aggregator = find_aggregator(state.current_sync_committee, state.next_sync_committee)
+    repositioned_old_aggregator = find_repositioned_old_aggregator()
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, contribution_slot) + 500
     seen = get_seen(spec)
     messages = []
     for aggregator, expected, expected_reason in (
         (old_aggregator, "reject", "aggregator is not a member of the committee"),
+        (repositioned_old_aggregator, "reject", "invalid aggregate signature"),
         (new_aggregator, "valid", None),
     ):
         aggregator_index, subcommittee_index, pubkeys = aggregator
