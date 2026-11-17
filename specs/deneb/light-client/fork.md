@@ -23,7 +23,7 @@ to do so, that pre-Deneb data needs to be locally upgraded to Deneb before
 processing.
 
 ```python
-def upgrade_lc_header_to_deneb(pre: capella.LightClientHeader) -> LightClientHeader:
+def upgrade_light_client_header_to_deneb(pre: capella.LightClientHeader) -> LightClientHeader:
     return LightClientHeader(
         beacon=pre.beacon,
         execution=ExecutionPayloadHeader(
@@ -52,21 +52,23 @@ def upgrade_lc_header_to_deneb(pre: capella.LightClientHeader) -> LightClientHea
 ```
 
 ```python
-def upgrade_lc_bootstrap_to_deneb(pre: capella.LightClientBootstrap) -> LightClientBootstrap:
+def upgrade_light_client_bootstrap_to_deneb(
+    pre: capella.LightClientBootstrap,
+) -> LightClientBootstrap:
     return LightClientBootstrap(
-        header=upgrade_lc_header_to_deneb(pre.header),
+        header=upgrade_light_client_header_to_deneb(pre.header),
         current_sync_committee=pre.current_sync_committee,
         current_sync_committee_branch=pre.current_sync_committee_branch,
     )
 ```
 
 ```python
-def upgrade_lc_update_to_deneb(pre: capella.LightClientUpdate) -> LightClientUpdate:
+def upgrade_light_client_update_to_deneb(pre: capella.LightClientUpdate) -> LightClientUpdate:
     return LightClientUpdate(
-        attested_header=upgrade_lc_header_to_deneb(pre.attested_header),
+        attested_header=upgrade_light_client_header_to_deneb(pre.attested_header),
         next_sync_committee=pre.next_sync_committee,
         next_sync_committee_branch=pre.next_sync_committee_branch,
-        finalized_header=upgrade_lc_header_to_deneb(pre.finalized_header),
+        finalized_header=upgrade_light_client_header_to_deneb(pre.finalized_header),
         finality_branch=pre.finality_branch,
         sync_aggregate=pre.sync_aggregate,
         signature_slot=pre.signature_slot,
@@ -74,12 +76,12 @@ def upgrade_lc_update_to_deneb(pre: capella.LightClientUpdate) -> LightClientUpd
 ```
 
 ```python
-def upgrade_lc_finality_update_to_deneb(
+def upgrade_light_client_finality_update_to_deneb(
     pre: capella.LightClientFinalityUpdate,
 ) -> LightClientFinalityUpdate:
     return LightClientFinalityUpdate(
-        attested_header=upgrade_lc_header_to_deneb(pre.attested_header),
-        finalized_header=upgrade_lc_header_to_deneb(pre.finalized_header),
+        attested_header=upgrade_light_client_header_to_deneb(pre.attested_header),
+        finalized_header=upgrade_light_client_header_to_deneb(pre.finalized_header),
         finality_branch=pre.finality_branch,
         sync_aggregate=pre.sync_aggregate,
         signature_slot=pre.signature_slot,
@@ -87,11 +89,11 @@ def upgrade_lc_finality_update_to_deneb(
 ```
 
 ```python
-def upgrade_lc_optimistic_update_to_deneb(
+def upgrade_light_client_optimistic_update_to_deneb(
     pre: capella.LightClientOptimisticUpdate,
 ) -> LightClientOptimisticUpdate:
     return LightClientOptimisticUpdate(
-        attested_header=upgrade_lc_header_to_deneb(pre.attested_header),
+        attested_header=upgrade_light_client_header_to_deneb(pre.attested_header),
         sync_aggregate=pre.sync_aggregate,
         signature_slot=pre.signature_slot,
     )
@@ -104,17 +106,17 @@ before Deneb based light client data can be processed. The `LightClientStore`
 upgrade MAY be performed before `DENEB_FORK_EPOCH`.
 
 ```python
-def upgrade_lc_store_to_deneb(pre: capella.LightClientStore) -> LightClientStore:
+def upgrade_light_client_store_to_deneb(pre: capella.LightClientStore) -> LightClientStore:
     if pre.best_valid_update is None:
         best_valid_update = None
     else:
-        best_valid_update = upgrade_lc_update_to_deneb(pre.best_valid_update)
+        best_valid_update = upgrade_light_client_update_to_deneb(pre.best_valid_update)
     return LightClientStore(
-        finalized_header=upgrade_lc_header_to_deneb(pre.finalized_header),
+        finalized_header=upgrade_light_client_header_to_deneb(pre.finalized_header),
         current_sync_committee=pre.current_sync_committee,
         next_sync_committee=pre.next_sync_committee,
         best_valid_update=best_valid_update,
-        optimistic_header=upgrade_lc_header_to_deneb(pre.optimistic_header),
+        optimistic_header=upgrade_light_client_header_to_deneb(pre.optimistic_header),
         previous_max_active_participants=pre.previous_max_active_participants,
         current_max_active_participants=pre.current_max_active_participants,
     )

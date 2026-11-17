@@ -17,7 +17,7 @@
   - [Modified `finalized_root_gindex_at_slot`](#modified-finalized_root_gindex_at_slot)
   - [Modified `current_sync_committee_gindex_at_slot`](#modified-current_sync_committee_gindex_at_slot)
   - [Modified `next_sync_committee_gindex_at_slot`](#modified-next_sync_committee_gindex_at_slot)
-  - [Modified `get_lc_execution_root`](#modified-get_lc_execution_root)
+  - [Modified `get_light_client_execution_root`](#modified-get_light_client_execution_root)
   - [Modified `is_valid_light_client_header`](#modified-is_valid_light_client_header)
 
 <!-- mdformat-toc end -->
@@ -171,10 +171,10 @@ def next_sync_committee_gindex_at_slot(slot: Slot) -> GeneralizedIndex:
     return NEXT_SYNC_COMMITTEE_GINDEX
 ```
 
-### Modified `get_lc_execution_root`
+### Modified `get_light_client_execution_root`
 
 ```python
-def get_lc_execution_root(header: LightClientHeader) -> Root:
+def get_light_client_execution_root(header: LightClientHeader) -> Root:
     epoch = compute_epoch_at_slot(header.beacon.slot)
 
     # [New in Gloas:EIP7732]

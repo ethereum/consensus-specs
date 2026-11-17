@@ -14,7 +14,7 @@
   - [Modified `LightClientOptimisticUpdate`](#modified-lightclientoptimisticupdate)
   - [Modified `LightClientStore`](#modified-lightclientstore)
 - [Helpers](#helpers)
-  - [`get_lc_execution_root`](#get_lc_execution_root)
+  - [`get_light_client_execution_root`](#get_light_client_execution_root)
   - [Modified `is_valid_light_client_header`](#modified-is_valid_light_client_header)
 
 <!-- mdformat-toc end -->
@@ -131,10 +131,10 @@ class LightClientStore:
 
 ## Helpers
 
-### `get_lc_execution_root`
+### `get_light_client_execution_root`
 
 ```python
-def get_lc_execution_root(header: LightClientHeader) -> Root:
+def get_light_client_execution_root(header: LightClientHeader) -> Root:
     epoch = compute_epoch_at_slot(header.beacon.slot)
 
     if epoch >= CAPELLA_FORK_EPOCH:
@@ -156,7 +156,7 @@ def is_valid_light_client_header(header: LightClientHeader) -> bool:
         )
 
     return is_valid_merkle_branch(
-        leaf=get_lc_execution_root(header),
+        leaf=get_light_client_execution_root(header),
         branch=header.execution_branch,
         depth=floorlog2(EXECUTION_PAYLOAD_GINDEX),
         index=get_subtree_index(EXECUTION_PAYLOAD_GINDEX),
