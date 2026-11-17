@@ -190,7 +190,7 @@ def test_compute_subnets_for_sync_committee(state, spec):
 
     for _, pubkey in some_sync_committee_members:
         validator_index = _validator_index_for_pubkey(state, pubkey)
-        subnets = spec.compute_subnets_for_sync_committee(state, validator_index)
+        subnets = spec.compute_subnets_for_sync_committee(state, state.slot, validator_index)
         expected_subnets = expected_subnets_by_pubkey[pubkey]
         assert subnets == expected_subnets
 
@@ -220,7 +220,7 @@ def test_compute_subnets_for_sync_committee_slot_period_boundary(state, spec):
 
     for _, pubkey in some_sync_committee_members:
         validator_index = _validator_index_for_pubkey(state, pubkey)
-        subnets = spec.compute_subnets_for_sync_committee(state, validator_index)
+        subnets = spec.compute_subnets_for_sync_committee(state, state.slot, validator_index)
         expected_subnets = expected_subnets_by_pubkey[pubkey]
         assert subnets == expected_subnets
 

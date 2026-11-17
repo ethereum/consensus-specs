@@ -25,7 +25,7 @@ def test_get_sync_subcommittee_pubkeys_current_sync_committee(state, spec):
     i = subcommittee_index * sync_subcommittee_size
 
     expect = sync_committee.pubkeys[i : i + sync_subcommittee_size]
-    assert spec.get_sync_subcommittee_pubkeys(state, subcommittee_index) == expect
+    assert spec.get_sync_subcommittee_pubkeys(state, state.slot, subcommittee_index) == expect
 
 
 @with_altair_and_later
@@ -46,4 +46,4 @@ def test_get_sync_subcommittee_pubkeys_next_sync_committee(state, spec):
     i = subcommittee_index * sync_subcommittee_size
 
     expect = sync_committee.pubkeys[i : i + sync_subcommittee_size]
-    assert spec.get_sync_subcommittee_pubkeys(state, subcommittee_index) == expect
+    assert spec.get_sync_subcommittee_pubkeys(state, state.slot, subcommittee_index) == expect

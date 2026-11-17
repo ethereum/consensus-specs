@@ -4,7 +4,8 @@ from eth_consensus_specs.test.context import (
     with_altair_and_later,
     with_presets,
 )
-from eth_consensus_specs.test.helpers.constants import MAINNET
+from eth_consensus_specs.test.helpers.block import build_empty_block
+from eth_consensus_specs.test.helpers.constants import MAINNET, MINIMAL
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
@@ -15,7 +16,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     wrap_genesis_block,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
-from eth_consensus_specs.test.helpers.state import transition_to
+from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block, transition_to
 from eth_consensus_specs.utils import bls
 
 
@@ -25,7 +26,7 @@ def get_sync_committee_aggregator(spec, state):
     Returns (aggregator_index, subcommittee_index, subcommittee_pubkeys).
     """
     for validator_index in range(len(state.validators)):
-        subnets = spec.compute_subnets_for_sync_committee(state, validator_index)
+        subnets = spec.compute_subnets_for_sync_committee(state, state.slot, validator_index)
         for subnet_id in subnets:
             subcommittee_index = subnet_id
             selection_proof = spec.get_sync_committee_selection_proof(
@@ -35,7 +36,9 @@ def get_sync_committee_aggregator(spec, state):
                 privkeys[validator_index],
             )
             if spec.is_sync_committee_aggregator(selection_proof):
-                subcommittee_pubkeys = spec.get_sync_subcommittee_pubkeys(state, subcommittee_index)
+                subcommittee_pubkeys = spec.get_sync_subcommittee_pubkeys(
+                    state, state.slot, subcommittee_index
+                )
                 return validator_index, subcommittee_index, subcommittee_pubkeys
     raise Exception("No sync committee aggregator found")
 
@@ -45,7 +48,7 @@ def get_other_sync_committee_aggregator(spec, state, subcommittee_index, exclude
     Find another aggregator in the given sync subcommittee.
     Returns (aggregator_index, selection_proof).
     """
-    subcommittee_pubkeys = spec.get_sync_subcommittee_pubkeys(state, subcommittee_index)
+    subcommittee_pubkeys = spec.get_sync_subcommittee_pubkeys(state, state.slot, subcommittee_index)
     excluded_indices = set(excluded_indices)
     for validator_index, validator in enumerate(state.validators):
         if validator_index in excluded_indices:
@@ -239,6 +242,96 @@ def test_gossip_sync_committee_contribution_and_proof__valid_at_period_boundary(
             }
         ],
     )
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
+@with_presets([MINIMAL])
+def test_gossip_sync_committee_contribution_and_proof__missed_period_boundary_slot(spec, state):
+    """Use the committee assigned to the slot after the contribution's slot, not the head's."""
+    yield "topic", "meta", "sync_committee_contribution_and_proof"
+
+    period_length = spec.Uint64(spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
+    contribution_slot = 2 * period_length - 1
+    genesis_state = state.copy()
+    store, genesis_block = get_genesis_forkchoice_store_and_block(spec, genesis_state)
+    anchor = state_transition_and_sign_block(
+        spec, state, build_empty_block(spec, state, contribution_slot - 1)
+    )
+    yield "state", genesis_state
+    assert anchor.message.parent_root == genesis_block.hash_tree_root()
+    signed_genesis = wrap_genesis_block(spec, genesis_block)
+    yield get_filename(signed_genesis), signed_genesis
+    yield get_filename(anchor), anchor
+    yield (
+        "blocks",
+        "meta",
+        [
+            {"block": get_filename(signed_genesis)},
+            {"block": get_filename(anchor)},
+        ],
+    )
+
+    spec.on_tick(store, spec.compute_time_at_slot_ms(store.genesis_time_ms, anchor.message.slot))
+    spec.on_block(store, anchor)
+    assert spec.get_head(store).root == anchor.message.hash_tree_root()
+    assert store.block_states[anchor.message.hash_tree_root()] == state
+    assert state.current_sync_committee != state.next_sync_committee
+    subcommittee_size = spec.SYNC_COMMITTEE_SIZE // spec.SYNC_COMMITTEE_SUBNET_COUNT
+
+    def find_aggregator(committee, other):
+        for subcommittee_index in range(spec.SYNC_COMMITTEE_SUBNET_COUNT):
+            start = subcommittee_index * subcommittee_size
+            pubkeys = committee.pubkeys[start : start + subcommittee_size]
+            other_pubkeys = other.pubkeys[start : start + subcommittee_size]
+            for validator_index, validator in enumerate(state.validators):
+                if validator.pubkey not in pubkeys or validator.pubkey in other_pubkeys:
+                    continue
+                selection_proof = spec.get_sync_committee_selection_proof(
+                    state, contribution_slot, subcommittee_index, privkeys[validator_index]
+                )
+                if spec.is_sync_committee_aggregator(selection_proof):
+                    return validator_index, subcommittee_index, pubkeys
+        raise AssertionError("no period-specific aggregator found")
+
+    new_aggregator = find_aggregator(state.next_sync_committee, state.current_sync_committee)
+    old_aggregator = find_aggregator(state.current_sync_committee, state.next_sync_committee)
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, contribution_slot) + 500
+    seen = get_seen(spec)
+    messages = []
+    for aggregator, expected, expected_reason in (
+        (new_aggregator, "valid", None),
+        (old_aggregator, "reject", "aggregator is not a member of the committee"),
+    ):
+        aggregator_index, subcommittee_index, pubkeys = aggregator
+        signed_cap = create_valid_signed_contribution_and_proof(
+            spec,
+            state,
+            aggregator_index,
+            subcommittee_index,
+            pubkeys,
+            slot=contribution_slot,
+            block_root=anchor.message.hash_tree_root(),
+        )
+        yield get_filename(signed_cap), signed_cap
+        result, reason = run_validate_gossip(
+            spec,
+            seen=seen,
+            store=store,
+            signed_contribution_and_proof=signed_cap,
+            current_time_ms=current_time_ms,
+        )
+        assert (result, reason) == (expected, expected_reason)
+        messages.append(
+            {
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(signed_cap),
+                "expected": expected,
+                **({"reason": reason} if reason is not None else {}),
+            }
+        )
+    yield "messages", "meta", messages
 
 
 @with_altair_and_later
@@ -488,7 +581,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_not_aggregator(spe
     # Find a validator in the sync committee that is NOT an aggregator
     non_aggregator_index = None
     for validator_index in range(len(state.validators)):
-        subnets = spec.compute_subnets_for_sync_committee(state, validator_index)
+        subnets = spec.compute_subnets_for_sync_committee(state, state.slot, validator_index)
         for subnet_id in subnets:
             subcommittee_index = subnet_id
             selection_proof = spec.get_sync_committee_selection_proof(
@@ -501,6 +594,7 @@ def test_gossip_sync_committee_contribution_and_proof__reject_not_aggregator(spe
                 non_aggregator_index = validator_index
                 subcommittee_pubkeys = spec.get_sync_subcommittee_pubkeys(
                     state,
+                    state.slot,
                     subcommittee_index,
                 )
                 break
