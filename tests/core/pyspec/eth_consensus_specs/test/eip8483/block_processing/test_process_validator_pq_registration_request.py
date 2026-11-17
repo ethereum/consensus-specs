@@ -144,6 +144,21 @@ def test_process_validator_pq_registration_request__bls_withdrawal_credentials(s
 
 @with_phases([EIP8483])
 @spec_state_test
+def test_process_validator_pq_registration_request__bls_credentials_matching_source_address(
+    spec, state
+):
+    # The source address matches, so only the credential prefix check applies
+    state.validators[0].withdrawal_credentials = (
+        spec.BLS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
+    )
+    request = prepare_validator_pq_registration_request(spec, state, 0, b"\x22" * 64)
+    assert request.source_address == b"\x11" * 20
+
+    yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
+
+
+@with_phases([EIP8483])
+@spec_state_test
 def test_process_validator_pq_registration_request__wrong_source_address(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
     request = prepare_validator_pq_registration_request(
@@ -206,13 +221,13 @@ def test_process_validator_pq_registration_request__overwritten_pq_data_can_be_r
 
 @with_phases([EIP8483])
 @spec_state_test
-def test_process_validator_pq_registration_request__xmss_pubkey_already_registered(spec, state):
+def test_process_validator_pq_registration_request__first_part_already_registered(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
     set_execution_withdrawal_address(spec, state, 1, b"\x44" * 20)
     spec.process_validator_pq_registration_request(
         state, prepare_validator_pq_registration_request(spec, state, 0, b"\x22" * 64)
     )
-    # Same XMSS public key, different VRF root
+    # Same first part, different second part
     request = prepare_validator_pq_registration_request(spec, state, 1, b"\x22" * 32 + b"\x33" * 32)
 
     yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
@@ -220,14 +235,14 @@ def test_process_validator_pq_registration_request__xmss_pubkey_already_register
 
 @with_phases([EIP8483])
 @spec_state_test
-def test_process_validator_pq_registration_request__vrf_root_already_registered(spec, state):
+def test_process_validator_pq_registration_request__second_part_already_registered(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
     set_execution_withdrawal_address(spec, state, 1, b"\x44" * 20)
     spec.process_validator_pq_registration_request(
         state,
         prepare_validator_pq_registration_request(spec, state, 0, b"\x22" * 32 + b"\x55" * 32),
     )
-    # Different XMSS public key, same VRF root
+    # Different first part, same second part
     request = prepare_validator_pq_registration_request(spec, state, 1, b"\x33" * 32 + b"\x55" * 32)
 
     yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
@@ -249,7 +264,7 @@ def test_process_validator_pq_registration_request__builder_pubkey(spec, state):
 
 @with_phases([EIP8483])
 @spec_state_test
-def test_process_validator_pq_registration_request__xmss_pubkey_registered_by_builder(spec, state):
+def test_process_validator_pq_registration_request__pq_data_registered_by_builder(spec, state):
     set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
     state.builder_pq_registrations.append(
         spec.BuilderPQRegistration(builder_pubkey=state.builders[0].pubkey, pq_data=b"\x22" * 32)

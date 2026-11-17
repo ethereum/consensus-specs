@@ -105,7 +105,7 @@ def test_process_builder_pq_registration_request__wrong_source_address(spec, sta
 
 @with_phases([EIP8483])
 @spec_state_test
-def test_process_builder_pq_registration_request__xmss_pubkey_registered_by_builder(spec, state):
+def test_process_builder_pq_registration_request__pq_data_already_registered(spec, state):
     spec.process_builder_pq_registration_request(
         state, prepare_builder_pq_registration_request(spec, state, 0, b"\x22" * 32)
     )
@@ -116,7 +116,7 @@ def test_process_builder_pq_registration_request__xmss_pubkey_registered_by_buil
 
 @with_phases([EIP8483])
 @spec_state_test
-def test_process_builder_pq_registration_request__xmss_pubkey_registered_by_validator(spec, state):
+def test_process_builder_pq_registration_request__pq_data_registered_by_validator(spec, state):
     state.validator_pq_registrations.append(
         spec.ValidatorPQRegistration(validator_index=0, pq_data=b"\x22" * 32 + b"\x33" * 32)
     )

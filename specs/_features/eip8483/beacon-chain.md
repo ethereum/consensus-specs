@@ -6,10 +6,10 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
-  - [New `BuilderPQRegistrationRequests`](#new-builderpqregistrationrequests)
-  - [New `BuilderPQRegistrations`](#new-builderpqregistrations)
   - [New `ValidatorPQRegistrationRequests`](#new-validatorpqregistrationrequests)
   - [New `ValidatorPQRegistrations`](#new-validatorpqregistrations)
+  - [New `BuilderPQRegistrationRequests`](#new-builderpqregistrationrequests)
+  - [New `BuilderPQRegistrations`](#new-builderpqregistrations)
 - [Constants](#constants)
   - [New execution layer triggered request types](#new-execution-layer-triggered-request-types)
 - [Presets](#presets)
@@ -37,47 +37,23 @@
 
 ## Introduction
 
-This upgrade adds two execution layer triggered requests with which validators
-and builders register post-quantum material, as described by EIP-8483. The
-withdrawal address of a validator registers 64 bytes for it, an XMSS public key
-followed by a VRF root. The execution address of a builder registers 32 bytes
-for it, an XMSS public key.
+This upgrade adds two execution layer triggered requests, as described by
+EIP-8483, with which validators and builders register opaque post-quantum (PQ)
+material. A validator registers 64 bytes, enough for a new public key and a
+RANDAO commitment. A builder registers only 32 bytes, enough for a new public
+key, since builders do not contribute to RANDAO. This specification gives the
+material no meaning beyond requiring each 32-byte part to be unique. A later
+fork that migrates to post-quantum signatures will define how it is used.
 
 The beacon state stores one `(validator_index, pq_data)` entry per validator and
 one `(builder_pubkey, pq_data)` entry per builder. Builder entries are keyed by
 public key rather than index, because a builder index is reused once its builder
 has withdrawn. A later request for the same validator or builder overwrites the
-earlier one. A later fork that migrates consensus to post-quantum signatures
-defines how the material is used.
-
-*Note*: Unlike EIP-8483 as drafted, a validator request is ignored if its XMSS
-public key or VRF root is already registered by a validator, and a builder
-request if its XMSS public key is already registered by a builder. The material
-is public, so otherwise anyone could register a copy of someone else's key or
-VRF root, and the migration fork could not give each its own. A validator and a
-builder may share an XMSS public key, since they sign at different leaves.
+earlier one.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md).
 
 ## Types
-
-### New `BuilderPQRegistrationRequests`
-
-```python
-class BuilderPQRegistrationRequests(ProgressiveList[BuilderPQRegistrationRequest]):
-    """
-    The builder PQ registration requests pertaining to a single execution payload.
-    """
-```
-
-### New `BuilderPQRegistrations`
-
-```python
-class BuilderPQRegistrations(ProgressiveList[BuilderPQRegistration]):
-    """
-    The registered builder PQ material, at most one entry per builder.
-    """
-```
 
 ### New `ValidatorPQRegistrationRequests`
 
@@ -94,6 +70,24 @@ class ValidatorPQRegistrationRequests(ProgressiveList[ValidatorPQRegistrationReq
 class ValidatorPQRegistrations(ProgressiveList[ValidatorPQRegistration]):
     """
     The registered validator PQ material, at most one entry per validator.
+    """
+```
+
+### New `BuilderPQRegistrationRequests`
+
+```python
+class BuilderPQRegistrationRequests(ProgressiveList[BuilderPQRegistrationRequest]):
+    """
+    The builder PQ registration requests pertaining to a single execution payload.
+    """
+```
+
+### New `BuilderPQRegistrations`
+
+```python
+class BuilderPQRegistrations(ProgressiveList[BuilderPQRegistration]):
+    """
+    The registered builder PQ material, at most one entry per builder.
     """
 ```
 
@@ -244,9 +238,6 @@ class BuilderPQRegistration(Container):
 
 ##### Modified `get_execution_requests_list`
 
-*Note*: Encodes execution requests as defined by
-[EIP-7685](https://eips.ethereum.org/EIPS/eip-7685).
-
 ```python
 def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequence[bytes]:
     requests: Sequence[tuple[Bytes1, ProgressiveList]] = [
@@ -274,39 +265,35 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
 
 *Note*: Invalid requests are ignored. No status is checked, so pending, active,
 exited, and slashed validators can all register PQ material, as long as the
-request comes from their withdrawal address and its XMSS public key and VRF root
-are not already registered. A validator that registers again must change both
-its XMSS public key and its VRF root, because each is checked against every
-registration, including its own.
+request comes from their withdrawal address and neither the first nor the last
+32 bytes of its PQ data are already registered. A validator that registers again
+must change both, because each is checked against every registration, including
+its own.
 
 ```python
 def process_validator_pq_registration_request(
     state: BeaconState, request: ValidatorPQRegistrationRequest
 ) -> None:
-    # Verify the validator exists
     validator_pubkeys = [validator.pubkey for validator in state.validators]
     if request.validator_pubkey not in validator_pubkeys:
         return
     validator_index = ValidatorIndex(validator_pubkeys.index(request.validator_pubkey))
     validator = state.validators[validator_index]
 
+    # Verify the validator has execution withdrawal credentials
+    if not has_execution_withdrawal_credential(validator):
+        return
+
     # Verify the request comes from the validator's withdrawal address
     if validator.withdrawal_credentials[12:] != request.source_address:
         return
 
-    # Verify the XMSS public key is not already registered
-    registered_xmss_pubkeys = [
-        registration.pq_data[:32] for registration in state.validator_pq_registrations
-    ]
-    if request.pq_data[:32] in registered_xmss_pubkeys:
-        return
-
-    # Verify the VRF root is not already registered
-    registered_vrf_roots = [
-        registration.pq_data[32:] for registration in state.validator_pq_registrations
-    ]
-    if request.pq_data[32:] in registered_vrf_roots:
-        return
+    # Verify the PQ data is not already registered
+    for registration in state.validator_pq_registrations:
+        if registration.pq_data[:32] == request.pq_data[:32]:
+            return
+        if registration.pq_data[32:] == request.pq_data[32:]:
+            return
 
     # Overwrite an existing registration for this validator
     for registration in state.validator_pq_registrations:
@@ -314,9 +301,11 @@ def process_validator_pq_registration_request(
             registration.pq_data = request.pq_data
             return
 
-    # Otherwise append a new registration
     state.validator_pq_registrations.append(
-        ValidatorPQRegistration(validator_index=validator_index, pq_data=request.pq_data)
+        ValidatorPQRegistration(
+            validator_index=validator_index,
+            pq_data=request.pq_data,
+        )
     )
 ```
 
@@ -324,28 +313,26 @@ def process_validator_pq_registration_request(
 
 *Note*: Invalid requests are ignored. No status is checked, so active and exited
 builders can both register PQ material, as long as the request comes from their
-execution address and its XMSS public key is not already registered.
+execution address and its PQ data is not already registered.
 
 ```python
 def process_builder_pq_registration_request(
     state: BeaconState, request: BuilderPQRegistrationRequest
 ) -> None:
-    # Verify the builder exists
     builder_pubkeys = [builder.pubkey for builder in state.builders]
     if request.builder_pubkey not in builder_pubkeys:
         return
-    builder = state.builders[builder_pubkeys.index(request.builder_pubkey)]
+    builder_index = BuilderIndex(builder_pubkeys.index(request.builder_pubkey))
+    builder = state.builders[builder_index]
 
     # Verify the request comes from the builder's execution address
     if builder.execution_address != request.source_address:
         return
 
-    # Verify the XMSS public key is not already registered
-    registered_xmss_pubkeys = [
-        registration.pq_data for registration in state.builder_pq_registrations
-    ]
-    if request.pq_data in registered_xmss_pubkeys:
-        return
+    # Verify the PQ data is not already registered
+    for registration in state.builder_pq_registrations:
+        if registration.pq_data == request.pq_data:
+            return
 
     # Overwrite an existing registration for this builder
     for registration in state.builder_pq_registrations:
@@ -353,9 +340,11 @@ def process_builder_pq_registration_request(
             registration.pq_data = request.pq_data
             return
 
-    # Otherwise append a new registration
     state.builder_pq_registrations.append(
-        BuilderPQRegistration(builder_pubkey=request.builder_pubkey, pq_data=request.pq_data)
+        BuilderPQRegistration(
+            builder_pubkey=request.builder_pubkey,
+            pq_data=request.pq_data,
+        )
     )
 ```
 
