@@ -241,20 +241,14 @@ def validate_execution_payload_bid_gossip(
     if bid.fee_recipient != proposer_preferences.fee_recipient:
         raise GossipIgnore("bid's fee recipient does not match the proposer's preference")
 
-    # [IGNORE] The bid's parent block hash is the block hash of the verified
-    # execution payload of the bid's parent block or of one of its ancestors
+    # [IGNORE] The bid's parent block hash is the hash of a verified execution payload
     # (MAY be queued until the payload is verified)
-    payload_block_root = bid.parent_block_root
-    while payload_block_root in store.blocks:
-        if is_payload_verified(store, payload_block_root):
-            if store.payloads[payload_block_root].payload.block_hash == bid.parent_block_hash:
-                break
-        payload_block_root = store.blocks[payload_block_root].parent_root
-    if payload_block_root not in store.blocks:
+    if bid.parent_block_hash not in store.payload_block_roots:
         raise GossipIgnore("bid's parent block hash is not a verified execution payload")
 
     # [IGNORE] The bid's gas limit is compatible with the proposer's target gas limit
-    parent_gas_limit = store.payloads[payload_block_root].payload.gas_limit
+    parent_envelope = store.payloads[store.payload_block_roots[bid.parent_block_hash]]
+    parent_gas_limit = parent_envelope.payload.gas_limit
     if not is_gas_limit_target_compatible(
         parent_gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit
     ):

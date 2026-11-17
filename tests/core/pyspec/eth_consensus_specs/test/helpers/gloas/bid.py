@@ -69,6 +69,7 @@ def record_head_payload(spec, state, store, blocks, execution_requests=None):
         spec, state, head_root, head_signed_block, execution_requests=execution_requests
     )
     store.payloads[head_root] = envelope
+    store.payload_block_roots[envelope.payload.block_hash] = head_root
     return envelope
 
 

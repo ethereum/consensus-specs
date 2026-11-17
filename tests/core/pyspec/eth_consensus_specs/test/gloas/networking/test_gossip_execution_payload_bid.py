@@ -195,6 +195,7 @@ def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(s
 
     parent_payload = build_execution_payload_envelope(spec, parent_state, parent_root, parent_block)
     store.payloads[parent_root] = parent_payload
+    store.payload_block_roots[parent_payload.payload.block_hash] = parent_root
 
     head_bid = signed_head_block.message.body.signed_execution_payload_bid.message
     parent_randao = spec.get_randao_mix(parent_state, spec.get_current_epoch(parent_state))
@@ -3046,6 +3047,7 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
         spec, payload_state, payload_root, signed_payload_block
     )
     store.payloads[payload_root] = envelope
+    store.payload_block_roots[envelope.payload.block_hash] = payload_root
 
     # Leave the next block's payload unreceived so it becomes the empty head.
     empty_parent_gas_limit = spec.Uint64(30_029_295)

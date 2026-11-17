@@ -208,6 +208,8 @@ class Store:
     # [New in Gloas:EIP7732]
     payloads: dict[Root, ExecutionPayloadEnvelope]
     # [New in Gloas:EIP7732]
+    payload_block_roots: dict[Hash32, Root]
+    # [New in Gloas:EIP7732]
     payload_timeliness_vote: dict[Root, list[Boolean | None]]
     # [New in Gloas:EIP7732]
     payload_data_availability_vote: dict[Root, list[Boolean | None]]
@@ -241,6 +243,8 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         unrealized_justifications={anchor_root: justified_checkpoint},
         # [New in Gloas:EIP7732]
         payloads={},
+        # [New in Gloas:EIP7732]
+        payload_block_roots={},
         # [New in Gloas:EIP7732]
         payload_timeliness_vote={anchor_root: [None] * PTC_SIZE},
         # [New in Gloas:EIP7732]
@@ -1124,6 +1128,7 @@ def on_execution_payload_envelope(store: Store, envelope: ExecutionPayloadEnvelo
 
     # Add execution payload envelope to the store
     store.payloads[envelope.beacon_block_root] = envelope
+    store.payload_block_roots[envelope.payload.block_hash] = envelope.beacon_block_root
 ```
 
 ### New `on_payload_attestation_message`
