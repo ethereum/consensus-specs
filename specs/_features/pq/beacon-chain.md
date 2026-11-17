@@ -415,9 +415,9 @@ The reference concatenation fits at most
 
 ### Time parameters
 
-| Name                                           | Value                    |
-| ---------------------------------------------- | ------------------------ |
-| `UNREGISTERED_VALIDATOR_WITHDRAWABILITY_DELAY` | `Epoch(2**13)` (= 8,192) |
+| Name                                           | Value                     |
+| ---------------------------------------------- | ------------------------- |
+| `UNREGISTERED_VALIDATOR_WITHDRAWABILITY_DELAY` | `Epoch(2**14)` (= 16,384) |
 
 ## Containers
 
