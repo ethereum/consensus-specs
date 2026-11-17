@@ -108,10 +108,10 @@ def compute_weak_subjectivity_period(state: BeaconState) -> Epoch:
     """
     ws_period = MIN_VALIDATOR_WITHDRAWABILITY_DELAY
     N = len(get_active_validator_indices(state, get_current_epoch(state)))
-    t = get_total_active_balance(state) // N // ETH_TO_GWEI
-    T = MAX_EFFECTIVE_BALANCE // ETH_TO_GWEI
+    t = Uint64(get_total_active_balance(state) // N // ETH_TO_GWEI)
+    T = Uint64(MAX_EFFECTIVE_BALANCE // ETH_TO_GWEI)
     delta = get_validator_churn_limit(state)
-    Delta = MAX_DEPOSITS * SLOTS_PER_EPOCH
+    Delta = MAX_DEPOSITS * Uint64(SLOTS_PER_EPOCH)
     D = SAFETY_DECAY
 
     if t * (200 + 12 * D) > T * (200 + 3 * D):
