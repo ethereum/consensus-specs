@@ -504,8 +504,9 @@ def commit_self_build_bid_to_payload(spec, state, block, update_payload=None):
     Commit the self-build bid of ``block`` to the execution payload which tests
     reveal by default, after ``update_payload`` (if given) changes the payload,
     where ``state`` is the post-state of ``block``. The payload depends on that
-    post-state, and nothing in the state transition of ``block`` reads its
-    bid's payload root, so the commitment is set after the fact.
+    post-state, and the state transition of ``block`` only requires its bid's
+    payload root to differ from the parent payload root, so the commitment is
+    set after the fact.
     """
     bid = block.body.signed_execution_payload_bid.message
     if bid.builder_index != spec.BUILDER_INDEX_SELF_BUILD or bid.payload_root != spec.Root():
