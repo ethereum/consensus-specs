@@ -301,8 +301,8 @@ def test_gossip_sync_committee_contribution_and_proof__missed_period_boundary_sl
     seen = get_seen(spec)
     messages = []
     for aggregator, expected, expected_reason in (
-        (new_aggregator, "valid", None),
         (old_aggregator, "reject", "aggregator is not a member of the committee"),
+        (new_aggregator, "valid", None),
     ):
         aggregator_index, subcommittee_index, pubkeys = aggregator
         signed_cap = create_valid_signed_contribution_and_proof(
