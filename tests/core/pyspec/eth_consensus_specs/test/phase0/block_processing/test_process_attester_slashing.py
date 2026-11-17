@@ -13,7 +13,10 @@ from eth_consensus_specs.test.context import (
     with_gloas_and_later,
     with_presets,
 )
-from eth_consensus_specs.test.helpers.attestations import sign_indexed_attestation
+from eth_consensus_specs.test.helpers.attestations import (
+    get_max_committees_per_slot,
+    sign_indexed_attestation,
+)
 from eth_consensus_specs.test.helpers.attester_slashings import (
     get_attestation_1_data,
     get_attestation_2_data,
@@ -550,7 +553,7 @@ def test_invalid_unsorted_att_2(spec, state):
 @with_custom_state(
     balances_fn=lambda spec: (
         [spec.MAX_EFFECTIVE_BALANCE]
-        * (spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT + 1)
+        * (spec.MAX_VALIDATORS_PER_COMMITTEE * get_max_committees_per_slot(spec) + 1)
     ),
     threshold_fn=lambda spec: spec.config.EJECTION_BALANCE,
 )
@@ -558,7 +561,7 @@ def test_invalid_unsorted_att_2(spec, state):
 def test_invalid_too_many_attesting_indices(spec, state):
     indices = [
         spec.ValidatorIndex(i)
-        for i in range(spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT + 1)
+        for i in range(spec.MAX_VALIDATORS_PER_COMMITTEE * get_max_committees_per_slot(spec) + 1)
     ]
     attester_slashing = get_valid_attester_slashing_by_indices(
         spec, state, indices, signed_1=True, signed_2=True

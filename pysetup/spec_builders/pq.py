@@ -34,6 +34,7 @@ from eth_consensus_specs.utils.ssz.bytes import Bytes16
             "MAX_ATTESTER_SLASHING_SIZE",
             "MAX_BLS_TO_EXECUTION_CHANGES",
             "MAX_BUILDER_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD",
+            "MAX_COMMITTEES_PER_SLOT",
             "MAX_PAYLOAD_ATTESTATIONS",
             "MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE",
             "MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE",

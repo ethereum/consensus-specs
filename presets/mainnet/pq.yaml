@@ -1,5 +1,10 @@
 # Mainnet preset - PQ
 
+# Misc
+# ---------------------------------------------------------------
+# 2**4 (= 16) committees
+MAX_COMMITTEES_PER_SLOT_PQ: 16
+
 # XMSS
 # ---------------------------------------------------------------
 # 2**20 (= 1,048,576)
@@ -21,9 +26,9 @@ MAX_VOLUNTARY_EXIT_REQUESTS_PER_PAYLOAD: 16
 
 # Type-specific SSZ bounds
 # ---------------------------------------------------------------
-# 1,068,549 bytes, ~1 MiB
-MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE_PQ: 1068549
-# 4,194,584 bytes, ~4 MiB
-MAX_ATTESTER_SLASHING_SIZE_PQ: 4194584
+# 1,056,255 bytes, ~1 MiB
+MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE_PQ: 1056255
+# 2,621,720 bytes, ~2.5 MiB
+MAX_ATTESTER_SLASHING_SIZE_PQ: 2621720
 # 199,240 bytes, ~195 KiB
 MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_PQ: 199240

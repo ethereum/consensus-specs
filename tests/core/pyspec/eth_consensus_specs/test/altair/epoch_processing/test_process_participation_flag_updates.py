@@ -8,6 +8,7 @@ from eth_consensus_specs.test.context import (
     with_custom_state,
     with_presets,
 )
+from eth_consensus_specs.test.helpers.attestations import get_max_committees_per_slot
 from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
 from eth_consensus_specs.test.helpers.state import next_epoch_via_block
@@ -143,7 +144,7 @@ def test_previous_epoch_zeroed(spec, state):
 def custom_validator_count(factor: float):
     def initializer(spec):
         num_validators = (
-            spec.SLOTS_PER_EPOCH * spec.MAX_COMMITTEES_PER_SLOT * spec.TARGET_COMMITTEE_SIZE
+            spec.SLOTS_PER_EPOCH * get_max_committees_per_slot(spec) * spec.TARGET_COMMITTEE_SIZE
         )
         return [spec.MAX_EFFECTIVE_BALANCE] * int(float(int(num_validators)) * factor)
 

@@ -17,6 +17,8 @@
     - [XMSS public key](#xmss-public-key)
   - [Preregister](#preregister)
   - [Submit deposit](#submit-deposit)
+- [Validator assignments](#validator-assignments)
+  - [Modified `get_committee_assignment`](#modified-get_committee_assignment)
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Broadcasting `SignedProposerPreferences`](#broadcasting-signedproposerpreferences)
@@ -168,6 +170,39 @@ binding.
 *Note*: A deposit whose `pubkey` does not start with 16 zero bytes is treated as
 a legacy deposit, so the validator it creates is exited at once.
 
+## Validator assignments
+
+### Modified `get_committee_assignment`
+
+*Note*: The body is unchanged, but each slot now has at most
+`MAX_COMMITTEES_PER_SLOT_PQ` committees, so a validator's committee and
+committee index may differ.
+
+```python
+def get_committee_assignment(
+    state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
+) -> tuple[Sequence[ValidatorIndex], CommitteeIndex, Slot] | None:
+    """
+    Return the committee assignment in the ``epoch`` for ``validator_index``.
+    ``assignment`` returned is a tuple of the following form:
+        * ``assignment[0]`` is the list of validators in the committee
+        * ``assignment[1]`` is the index to which the committee is assigned
+        * ``assignment[2]`` is the slot at which the committee is assigned
+    Return None if no assignment.
+    """
+    next_epoch = get_current_epoch(state) + 1
+    assert epoch <= next_epoch
+
+    start_slot = compute_start_slot_at_epoch(epoch)
+    committee_count_per_slot = get_committee_count_per_slot(state, epoch)
+    for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
+        for index in range(committee_count_per_slot):
+            committee = get_beacon_committee(state, Slot(slot), CommitteeIndex(index))
+            if validator_index in committee:
+                return committee, CommitteeIndex(index), Slot(slot)
+    return None
+```
+
 ## Beacon chain responsibilities
 
 All validator responsibilities remain unchanged other than those noted below.
@@ -241,7 +276,8 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
     committee_indices = [
         get_committee_indices(aggregate.committee_bits)[0] for aggregate in aggregates
     ]
-    committee_flags = [(index in committee_indices) for index in range(MAX_COMMITTEES_PER_SLOT)]
+    # [Modified in PQ]
+    committee_flags = [(index in committee_indices) for index in range(MAX_COMMITTEES_PER_SLOT_PQ)]
     committee_bits = CommitteeBits(data=committee_flags)
 
     return Attestation(

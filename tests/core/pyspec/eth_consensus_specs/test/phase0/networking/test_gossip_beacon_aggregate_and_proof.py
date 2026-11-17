@@ -12,6 +12,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.attestations import (
     get_aggregate_and_proof,
     get_aggregator_index,
+    get_max_committees_per_slot,
     get_valid_attestation,
     is_aggregator,
     sign_attestation,
@@ -155,10 +156,10 @@ def test_gossip_beacon_aggregate_and_proof__reject_committee_index_out_of_range(
         # In Electra the committee index moved into ``committee_bits`` and
         # ``data.index`` must remain zero; encode an OOB index in committee_bits
         # at the smallest position that is both out-of-range and inside the bitvector.
-        assert committee_count < spec.MAX_COMMITTEES_PER_SLOT
+        assert committee_count < get_max_committees_per_slot(spec)
         oob_index = committee_count
         signed_agg.message.aggregate.committee_bits = spec.CommitteeBits(
-            data=[i == oob_index for i in range(spec.MAX_COMMITTEES_PER_SLOT)]
+            data=[i == oob_index for i in range(get_max_committees_per_slot(spec))]
         )
     else:
         signed_agg.message.aggregate.data.index = committee_count + 10

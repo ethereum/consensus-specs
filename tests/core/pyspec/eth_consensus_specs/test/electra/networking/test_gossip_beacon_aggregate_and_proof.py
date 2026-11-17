@@ -7,6 +7,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.attestations import (
     get_aggregate_and_proof,
     get_aggregator_index,
+    get_max_committees_per_slot,
     get_valid_attestation,
 )
 from eth_consensus_specs.test.helpers.constants import ELECTRA, GLOAS, MINIMAL
@@ -271,8 +272,8 @@ def test_gossip_beacon_aggregate_and_proof__reject_multiple_committees(spec, sta
     yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
 
     # Set two committee bits.
-    assert spec.MAX_COMMITTEES_PER_SLOT >= 2
-    bits = [False] * spec.MAX_COMMITTEES_PER_SLOT
+    assert get_max_committees_per_slot(spec) >= 2
+    bits = [False] * get_max_committees_per_slot(spec)
     bits[0] = True
     bits[1] = True
     signed_agg.message.aggregate.committee_bits = spec.CommitteeBits(data=bits)

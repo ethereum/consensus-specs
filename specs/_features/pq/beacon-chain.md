@@ -6,6 +6,7 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
+  - [Modified `CommitteeBits`](#modified-committeebits)
   - [New `VRFProof`](#new-vrfproof)
   - [New `AttestationProof`](#new-attestationproof)
   - [New `XMSSPubkey`](#new-xmsspubkey)
@@ -23,6 +24,7 @@
   - [Legacy domains](#legacy-domains)
   - [Execution-layer triggered requests](#execution-layer-triggered-requests)
 - [Presets](#presets)
+  - [Misc](#misc)
   - [XMSS](#xmss-1)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
@@ -62,7 +64,7 @@
   - [Crypto](#crypto)
     - [XMSS signatures](#xmss-signatures)
     - [STARK proofs](#stark-proofs)
-  - [Misc](#misc)
+  - [Misc](#misc-1)
     - [New `compute_legacy_xmss_pubkey`](#new-compute_legacy_xmss_pubkey)
     - [New `compute_legacy_vrf_root`](#new-compute_legacy_vrf_root)
     - [New `compute_deposit_pubkey`](#new-compute_deposit_pubkey)
@@ -78,6 +80,9 @@
     - [Modified `is_pending_validator`](#modified-is_pending_validator)
     - [Modified `is_valid_indexed_attestation`](#modified-is_valid_indexed_attestation)
   - [Beacon state accessors](#beacon-state-accessors)
+    - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
+    - [Modified `get_beacon_committee`](#modified-get_beacon_committee)
+    - [Modified `get_committee_count_per_slot`](#modified-get_committee_count_per_slot)
     - [Modified `get_indexed_attestation`](#modified-get_indexed_attestation)
     - [New `get_attestation_statements`](#new-get_attestation_statements)
     - [New `get_validator_preregistration_index`](#new-get_validator_preregistration_index)
@@ -218,6 +223,18 @@ the block's `proof`.
 which is built upon [Gloas](../../gloas/beacon-chain.md).
 
 ## Types
+
+### Modified `CommitteeBits`
+
+```python
+class CommitteeBits(BitVector):
+    """
+    Bits marking which committees of a slot participate in an attestation.
+    """
+
+    # [Modified in PQ]
+    LENGTH = MAX_COMMITTEES_PER_SLOT_PQ
+```
 
 ### New `VRFProof`
 
@@ -361,6 +378,12 @@ class VoluntaryExitRequests(ProgressiveList[VoluntaryExitRequest]):
 | `VOLUNTARY_EXIT_REQUEST_TYPE`            | `Bytes1("0x09")` |
 
 ## Presets
+
+### Misc
+
+| Name                         | Value                 |
+| ---------------------------- | --------------------- |
+| `MAX_COMMITTEES_PER_SLOT_PQ` | `Uint64(2**4)` (= 16) |
 
 ### XMSS
 
@@ -1005,7 +1028,8 @@ def is_valid_indexed_attestation(
     indices = indexed_attestation.attesting_indices
     if (
         len(indices) == 0
-        or len(indices) > MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT
+        # [Modified in PQ]
+        or len(indices) > MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT_PQ
         or list(indices) != sorted(set(indices))
     ):
         return False
@@ -1020,6 +1044,75 @@ def is_valid_indexed_attestation(
 ```
 
 ### Beacon state accessors
+
+#### Modified `get_attesting_indices`
+
+*Note*: The body is unchanged, but `committee_bits` now has
+`MAX_COMMITTEES_PER_SLOT_PQ` bits, and each committee comes from the modified
+`get_beacon_committee`.
+
+```python
+def get_attesting_indices(state: BeaconState, attestation: Attestation) -> set[ValidatorIndex]:
+    """
+    Return the set of attesting indices corresponding to ``aggregation_bits`` and ``committee_bits``.
+    """
+    output: set[ValidatorIndex] = set()
+    committee_indices = get_committee_indices(attestation.committee_bits)
+    committee_offset = 0
+    for committee_index in committee_indices:
+        committee = get_beacon_committee(state, attestation.data.slot, committee_index)
+        committee_attesters = {
+            attester_index
+            for index, attester_index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + index]
+        }
+        output = output.union(committee_attesters)
+
+        committee_offset += len(committee)
+
+    return output
+```
+
+#### Modified `get_beacon_committee`
+
+*Note*: The body is unchanged, but each slot now has at most
+`MAX_COMMITTEES_PER_SLOT_PQ` committees, so committees are larger.
+
+```python
+def get_beacon_committee(
+    state: BeaconState, slot: Slot, index: CommitteeIndex
+) -> Sequence[ValidatorIndex]:
+    """
+    Return the beacon committee at ``slot`` for ``index``.
+    """
+    epoch = compute_epoch_at_slot(slot)
+    committees_per_slot = get_committee_count_per_slot(state, epoch)
+    return compute_committee(
+        indices=get_active_validator_indices(state, epoch),
+        seed=get_seed(state, epoch, DOMAIN_BEACON_ATTESTER),
+        index=Uint64(slot % SLOTS_PER_EPOCH) * committees_per_slot + index,
+        count=committees_per_slot * Uint64(SLOTS_PER_EPOCH),
+    )
+```
+
+#### Modified `get_committee_count_per_slot`
+
+```python
+def get_committee_count_per_slot(state: BeaconState, epoch: Epoch) -> Uint64:
+    """
+    Return the number of committees in each slot for the given ``epoch``.
+    """
+    return max(
+        Uint64(1),
+        min(
+            # [Modified in PQ]
+            MAX_COMMITTEES_PER_SLOT_PQ,
+            Uint64(len(get_active_validator_indices(state, epoch)))
+            // Uint64(SLOTS_PER_EPOCH)
+            // TARGET_COMMITTEE_SIZE,
+        ),
+    )
+```
 
 #### Modified `get_indexed_attestation`
 

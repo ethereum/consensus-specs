@@ -1,3 +1,4 @@
+from eth_consensus_specs.test.helpers.attestations import get_max_committees_per_slot
 from eth_consensus_specs.test.helpers.forks import is_post_heze, is_post_pq
 from eth_consensus_specs.test.helpers.signatures import get_unsigned_signature
 
@@ -12,7 +13,7 @@ def build_max_size_attestation_proof(spec):
 
 def build_max_size_attestation(spec):
     aggregation_bits = spec.AggregationBits(
-        data=[True] * (spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT)
+        data=[True] * (spec.MAX_VALIDATORS_PER_COMMITTEE * get_max_committees_per_slot(spec))
     )
     attestation = spec.Attestation(
         aggregation_bits=spec.AggregationBits(data=aggregation_bits),
@@ -27,7 +28,7 @@ def build_max_size_attestation(spec):
 def build_max_size_indexed_attestation(spec):
     attesting_indices = spec.AttestingIndices(
         data=[spec.ValidatorIndex(0)]
-        * (spec.MAX_VALIDATORS_PER_COMMITTEE * spec.MAX_COMMITTEES_PER_SLOT)
+        * (spec.MAX_VALIDATORS_PER_COMMITTEE * get_max_committees_per_slot(spec))
     )
     if is_post_pq(spec):
         return spec.IndexedAttestation(

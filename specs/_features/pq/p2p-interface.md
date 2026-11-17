@@ -61,11 +61,11 @@ These constants supersede the
 [Gloas type-specific SSZ bounds](../../gloas/p2p-interface.md#type-specific-ssz-bounds),
 which were sized for BLS signatures.
 
-| Name                                       | Value                         |
-| ------------------------------------------ | ----------------------------- |
-| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE_PQ`   | `Uint64(1068549)` (= ~1 MiB)  |
-| `MAX_ATTESTER_SLASHING_SIZE_PQ`            | `Uint64(4194584)` (= ~4 MiB)  |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_PQ` | `Uint64(199240)` (= ~195 KiB) |
+| Name                                       | Value                          |
+| ------------------------------------------ | ------------------------------ |
+| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE_PQ`   | `Uint64(1056255)` (= ~1 MiB)   |
+| `MAX_ATTESTER_SLASHING_SIZE_PQ`            | `Uint64(2621720)` (= ~2.5 MiB) |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_PQ` | `Uint64(199240)` (= ~195 KiB)  |
 
 ## Containers
 

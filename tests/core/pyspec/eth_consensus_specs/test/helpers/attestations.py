@@ -25,6 +25,12 @@ def get_attestation_subnet_count(spec):
     return spec.config.ATTESTATION_SUBNET_COUNT
 
 
+def get_max_committees_per_slot(spec):
+    if is_post_pq(spec):
+        return spec.MAX_COMMITTEES_PER_SLOT_PQ
+    return spec.MAX_COMMITTEES_PER_SLOT
+
+
 def get_selection_proof(spec, state, validator_index, slot):
     """
     The selection proof of the validator at ``validator_index`` for ``slot``, which

@@ -10,6 +10,7 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.attestations import (
     compute_max_inclusion_slot,
+    get_max_committees_per_slot,
     get_valid_attestation,
     run_attestation_processing,
     sign_aggregate_attestation,
@@ -158,10 +159,9 @@ def reduce_state_committee_count_from_max(spec, state):
     """
     Modified ``state`` to ensure that it has fewer committees at each slot than ``MAX_COMMITTEES_PER_SLOT``
     """
-    while (
-        spec.get_committee_count_per_slot(state, spec.get_current_epoch(state))
-        >= spec.MAX_COMMITTEES_PER_SLOT
-    ):
+    while spec.get_committee_count_per_slot(
+        state, spec.get_current_epoch(state)
+    ) >= get_max_committees_per_slot(spec):
         set_validators(spec, state, state.validators[: len(state.validators) // 2])
         set_balances(
             spec,
@@ -180,7 +180,7 @@ def test_invalid_wrong_index_for_slot_0(spec, state):
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
     # Invalid index: current committees per slot is less than the max
-    attestation.data.index = spec.MAX_COMMITTEES_PER_SLOT - 1
+    attestation.data.index = get_max_committees_per_slot(spec) - 1
 
     yield from run_attestation_processing(spec, state, attestation, valid=False)
 
@@ -211,7 +211,7 @@ def test_invalid_index(spec, state):
     next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
 
     # Invalid index: off by one (with respect to valid range) on purpose
-    attestation.data.index = spec.MAX_COMMITTEES_PER_SLOT
+    attestation.data.index = get_max_committees_per_slot(spec)
 
     yield from run_attestation_processing(spec, state, attestation, valid=False)
 

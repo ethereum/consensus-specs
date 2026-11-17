@@ -13,6 +13,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.attestations import (
     build_attestation_data,
     get_attestation_subnet_count,
+    get_max_committees_per_slot,
     get_valid_attestation,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block
@@ -402,7 +403,7 @@ def test_get_attestation_signature_phase0(spec, state):
 @with_all_phases
 @spec_state_test
 def test_compute_subnet_for_attestation(spec, state):
-    for committee_idx in range(spec.MAX_COMMITTEES_PER_SLOT):
+    for committee_idx in range(get_max_committees_per_slot(spec)):
         for slot in range(state.slot, state.slot + spec.SLOTS_PER_EPOCH):
             committees_per_slot = spec.get_committee_count_per_slot(
                 state, spec.compute_epoch_at_slot(slot)

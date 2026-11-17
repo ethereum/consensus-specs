@@ -2,6 +2,7 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_all_phases,
 )
+from eth_consensus_specs.test.helpers.attestations import get_max_committees_per_slot
 from eth_consensus_specs.test.helpers.constants import UINT64_MAX
 from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
@@ -20,12 +21,12 @@ def check_bound(value, lower_bound, upper_bound):
 @spec_state_test
 def test_validators(spec, state):
     check_bound(spec.VALIDATOR_REGISTRY_LIMIT, 1, UINT64_MAX)
-    check_bound(spec.MAX_COMMITTEES_PER_SLOT, 1, UINT64_MAX)
+    check_bound(get_max_committees_per_slot(spec), 1, UINT64_MAX)
     check_bound(spec.TARGET_COMMITTEE_SIZE, 1, UINT64_MAX)
 
     # Note: can be less if you assume stricters bounds on validator set based on total ETH supply
     maximum_validators_per_committee = (
-        spec.VALIDATOR_REGISTRY_LIMIT // spec.SLOTS_PER_EPOCH // spec.MAX_COMMITTEES_PER_SLOT
+        spec.VALIDATOR_REGISTRY_LIMIT // spec.SLOTS_PER_EPOCH // get_max_committees_per_slot(spec)
     )
     check_bound(spec.MAX_VALIDATORS_PER_COMMITTEE, 1, maximum_validators_per_committee)
     check_bound(spec.config.MIN_PER_EPOCH_CHURN_LIMIT, 1, spec.VALIDATOR_REGISTRY_LIMIT)
