@@ -88,8 +88,7 @@ class SignedProposerPreferences(Container):
 class Seen:
     proposer_slots: set[tuple[Slot, ValidatorIndex]]
     aggregator_epochs: set[tuple[Epoch, ValidatorIndex]]
-    # [Modified in PQ]
-    # Removed `aggregate_data_roots`
+    aggregate_data_roots: dict[tuple[Root, CommitteeIndex], set[tuple[bool, ...]]]
     voluntary_exit_indices: set[ValidatorIndex]
     proposer_slashing_indices: set[ValidatorIndex]
     attester_slashing_indices: set[ValidatorIndex]
@@ -106,7 +105,7 @@ class Seen:
     best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
     proposer_preferences: dict[tuple[Slot, Root], ProposerPreferences]
     # [New in PQ]
-    best_aggregate_attesting_balance: dict[tuple[Root, CommitteeIndex], Gwei]
+    best_aggregate_balance: dict[tuple[Root, CommitteeIndex], Gwei]
 ```
 
 ### Modified `compute_fork_version`
@@ -454,12 +453,19 @@ def validate_beacon_aggregate_and_proof_gossip(
         raise GossipReject("aggregate has no participants")
 
     # [Modified in PQ]
-    # [IGNORE] The aggregate has more attesting balance than the best one seen
     aggregate_cache_key = (hash_tree_root(aggregate.data), index)
+    aggregate_bits = tuple(bool(bit) for bit in aggregation_bits)
     attesting_balance = get_total_balance(state, attesting_indices)
-    best_attesting_balance = seen.best_aggregate_attesting_balance.get(aggregate_cache_key, Gwei(0))
-    if attesting_balance <= best_attesting_balance:
-        raise GossipIgnore("aggregate does not have more attesting balance")
+    best_balance = seen.best_aggregate_balance.get(aggregate_cache_key, Gwei(0))
+    if is_future_slot(store, Slot(aggregate.data.slot + 1), current_time_ms):
+        # [IGNORE] The aggregate has more attesting balance than the best one seen
+        if attesting_balance <= best_balance:
+            raise GossipIgnore("aggregate does not have more attesting balance")
+    else:
+        # [IGNORE] A valid aggregate with a superset of aggregation bits has not already been seen
+        seen_bits = seen.aggregate_data_roots.get(aggregate_cache_key, set())
+        if is_non_strict_superset(seen_bits, aggregate_bits):
+            raise GossipIgnore("already seen aggregate for this data")
 
     # [Modified in PQ]
     # [REJECT] The validator is one of the committee's aggregators
@@ -497,8 +503,12 @@ def validate_beacon_aggregate_and_proof_gossip(
 
     # Mark this aggregate as seen
     seen.aggregator_epochs.add(aggregator_epoch_key)
-    # [Modified in PQ]
-    seen.best_aggregate_attesting_balance[aggregate_cache_key] = attesting_balance
+    if aggregate_cache_key not in seen.aggregate_data_roots:
+        seen.aggregate_data_roots[aggregate_cache_key] = set()
+    seen.aggregate_data_roots[aggregate_cache_key].add(aggregate_bits)
+    # [New in PQ]
+    if attesting_balance > best_balance:
+        seen.best_aggregate_balance[aggregate_cache_key] = attesting_balance
 ```
 
 ##### Removed `voluntary_exit`

@@ -26,11 +26,21 @@ def create_signed_aggregate_and_proof(spec, state, attestation, aggregator_index
     return spec.SignedAggregateAndProof(message=aggregate_and_proof, signature=signature)
 
 
-def run_two_aggregates(spec, state, participants_1, participants_2, expected_2):
+def run_two_aggregates(
+    spec,
+    state,
+    participants_1,
+    participants_2,
+    expected_2,
+    reason_2=None,
+    late_1=False,
+    late_2=False,
+):
     """
     Validate an aggregate of ``participants_1`` and then one of ``participants_2``
     for the same data and committee from another aggregator, expecting the second
-    to be ``expected_2``.
+    to be ``expected_2`` with ``reason_2``. A late aggregate is validated after
+    its slot has ended.
     """
     anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
@@ -71,9 +81,16 @@ def run_two_aggregates(spec, state, participants_1, participants_2, expected_2):
     yield get_filename(signed_agg_1), signed_agg_1
     yield get_filename(signed_agg_2), signed_agg_2
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, attestation_1.data.slot)
-    for signed_agg, expected in ((signed_agg_1, "valid"), (signed_agg_2, expected_2)):
-        current_time_ms += 500
+    slot = attestation_1.data.slot
+    slot_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, slot)
+    next_slot_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(slot + 1))
+    validations = (
+        (signed_agg_1, "valid", None, late_1),
+        (signed_agg_2, expected_2, reason_2, late_2),
+    )
+    for count, (signed_agg, expected, expected_reason, late) in enumerate(validations, 1):
+        start_time_ms = next_slot_time_ms if late else slot_time_ms
+        current_time_ms = start_time_ms + 500 * count
         result, reason = run_validate_gossip(
             spec,
             seen=seen,
@@ -83,13 +100,13 @@ def run_two_aggregates(spec, state, participants_1, participants_2, expected_2):
             block_payload_statuses={},
         )
         assert result == expected
+        assert reason == expected_reason
         message = {
             "current_time_ms": int(current_time_ms),
             "message": get_filename(signed_agg),
             "expected": expected,
         }
-        if expected == "ignore":
-            assert reason == "aggregate does not have more attesting balance"
+        if reason is not None:
             message["reason"] = reason
         messages.append(message)
 
@@ -108,7 +125,14 @@ def test_gossip_beacon_aggregate_and_proof__ignore_without_more_attesting_balanc
     for the same data and committee is ignored, even if neither covers the other.
     """
     committee = get_slot_one_committee(spec, state)
-    yield from run_two_aggregates(spec, state, {committee[0]}, {committee[1]}, "ignore")
+    yield from run_two_aggregates(
+        spec,
+        state,
+        {committee[0]},
+        {committee[1]},
+        "ignore",
+        reason_2="aggregate does not have more attesting balance",
+    )
 
 
 @with_phases([PQ])
@@ -123,4 +147,53 @@ def test_gossip_beacon_aggregate_and_proof__accept_fewer_attesters_with_more_bal
     state.balances[committee[2]] = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     yield from run_two_aggregates(
         spec, state, {committee[0], committee[1]}, {committee[2]}, "valid"
+    )
+
+
+@with_phases([PQ])
+@spec_state_test
+def test_gossip_beacon_aggregate_and_proof__accept_late_aggregate_not_covered(spec, state):
+    """
+    Test that an aggregate validated after its slot is accepted without more
+    attesting balance, as long as no aggregate already seen covers it.
+    """
+    committee = get_slot_one_committee(spec, state)
+    yield from run_two_aggregates(spec, state, {committee[0]}, {committee[1]}, "valid", late_2=True)
+
+
+@with_phases([PQ])
+@spec_state_test
+def test_gossip_beacon_aggregate_and_proof__ignore_late_aggregate_covered(spec, state):
+    """
+    Test that an aggregate validated after its slot is ignored if an aggregate
+    already seen covers all of its attesters.
+    """
+    committee = get_slot_one_committee(spec, state)
+    yield from run_two_aggregates(
+        spec,
+        state,
+        {committee[0], committee[1]},
+        {committee[0]},
+        "ignore",
+        reason_2="already seen aggregate for this data",
+        late_2=True,
+    )
+
+
+@with_phases([PQ])
+@spec_state_test
+def test_gossip_beacon_aggregate_and_proof__accept_late_aggregate_after_heavier_late(spec, state):
+    """
+    Test that a heavier late aggregate does not suppress a lighter late aggregate
+    with an attester it does not cover.
+    """
+    committee = get_slot_one_committee(spec, state)
+    yield from run_two_aggregates(
+        spec,
+        state,
+        {committee[0], committee[1]},
+        {committee[2]},
+        "valid",
+        late_1=True,
+        late_2=True,
     )
