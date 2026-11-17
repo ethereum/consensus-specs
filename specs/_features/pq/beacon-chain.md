@@ -26,6 +26,8 @@
   - [XMSS](#xmss-1)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
+- [Configs](#configs)
+  - [Time parameters](#time-parameters)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
     - [`Attestation`](#attestation)
@@ -168,9 +170,11 @@ proof when it aggregates.
 
 A validator's record carries the XMSS public key and VRF root it registered with
 EIP-8483 before the fork in place of its BLS public key, and a builder's record
-the XMSS public key it registered. Validators that did not register begin to
-exit at the fork, through the exit queue, and builders that did not register are
-withdrawn at the fork. See [the fork document](./fork.md) for details.
+the XMSS public key it registered. Validators that did not register are exited
+at the fork and become withdrawable
+`UNREGISTERED_VALIDATOR_WITHDRAWABILITY_DELAY` epochs later, and builders that
+did not register are withdrawn at the fork. See [the fork document](./fork.md)
+for details.
 
 Execution layer requests keep their formats. A request's 48-byte public key
 field is 16 zero bytes followed by an XMSS public key. Deposits no longer carry
@@ -383,6 +387,14 @@ The reference concatenation fits at most
 | `PREREGISTRATIONS_LIMIT`                             | `Uint64(2**19)` (= 524,288) |
 | `PREREGISTRATION_EXPIRY_SLOTS`                       | `Slot(2**18)` (= 262,144)   |
 | `MAX_VOLUNTARY_EXIT_REQUESTS_PER_PAYLOAD`            | `Uint64(2**4)` (= 16)       |
+
+## Configs
+
+### Time parameters
+
+| Name                                           | Value                    |
+| ---------------------------------------------- | ------------------------ |
+| `UNREGISTERED_VALIDATOR_WITHDRAWABILITY_DELAY` | `Epoch(2**13)` (= 8,192) |
 
 ## Containers
 

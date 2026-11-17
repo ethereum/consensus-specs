@@ -33,15 +33,14 @@ Validators and builders keep their indices.
 A validator that did not register takes
 `sha256(pubkey + LEGACY_XMSS_PUBKEY_DOMAIN)` of its BLS public key as its XMSS
 public key, and `sha256(pubkey + LEGACY_VRF_ROOT_DOMAIN)` as its VRF root. No
-signature verifies against that key. The fork initiates the validator's exit, so
-it leaves through the exit queue as any exiting validator does, and the
-validator sweep withdraws its balance once it is withdrawable. Until its exit
-epoch, the validator stays active and is penalized for the duties it misses.
-These exits consume exit churn, so an exit initiated after the fork queues
-behind them. A validator that is already exiting, such as a slashed validator,
-keeps its exit and withdrawable epochs. A validator with `0x00` withdrawal
-credentials has no withdrawal address, so its balance stays locked until a later
-upgrade adds a quantum-safe way to set one.
+signature verifies against that key. The validator is exited at the fork and
+becomes withdrawable `UNREGISTERED_VALIDATOR_WITHDRAWABILITY_DELAY` epochs
+later, unless it was already due to become withdrawable sooner, and the
+validator sweep then withdraws its balance. A slashed validator instead keeps
+its withdrawable epoch, so `process_slashings` still applies its slashing
+penalty before the sweep. A validator with `0x00` withdrawal credentials has no
+withdrawal address, so its balance stays locked until a later upgrade adds a
+quantum-safe way to set one.
 
 A builder that did not register takes
 `sha256(pubkey + LEGACY_XMSS_PUBKEY_DOMAIN)` of its BLS public key as its XMSS
@@ -70,9 +69,8 @@ so it is a legacy deposit. Its validator takes the XMSS public key and VRF root
 that a validator that did not register takes, and it is exited at once, so the
 validator sweep refunds its balance after the withdrawability delay.
 
-The proposer lookahead and the PTC window are kept. A validator that did not
-register is assigned slots and votes until its exit epoch, as any active
-validator is, but it cannot sign, so they are missed.
+The proposer lookahead and the PTC window are kept, so the slots and votes they
+assign to validators that did not register are missed.
 
 *TODO*: Prevent registrations from stealing new deposits. A deposit for a new
 validator or builder that is applied after the fork looks for the XMSS public
@@ -134,6 +132,7 @@ def get_builder_pq_registrations(
 
 ```python
 def compute_validators(pre: eip8483.BeaconState) -> Validators:
+    epoch = eip8483.get_current_epoch(pre)
     registered = {
         registration.validator_index: registration.pq_data
         for registration in get_validator_pq_registrations(pre)
@@ -144,9 +143,19 @@ def compute_validators(pre: eip8483.BeaconState) -> Validators:
             pq_data = registered[ValidatorIndex(index)]
             pubkey = XMSSPubkey(pq_data[:32])
             vrf_root = Root(pq_data[32:])
+            exit_epoch = validator.exit_epoch
+            withdrawable_epoch = validator.withdrawable_epoch
         else:
             pubkey = compute_legacy_xmss_pubkey(validator.pubkey)
             vrf_root = compute_legacy_vrf_root(validator.pubkey)
+            exit_epoch = min(validator.exit_epoch, epoch)
+            if validator.slashed:
+                withdrawable_epoch = validator.withdrawable_epoch
+            else:
+                withdrawable_epoch = min(
+                    validator.withdrawable_epoch,
+                    Epoch(epoch + UNREGISTERED_VALIDATOR_WITHDRAWABILITY_DELAY),
+                )
         validators.append(
             Validator(
                 pubkey=pubkey,
@@ -156,8 +165,8 @@ def compute_validators(pre: eip8483.BeaconState) -> Validators:
                 slashed=validator.slashed,
                 activation_eligibility_epoch=validator.activation_eligibility_epoch,
                 activation_epoch=validator.activation_epoch,
-                exit_epoch=validator.exit_epoch,
-                withdrawable_epoch=validator.withdrawable_epoch,
+                exit_epoch=exit_epoch,
+                withdrawable_epoch=withdrawable_epoch,
             )
         )
     return validators
@@ -346,14 +355,6 @@ def upgrade_to_pq(pre: eip8483.BeaconState) -> BeaconState:
         # [New in PQ:EIP8205]
         builder_preregistrations=BuilderPreregistrations(),
     )
-
-    # [New in PQ]
-    registered_indices = []
-    for registration in get_validator_pq_registrations(pre):
-        registered_indices.append(registration.validator_index)
-    for index in range(len(post.validators)):
-        if ValidatorIndex(index) not in registered_indices:
-            initiate_validator_exit(post, ValidatorIndex(index))
 
     return post
 ```

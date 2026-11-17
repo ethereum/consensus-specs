@@ -74,6 +74,8 @@ def run_fork_test(post_spec, pre_state):
         "historical_summaries",
         "deposit_requests_start_index",
         "deposit_balance_to_consume",
+        "exit_balance_to_consume",
+        "earliest_exit_epoch",
         "consolidation_balance_to_consume",
         "earliest_consolidation_epoch",
         "pending_partial_withdrawals",
@@ -100,7 +102,6 @@ def run_fork_test(post_spec, pre_state):
         if registration.pq_data[:32] not in validator_legacy_pubkeys
     }
     assert len(post_state.validators) == len(pre_state.validators)
-    exiting_indices = []
     for index, (pre_validator, post_validator) in enumerate(
         zip(pre_state.validators, post_state.validators, strict=True)
     ):
@@ -112,6 +113,8 @@ def run_fork_test(post_spec, pre_state):
             pq_data = registered[index]
             assert post_validator.pubkey == pq_data[:32]
             assert post_validator.vrf_root == pq_data[32:]
+            assert post_validator.exit_epoch == pre_validator.exit_epoch
+            assert post_validator.withdrawable_epoch == pre_validator.withdrawable_epoch
         else:
             assert post_validator.pubkey == post_spec.compute_legacy_xmss_pubkey(
                 pre_validator.pubkey
@@ -119,24 +122,15 @@ def run_fork_test(post_spec, pre_state):
             assert post_validator.vrf_root == post_spec.compute_legacy_vrf_root(
                 pre_validator.pubkey
             )
-        if index in registered or pre_validator.exit_epoch != post_spec.FAR_FUTURE_EPOCH:
-            assert post_validator.exit_epoch == pre_validator.exit_epoch
-            assert post_validator.withdrawable_epoch == pre_validator.withdrawable_epoch
-        else:
-            exiting_indices.append(index)
-            assert post_validator.exit_epoch >= post_spec.compute_activation_exit_epoch(
-                post_state.fork.epoch
-            )
-            assert post_validator.withdrawable_epoch == (
-                post_validator.exit_epoch + post_spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-            )
-
-    # The fork initiates the exits of validators that did not register in index
-    # order, through the exit queue
-    exit_epochs = [post_state.validators[index].exit_epoch for index in exiting_indices]
-    assert exit_epochs == sorted(exit_epochs)
-    if len(exit_epochs) > 0:
-        assert post_state.earliest_exit_epoch == exit_epochs[-1]
+            assert post_validator.exit_epoch == min(pre_validator.exit_epoch, post_state.fork.epoch)
+            if pre_validator.slashed:
+                assert post_validator.withdrawable_epoch == pre_validator.withdrawable_epoch
+            else:
+                assert post_validator.withdrawable_epoch == min(
+                    pre_validator.withdrawable_epoch,
+                    post_state.fork.epoch
+                    + post_spec.config.UNREGISTERED_VALIDATOR_WITHDRAWABILITY_DELAY,
+                )
 
     # Each pending deposit for an existing validator names its XMSS public key
     pre_pubkeys = [validator.pubkey for validator in pre_state.validators]

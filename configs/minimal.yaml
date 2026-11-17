@@ -119,6 +119,10 @@ INCLUSION_LIST_DUE_BPS: 7500
 # 5000 milliseconds
 SLOT_DURATION_MS_EIP8198: 5000
 
+# PQ
+# 2**13 (= 8,192) epochs
+UNREGISTERED_VALIDATOR_WITHDRAWABILITY_DELAY: 8192
+
 # Validator cycle
 # ---------------------------------------------------------------
 # 2**2 (= 4)
