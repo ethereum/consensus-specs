@@ -158,7 +158,7 @@ def _build_block_with_execution_requests(spec, state, slot, execution_requests, 
 
     When parent_full is True, the bid commits to a distinct block_hash and the
     child built by _build_child_block_with_parent_requests points its
-    parent_block_hash at this block's payload. The child's process_parent_execution_payload then
+    parent_block_hash at it. The child's process_parent_execution_payload then
     treats this block as full and updates latest_block_hash in-band, so fixture
     replay stays consistent without calling set_parent_block_full between blocks.
     """

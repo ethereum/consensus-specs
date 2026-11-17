@@ -191,6 +191,7 @@ def test_prepare_execution_payload__no_payload_verified(spec, state):
     assert list(carried_withdrawals) != list(fresh_withdrawals)
 
     engine = CaptureEngine()
+    parent_bid = proposal_state.latest_execution_payload_bid
     payload_id = spec.prepare_execution_payload(
         store=store,
         head=spec.get_head(store),
@@ -203,7 +204,6 @@ def test_prepare_execution_payload__no_payload_verified(spec, state):
     )
 
     assert payload_id == SAMPLE_PAYLOAD_ID
-    parent_bid = proposal_state.latest_execution_payload_bid
     assert engine.head_block_hash == parent_bid.parent_block_hash
     assert engine.payload_attributes.withdrawals == carried_withdrawals
 

@@ -32,9 +32,7 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-def _seed_bid_context(
-    spec, state, store, head_payload, messages, current_time_ms, seed_prefs=True, seed_envelope=True
-):
+def _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms, seed_prefs=True):
     """
     Yield and validate the proposer preferences and payload envelope messages
     for a fully valid bid, appending their entries to ``messages``.
@@ -85,24 +83,23 @@ def _seed_bid_context(
             }
         )
 
-    if seed_envelope:
-        current_time_ms += 10
-        assert head_payload.payload.block_hash == parent_block_hash
-        yield get_filename(head_payload), head_payload
-        result, reason = run_validate_gossip(
-            spec,
-            seen=seen,
-            store=store,
-            envelope=head_payload,
-        )
-        assert result == "valid"
-        assert reason is None
-        messages.append(
-            {
-                "message": get_filename(head_payload),
-                "expected": result,
-            }
-        )
+    current_time_ms += 10
+    assert head_payload.payload.block_hash == parent_block_hash
+    yield get_filename(head_payload), head_payload
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        envelope=head_payload,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "message": get_filename(head_payload),
+            "expected": result,
+        }
+    )
 
     return seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, current_time_ms
 
@@ -2787,7 +2784,7 @@ def test_gossip_execution_payload_bid__reject_block_hash_equals_parent_block_has
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
         value=spec.Gwei(1),
-        block_hash=head_payload.payload.block_hash,
+        block_hash=parent_block_hash,
     )
     yield get_filename(signed_bid), signed_bid
 
@@ -3053,7 +3050,7 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
     empty_parent_gas_limit = spec.Uint64(30_029_295)
     empty_parent = build_empty_block_for_next_slot(spec, state)
     empty_parent_bid = empty_parent.body.signed_execution_payload_bid.message
-    empty_parent_bid.parent_block_hash = state.latest_execution_payload_bid.block_hash
+    empty_parent_bid.parent_block_hash = payload_block_hash
     empty_parent_bid.gas_limit = empty_parent_gas_limit
     signed_empty_parent = state_transition_and_sign_block(spec, state, empty_parent)
     parent_root = record_block_in_store(spec, store, signed_empty_parent, state.copy())
@@ -3123,7 +3120,7 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=envelope.payload.block_hash,
+        parent_block_hash=payload_block_hash,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=empty_parent_gas_limit,
