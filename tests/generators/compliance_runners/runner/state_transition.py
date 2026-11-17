@@ -5,7 +5,13 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from eth_consensus_specs.test.context import expect_assertion_error
+from frozendict import deepfreeze
+
+from eth_consensus_specs.test.context import (
+    expect_assertion_error,
+    get_copy_of_spec,
+    spec_with_config_overrides,
+)
 from eth_consensus_specs.test.helpers.forks import is_post_gloas
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.utils import bls
@@ -120,11 +126,34 @@ def decode_optional_post(spec, test_dir: Path):
     return spec.BeaconState.decode_bytes(read_ssz_snappy(post_path))
 
 
+def load_spec(preset: str, fork: str, test_dir: Path):
+    """Apply case configuration without mutating the shared preset/fork spec."""
+    spec = spec_targets[preset][fork]
+    config_path = test_dir / "config.yaml"
+    if not config_path.exists():
+        return spec
+    overrides = read_yaml(config_path)
+    if not isinstance(overrides, dict):
+        raise ValueError("config.yaml must contain a configuration mapping")
+    for name, default in spec.config._asdict().items():
+        if name not in overrides:
+            continue
+        value = overrides[name]
+        # YAML reads unquoted hex byte fields as integers, dropping leading zeros.
+        if isinstance(default, bytes) and isinstance(value, int):
+            value = value.to_bytes(len(default), "big")
+        # Configuration schedules are immutable tuples of immutable records.
+        overrides[name] = deepfreeze(value)
+    spec, _ = spec_with_config_overrides(get_copy_of_spec(spec), overrides)
+    return spec
+
+
 def run_test(test_info: VectorCase):
     preset, fork, runner, handler, _, test_dir = test_info
-    spec = spec_targets[preset][fork]
+    test_dir = Path(test_dir)
+    spec = load_spec(preset, fork, test_dir)
 
-    test_case = get_test_case(spec, Path(test_dir), handler)
+    test_case = get_test_case(spec, test_dir, handler)
     state = test_case["pre"]
     expected_post = test_case["post"]
     old_bls_active = bls.bls_active

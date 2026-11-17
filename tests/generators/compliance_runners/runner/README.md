@@ -28,6 +28,9 @@ The reusable replay modules do not import generator implementations or pytest
 entry points. Generators share the operation schema in `formats.py` and the
 payload-attestation conversion in `payload_attestation.py` with replay.
 
+State-transition replay applies `config.yaml`, when present, to an isolated copy
+of the case's preset/fork spec. Cases without it use the default configuration.
+
 Run the runner's regression tests without supplying vector directories:
 
 ```sh
