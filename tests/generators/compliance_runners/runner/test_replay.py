@@ -13,6 +13,30 @@ from . import fork_choice, state_transition
 from .discovery import VectorCase
 
 
+@pytest.mark.parametrize(
+    ("runner", "handler"),
+    [("epoch_processing", "pending_deposits_churn"), ("operations", "voluntary_exit_churn")],
+)
+def test_replay_churn_handler_aliases(tmp_path, runner, handler):
+    spec = spec_targets["minimal"]["gloas"]
+    pre = create_genesis_state(spec, [spec.MAX_EFFECTIVE_BALANCE] * 64, spec.MAX_EFFECTIVE_BALANCE)
+    vectors = {"pre": pre}
+    if runner == "operations":
+        pre.slot = spec.Slot(int(spec.config.SHARD_COMMITTEE_PERIOD) * int(spec.SLOTS_PER_EPOCH))
+        operation = prepare_signed_exits(spec, pre, [0])[0]
+        vectors["voluntary_exit"] = operation
+    post = pre.copy()
+    if runner == "operations":
+        spec.process_voluntary_exit(post, operation)
+    else:
+        spec.process_pending_deposits(post)
+    vectors["post"] = post
+    for name, value in vectors.items():
+        (tmp_path / f"{name}.ssz_snappy").write_bytes(snappy.compress(value.encode_bytes()))
+
+    state_transition.run_test(VectorCase("minimal", "gloas", runner, handler, "main", tmp_path))
+
+
 @pytest.mark.parametrize("invalid", [False, True])
 def test_fork_choice_replay_restores_bls(tmp_path, invalid):
     spec = spec_targets["minimal"]["phase0"]
