@@ -230,7 +230,10 @@ class FCRTest:
         include_att_fn: Callable[[object, object], bool] | None = None,
         deposit_requests=None,
         exits=None,
+        parent_full=True,
     ):
+        # Only Gloas and later can build on an empty parent payload node.
+        assert parent_full or is_post_gloas(self.spec)
         if parent_root is None:
             parent_root = self.head_root()
         else:
@@ -246,7 +249,7 @@ class FCRTest:
         assert parent_state.slot < current_slot
 
         # Obtain parent payload or its header
-        if is_post_bellatrix(self.spec):
+        if is_post_bellatrix(self.spec) and parent_full:
             parent_payload = self.get_parent_payload(parent_root)
         else:
             parent_payload = None
@@ -312,7 +315,11 @@ class FCRTest:
                 block.body.voluntary_exits.append(e)
 
         # Set parent execution requests post-Gloas
-        if is_post_gloas(self.spec) and self.spec.is_payload_verified(self.store, parent_root):
+        if (
+            is_post_gloas(self.spec)
+            and parent_full
+            and self.spec.is_payload_verified(self.store, parent_root)
+        ):
             parent_envelope = self.store.payloads[parent_root]
             block.body.parent_execution_requests = parent_envelope.execution_requests
 
