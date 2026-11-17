@@ -15,6 +15,7 @@ OPERATION_INPUTS = {
     "deposit": ("deposit", "Deposit"),
     "bls_to_execution_change": ("address_change", "SignedBLSToExecutionChange"),
     "voluntary_exit": ("voluntary_exit", "SignedVoluntaryExit"),
+    "voluntary_exit_churn": ("voluntary_exit", "SignedVoluntaryExit"),
     "withdrawal_request": ("withdrawal_request", "WithdrawalRequest"),
     "sync_aggregate": ("sync_aggregate", "SyncAggregate"),
 }
