@@ -207,15 +207,13 @@ class Seen:
     # [Modified in Gloas:EIP7732]
     # Removed `partial_data_column_headers`
     # [New in Gloas:EIP7732]
-    execution_payloads: dict[Root, ExecutionPayload]
-    # [New in Gloas:EIP7732]
     execution_payload_envelopes: set[Root]
     # [New in Gloas:EIP7732]
     payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
     # [New in Gloas:EIP7732]
-    execution_payload_bid_counts: Counter[tuple[Slot, Root, Root, BuilderIndex]]
+    execution_payload_bid_counts: Counter[tuple[Slot, Hash32, Root, BuilderIndex]]
     # [New in Gloas:EIP7732]
-    best_execution_payload_bid: dict[tuple[Slot, Root, Root], Gwei]
+    best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
     # [New in Gloas:EIP7732]
     proposer_preferences: dict[tuple[Slot, Root], ProposerPreferences]
 ```
@@ -921,9 +919,8 @@ def validate_execution_payload_envelope_gossip(
     if hash_tree_root(payload) != bid.payload_root:
         raise GossipReject("payload's root does not match the bid's payload root")
 
-    # Mark this envelope as seen and store its payload
+    # Mark this envelope as seen
     seen.execution_payload_envelopes.add(block_root)
-    seen.execution_payloads[bid.payload_root] = payload
 ```
 
 ##### New `payload_attestation_message`
@@ -1072,28 +1069,22 @@ def validate_execution_payload_bid_gossip(
     if bid.fee_recipient != proposer_preferences.fee_recipient:
         raise GossipIgnore("bid's fee recipient does not match the proposer's preference")
 
-    # [REJECT] The bid builds on the parent's execution head
-    parent_bid = state.latest_execution_payload_bid
-    if bid.parent_block_hash == parent_bid.block_hash:
-        parent_payload_root = parent_bid.payload_root
-    elif bid.parent_block_hash == state.latest_block_hash:
-        parent_payload_root = state.latest_payload_root
-    else:
-        raise GossipReject("bid does not build on the parent's execution head")
-
-    # [REJECT] The bid's payload root is not equal to its parent payload root
-    if bid.payload_root == parent_payload_root:
-        raise GossipReject("bid's payload root equals its parent payload root")
-
-    # [IGNORE] The bid's parent payload is a known execution payload
-    if parent_payload_root not in seen.execution_payloads:
-        raise GossipIgnore("bid's parent payload is not a known execution payload")
-
-    parent_payload = seen.execution_payloads[parent_payload_root]
+    # [IGNORE] The bid's parent block hash is the block hash of the verified
+    # execution payload of the bid's parent block or of one of its ancestors
+    # (MAY be queued until the payload is verified)
+    payload_block_root = bid.parent_block_root
+    while payload_block_root in store.blocks:
+        if is_payload_verified(store, payload_block_root):
+            if store.payloads[payload_block_root].payload.block_hash == bid.parent_block_hash:
+                break
+        payload_block_root = store.blocks[payload_block_root].parent_root
+    if payload_block_root not in store.blocks:
+        raise GossipIgnore("bid's parent block hash is not a verified execution payload")
 
     # [IGNORE] The bid's gas limit is compatible with the proposer's target gas limit
+    parent_gas_limit = store.payloads[payload_block_root].payload.gas_limit
     if not is_gas_limit_target_compatible(
-        parent_payload.gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit
+        parent_gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit
     ):
         raise GossipIgnore("bid's gas limit is not compatible with the proposer's target")
 
@@ -1496,8 +1487,8 @@ Clients MUST respond with execution payload envelopes from their view of the
 current fork choice -- that is, envelopes of payloads that are part of the
 single chain defined by the current head. A payload is part of that chain if the
 next block in the chain builds on it, i.e. the `parent_block_hash` of that
-block's execution payload bid equals the block hash of the payload. For the head
-block, the payload is part of the chain if the head `ForkChoiceNode` has
+block's execution payload bid equals the `block_hash` of the payload. For the
+head block, the payload is part of the chain if the head `ForkChoiceNode` has
 `payload_status` equal to `PAYLOAD_STATUS_FULL`. Clients MUST NOT include
 envelopes for blocks whose `ForkChoiceNode` in that chain has `payload_status`
 equal to `PAYLOAD_STATUS_EMPTY`. For slots before the finalization, that chain

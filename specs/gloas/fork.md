@@ -133,11 +133,6 @@ If `state.slot % SLOTS_PER_EPOCH == 0` and
 `compute_epoch_at_slot(state.slot) == GLOAS_FORK_EPOCH`, an irregular state
 change is made to upgrade to Gloas.
 
-*Note*: The payload root of the last pre-Gloas execution payload is the hash
-tree root of `pre.latest_execution_payload_header`, which equals the hash tree
-root of that payload as a `fulu.ExecutionPayload`. It is not the hash tree root
-of that payload as a Gloas `ExecutionPayload`.
-
 ```python
 def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
     epoch = fulu.get_current_epoch(pre)
@@ -214,7 +209,7 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
             parent_block_hash=pre.latest_execution_payload_header.parent_hash,
             parent_block_root=pre.latest_block_header.parent_root,
             block_hash=pre.latest_execution_payload_header.block_hash,
-            payload_root=hash_tree_root(pre.latest_execution_payload_header),
+            payload_root=Root(),
             prev_randao=pre.latest_execution_payload_header.prev_randao,
             fee_recipient=ExecutionAddress(),
             gas_limit=pre.latest_execution_payload_header.gas_limit,
@@ -229,8 +224,6 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
         payload_expected_withdrawals=Withdrawals(),
         # [New in Gloas:EIP7732]
         ptc_window=PayloadTimelinessCommitteeWindow(),
-        # [New in Gloas:EIP7732]
-        latest_payload_root=hash_tree_root(pre.latest_execution_payload_header),
     )
 
     # [New in Gloas:EIP7732]

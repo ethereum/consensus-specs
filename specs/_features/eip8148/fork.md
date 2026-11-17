@@ -90,7 +90,6 @@ def upgrade_to_eip8148(pre: heze.BeaconState) -> BeaconState:
         latest_execution_payload_bid=pre.latest_execution_payload_bid,
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
-        latest_payload_root=pre.latest_payload_root,
         # [New in EIP8148]
         validator_sweep_thresholds=SweepThresholds(),
     )

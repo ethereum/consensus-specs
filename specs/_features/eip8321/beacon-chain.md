@@ -203,7 +203,7 @@ class BeaconBlockBody(ProgressiveContainer):
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=49, gaps=(8, 9, 10, 28))
+    ACTIVE_FIELDS = active_fields(width=48, gaps=(8, 9, 10, 28))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -247,7 +247,6 @@ class BeaconState(ProgressiveContainer):
     latest_execution_payload_bid: ExecutionPayloadBid
     payload_expected_withdrawals: Withdrawals
     ptc_window: PayloadTimelinessCommitteeWindow
-    latest_payload_root: Root
     # [New in EIP8321]
     randao_commitments: RandaoCommitments
     # [New in EIP8321]

@@ -55,7 +55,6 @@ def run_fork_test(post_spec, pre_state):
         "latest_execution_payload_bid",
         "payload_expected_withdrawals",
         "ptc_window",
-        "latest_payload_root",
     ]
     for field in stable_fields:
         assert getattr(pre_state, field) == getattr(post_state, field)

@@ -203,7 +203,8 @@ def test_prepare_execution_payload__no_payload_verified(spec, state):
     )
 
     assert payload_id == SAMPLE_PAYLOAD_ID
-    assert engine.head_block_hash == proposal_state.latest_block_hash
+    parent_bid = proposal_state.latest_execution_payload_bid
+    assert engine.head_block_hash == parent_bid.parent_block_hash
     assert engine.payload_attributes.withdrawals == carried_withdrawals
 
 
@@ -229,7 +230,7 @@ def test_prepare_execution_payload__ptc_votes_data_unavailable(spec, state):
 
     engine = CaptureEngine()
     parent_bid = proposal_state.latest_execution_payload_bid
-    assert parent_bid.block_hash != proposal_state.latest_block_hash
+    assert parent_bid.block_hash != parent_bid.parent_block_hash
 
     payload_id = spec.prepare_execution_payload(
         store=store,
@@ -243,7 +244,7 @@ def test_prepare_execution_payload__ptc_votes_data_unavailable(spec, state):
     )
 
     assert payload_id == SAMPLE_PAYLOAD_ID
-    assert engine.head_block_hash == proposal_state.latest_block_hash
+    assert engine.head_block_hash == parent_bid.parent_block_hash
 
 
 @with_gloas_and_later

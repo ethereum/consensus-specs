@@ -302,7 +302,6 @@ def build_signed_bid(
     inclusion_list_bits=None,
     valid_signature=True,
     block_hash=None,
-    payload_root=None,
 ):
     """Construct a SignedExecutionPayloadBid."""
     if blob_kzg_commitments is None:
@@ -327,7 +326,6 @@ def build_signed_bid(
         execution_payment=execution_payment if execution_payment is not None else spec.Gwei(0),
         blob_kzg_commitments=spec.BlobKZGCommitments(data=blob_kzg_commitments),
         execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
-        payload_root=payload_root if payload_root is not None else spec.Root(),
     )
     if is_post_heze(spec):
         bid.inclusion_list_bits = (

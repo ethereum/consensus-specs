@@ -96,7 +96,6 @@ def test_process_parent_execution_payload__empty_parent(spec, state):
     assert not is_parent_block_full
 
     pre_latest_block_hash = state.latest_block_hash
-    pre_latest_payload_root = state.latest_payload_root
     parent_slot = state.latest_block_header.slot
     pre_availability = state.execution_payload_availability[
         parent_slot % spec.SLOTS_PER_HISTORICAL_ROOT
@@ -106,7 +105,6 @@ def test_process_parent_execution_payload__empty_parent(spec, state):
     yield from run_parent_execution_payload_processing(spec, state, block)
 
     assert state.latest_block_hash == pre_latest_block_hash
-    assert state.latest_payload_root == pre_latest_payload_root
     assert (
         state.execution_payload_availability[parent_slot % spec.SLOTS_PER_HISTORICAL_ROOT]
         == pre_availability
@@ -131,7 +129,6 @@ def test_process_parent_execution_payload__full_parent(spec, state):
     yield from run_parent_execution_payload_processing(spec, state, block)
 
     assert state.latest_block_hash == parent_bid.block_hash
-    assert state.latest_payload_root == parent_bid.payload_root
     assert state.execution_payload_availability[parent_slot_index]
 
 
@@ -163,13 +160,11 @@ def test_process_parent_execution_payload_genesis(spec, state):
     """
     block = build_empty_block_for_next_slot(spec, state)
     pre_latest_block_hash = state.latest_block_hash
-    pre_latest_payload_root = state.latest_payload_root
 
     spec.process_slots(state, block.slot)
     yield from run_parent_execution_payload_processing(spec, state, block)
 
     assert state.latest_block_hash == pre_latest_block_hash
-    assert state.latest_payload_root == pre_latest_payload_root
 
 
 @with_gloas_and_later
@@ -239,7 +234,6 @@ def test_process_parent_execution_payload__full_parent_self_build_zero_value(spe
     # Payload was still marked available and latest_block_hash advanced
     assert state.execution_payload_availability[parent_slot_index]
     assert state.latest_block_hash == parent_bid.block_hash
-    assert state.latest_payload_root == parent_bid.payload_root
 
 
 @with_gloas_and_later

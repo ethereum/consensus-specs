@@ -104,7 +104,6 @@ def upgrade_to_eip7716(pre: heze.BeaconState) -> BeaconState:
         latest_execution_payload_bid=pre.latest_execution_payload_bid,
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
-        latest_payload_root=pre.latest_payload_root,
         # [New in EIP7716]
         smoothed_offline_balance=Gwei(0),
     )

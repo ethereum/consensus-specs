@@ -84,11 +84,10 @@ class Seen:
     sync_message_validator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
     bls_to_execution_change_indices: set[ValidatorIndex]
     data_column_sidecar_tuples: set[tuple[Root, ColumnIndex]]
-    execution_payloads: dict[Root, ExecutionPayload]
     execution_payload_envelopes: set[Root]
     payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
-    execution_payload_bid_counts: Counter[tuple[Slot, Root, Root, BuilderIndex]]
-    best_execution_payload_bid: dict[tuple[Slot, Root, Root], Gwei]
+    execution_payload_bid_counts: Counter[tuple[Slot, Hash32, Root, BuilderIndex]]
+    best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
     proposer_preferences: dict[tuple[Slot, Root], ProposerPreferences]
     # [New in Heze:EIP7805]
     inclusion_list_counts: Counter[tuple[Slot, Root, ValidatorIndex]]
@@ -242,28 +241,22 @@ def validate_execution_payload_bid_gossip(
     if bid.fee_recipient != proposer_preferences.fee_recipient:
         raise GossipIgnore("bid's fee recipient does not match the proposer's preference")
 
-    # [REJECT] The bid builds on the parent's execution head
-    parent_bid = state.latest_execution_payload_bid
-    if bid.parent_block_hash == parent_bid.block_hash:
-        parent_payload_root = parent_bid.payload_root
-    elif bid.parent_block_hash == state.latest_block_hash:
-        parent_payload_root = state.latest_payload_root
-    else:
-        raise GossipReject("bid does not build on the parent's execution head")
-
-    # [REJECT] The bid's payload root is not equal to its parent payload root
-    if bid.payload_root == parent_payload_root:
-        raise GossipReject("bid's payload root equals its parent payload root")
-
-    # [IGNORE] The bid's parent payload is a known execution payload
-    if parent_payload_root not in seen.execution_payloads:
-        raise GossipIgnore("bid's parent payload is not a known execution payload")
-
-    parent_payload = seen.execution_payloads[parent_payload_root]
+    # [IGNORE] The bid's parent block hash is the block hash of the verified
+    # execution payload of the bid's parent block or of one of its ancestors
+    # (MAY be queued until the payload is verified)
+    payload_block_root = bid.parent_block_root
+    while payload_block_root in store.blocks:
+        if is_payload_verified(store, payload_block_root):
+            if store.payloads[payload_block_root].payload.block_hash == bid.parent_block_hash:
+                break
+        payload_block_root = store.blocks[payload_block_root].parent_root
+    if payload_block_root not in store.blocks:
+        raise GossipIgnore("bid's parent block hash is not a verified execution payload")
 
     # [IGNORE] The bid's gas limit is compatible with the proposer's target gas limit
+    parent_gas_limit = store.payloads[payload_block_root].payload.gas_limit
     if not is_gas_limit_target_compatible(
-        parent_payload.gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit
+        parent_gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit
     ):
         raise GossipIgnore("bid's gas limit is not compatible with the proposer's target")
 

@@ -385,7 +385,7 @@ def test_early_return_empty_parent_block(spec, state):
     Test early return when parent block is empty.
 
     Input State Configured:
-        - latest_payload_root: != latest_execution_payload_bid.payload_root (parent block EMPTY)
+        - latest_block_hash: != latest_execution_payload_bid.block_hash (parent block EMPTY)
         - builder_pending_withdrawals: Contains entry for builder 0
         - validators[1,2].withdrawable_epoch: = current_epoch (fully withdrawable)
         - balances[0,1,2]: Configured for withdrawals
@@ -422,57 +422,6 @@ def test_early_return_empty_parent_block(spec, state):
         pre_state,
         all_state_unchanged=True,
     )
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_early_return_empty_parent_block_with_matching_block_hash(spec, state):
-    """
-    Test early return when the parent block is empty by payload root, even if
-    the latest block hash is the block hash of the latest bid.
-    """
-    validator_indices = [1, 2]
-    prepare_process_withdrawals(
-        spec,
-        state,
-        full_withdrawal_indices=validator_indices,
-        parent_block_empty=True,
-    )
-    state.latest_block_hash = state.latest_execution_payload_bid.block_hash
-    assert state.latest_payload_root != state.latest_execution_payload_bid.payload_root
-
-    pre_state = state.copy()
-    yield from run_gloas_withdrawals_processing(spec, state)
-
-    assert_process_withdrawals(
-        spec,
-        state,
-        pre_state,
-        all_state_unchanged=True,
-    )
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_full_parent_block_with_other_block_hash(spec, state):
-    """
-    Test that withdrawals are processed when the parent block is full by
-    payload root, even if the latest block hash is not the block hash of the
-    latest bid.
-    """
-    validator_indices = [1, 2]
-    prepare_process_withdrawals(
-        spec,
-        state,
-        full_withdrawal_indices=validator_indices,
-    )
-    state.latest_block_hash = spec.Hash32(b"\x42" * 32)
-    assert state.latest_payload_root == state.latest_execution_payload_bid.payload_root
-    assert state.latest_block_hash != state.latest_execution_payload_bid.block_hash
-
-    yield from run_gloas_withdrawals_processing(spec, state)
-
-    assert len(state.payload_expected_withdrawals) == len(validator_indices)
 
 
 @with_gloas_and_later
@@ -1121,7 +1070,7 @@ def test_full_builder_payload_reserves_sweep_slot(spec, state):
 
     # Setup: Simulate parent being FULL so process_withdrawals runs (deferred
     # processing otherwise returns early when parent was EMPTY).
-    state.latest_payload_root = state.latest_execution_payload_bid.payload_root
+    state.latest_block_hash = state.latest_execution_payload_bid.block_hash
 
     # Verify setup: One slot reserved for sweep, so only MAX - 1 builder withdrawals
     expected_result = spec.get_expected_withdrawals(state)
@@ -1572,7 +1521,7 @@ def test_empty_parent_preserves_populated_expected_withdrawals(spec, state):
         - state.builders[0]: Builder with pending withdrawal (1 ETH)
         - payload_expected_withdrawals: Populated by a prior full-parent pass
         - next_withdrawal_index: Advanced by the prior pass
-        - latest_payload_root: != latest_execution_payload_bid.payload_root (parent EMPTY)
+        - latest_block_hash: != latest_execution_payload_bid.block_hash (parent EMPTY)
 
     Output State Verified:
         - All state fields UNCHANGED (early exit triggered):

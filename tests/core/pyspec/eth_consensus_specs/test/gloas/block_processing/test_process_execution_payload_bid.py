@@ -678,7 +678,8 @@ def test_process_execution_payload_bid_wrong_parent_block_hash(spec, state):
 def test_process_execution_payload_bid_block_hash_equals_parent_block_hash(spec, state):
     """
     Test that a bid whose block hash equals its parent block hash fails.
-    A real execution payload's block hash can never equal its parent's.
+    A real execution payload's block hash can never equal its parent's, and
+    such a bid makes a withheld parent's EMPTY/FULL status ambiguous for children.
     """
     # Create block first to advance slot
     block = build_empty_block_for_next_slot(spec, state)
@@ -692,32 +693,6 @@ def test_process_execution_payload_bid_block_hash_equals_parent_block_hash(spec,
         parent_block_root=block.parent_root,
     )
     signed_bid.message.block_hash = signed_bid.message.parent_block_hash
-
-    block.body.signed_execution_payload_bid = signed_bid
-
-    yield from run_execution_payload_bid_processing(spec, state, block, valid=False)
-
-
-@with_gloas_and_later
-@spec_state_test
-def test_process_execution_payload_bid_payload_root_equals_parent_payload_root(spec, state):
-    """
-    Test that a bid whose payload root equals its parent payload root fails.
-    A real execution payload's root can never equal its parent's, and such a
-    bid would make a withheld payload look delivered to process_withdrawals.
-    """
-    # Create block first to advance slot
-    block = build_empty_block_for_next_slot(spec, state)
-
-    # Create bid with payload root equal to parent payload root
-    signed_bid = prepare_signed_execution_payload_bid(
-        spec,
-        state,
-        builder_index=spec.BUILDER_INDEX_SELF_BUILD,
-        slot=block.slot,
-        parent_block_root=block.parent_root,
-    )
-    signed_bid.message.payload_root = state.latest_payload_root
 
     block.body.signed_execution_payload_bid = signed_bid
 

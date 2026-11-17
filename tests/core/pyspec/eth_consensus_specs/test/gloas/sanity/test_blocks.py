@@ -95,9 +95,7 @@ def _setup_missed_payload_with_withdrawals(spec, state, num_withdrawal_validator
     assert len(block_1_withdrawals) > 0
 
     # Payload for Block 1 was not delivered, so parent is empty for Block 2
-    is_parent_block_full = (
-        state.latest_payload_root == state.latest_execution_payload_bid.payload_root
-    )
+    is_parent_block_full = state.latest_block_hash == state.latest_execution_payload_bid.block_hash
     assert not is_parent_block_full
 
     return pre_state, signed_block_1, block_1_withdrawals
@@ -845,7 +843,6 @@ def test_builder_payment_after_missed_epochs(spec, state):
     bid.value = value
     bid.fee_recipient = fee_recipient
     bid.execution_requests_root = spec.hash_tree_root(spec.ExecutionRequests())
-    bid.payload_root = spec.Root(b"\x42" * 32)
 
     # Sign the bid with the builder's private key
     signature = spec.get_execution_payload_bid_signature(

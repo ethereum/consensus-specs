@@ -37,9 +37,10 @@ def _seed_bid_context(
 ):
     """
     Yield and validate the proposer preferences and payload envelope messages
-    that seed ``seen`` for a fully valid bid, appending their entries to
-    ``messages``. ``head_payload`` is the head block's envelope, already
-    recorded in the store by ``record_head_payload``.
+    for a fully valid bid, appending their entries to ``messages``.
+    ``head_payload`` is the head block's envelope, already recorded in the
+    store by ``record_head_payload``, which is what makes it the verified parent
+    payload of the bid.
 
     Together with an advanced store and active builders, this satisfies every
     bid validation condition, so tests can flip exactly the one condition
@@ -2105,24 +2106,26 @@ def test_gossip_execution_payload_bid__reject_slot_not_higher_than_parent(spec, 
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_execution_payload_bid__ignore_parent_payload_unknown(spec, state):
-    """A bid whose parent payload is not in seen.execution_payloads is ignored.
+def test_gossip_execution_payload_bid__ignore_parent_payload_not_verified(spec, state):
+    """A bid whose parent_block_hash is not the block hash of a verified payload is ignored.
 
-    No envelope is seeded, which is exactly the condition under test. The gas
-    limit compatibility check requires the parent payload, so it can only be
-    evaluated once the parent payload is known.
+    The envelope of the parent payload passes gossip validation but the payload
+    is not verified in the fork choice, which is exactly the condition under
+    test. The gas limit compatibility check requires the parent payload, so it
+    can only be evaluated once the parent payload is verified.
     """
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
 
     store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
     finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
-    head_payload = record_head_payload(spec, state, store, blocks)
+    head_root = blocks[-1].message.hash_tree_root()
+    head_payload = build_execution_payload_envelope(spec, state, head_root, blocks[-1])
+    assert not spec.is_payload_verified(store, head_root)
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
-    yield get_filename(head_payload), head_payload
-    yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
+    yield "blocks", "meta", get_blocks_meta(blocks)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
@@ -2134,11 +2137,7 @@ def test_gossip_execution_payload_bid__ignore_parent_payload_unknown(spec, state
         proposal_slot,
         parent_block_hash,
         current_time_ms,
-    ) = yield from (
-        _seed_bid_context(
-            spec, state, store, head_payload, messages, current_time_ms, seed_envelope=False
-        )
-    )
+    ) = yield from (_seed_bid_context(spec, state, store, head_payload, messages, current_time_ms))
 
     signed_bid = build_signed_bid(
         spec,
@@ -2162,7 +2161,7 @@ def test_gossip_execution_payload_bid__ignore_parent_payload_unknown(spec, state
         current_time_ms=current_time_ms,
     )
     assert result == "ignore"
-    assert reason == "bid's parent payload is not a known execution payload"
+    assert reason == "bid's parent block hash is not a verified execution payload"
     messages.append(
         {
             "current_time_ms": int(current_time_ms),
@@ -2210,9 +2209,8 @@ def test_gossip_execution_payload_bid__ignore_parent_state_unavailable(spec, sta
     )
     messages = []
 
-    # Make the bid's parent payload a known execution payload by validating
-    # a real envelope for the head block. The pending parent is an empty
-    # block, so the bid builds on the same payload.
+    # Validate a real envelope for the head block. The pending parent is an
+    # empty block, so the bid builds on the same payload.
     current_time_ms += 50
     envelope = build_execution_payload_envelope(spec, state, head_root, head_signed_block)
     yield get_filename(envelope), envelope
@@ -2364,9 +2362,8 @@ def test_gossip_execution_payload_bid__ignore_preferences_not_seen(spec, state):
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    # Make the bid's parent payload a known execution payload by validating
-    # a real envelope for the parent block. Leave seen.proposer_preferences
-    # empty.
+    # Validate a real envelope for the parent block. Leave
+    # seen.proposer_preferences empty.
     current_time_ms += 50
     yield get_filename(head_payload), head_payload
     result, reason = run_validate_gossip(spec, seen=seen, store=store, envelope=head_payload)
@@ -2817,208 +2814,6 @@ def test_gossip_execution_payload_bid__reject_block_hash_equals_parent_block_has
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_execution_payload_bid__reject_payload_root_equals_parent_payload_root(spec, state):
-    """A bid whose payload_root equals the root of its parent payload is rejected."""
-    anchor_state = state.copy()
-    yield "topic", "meta", "execution_payload_bid"
-
-    store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
-    finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
-    head_payload = record_head_payload(spec, state, store, blocks)
-    yield "state", anchor_state
-    for signed in blocks:
-        yield get_filename(signed), signed
-    yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
-    yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
-
-    seen = get_seen(spec)
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    messages = []
-
-    common_fee = spec.ExecutionAddress(b"\x11" * 20)
-    parent_gas_limit = state.latest_execution_payload_bid.gas_limit
-    current_time_ms += 50
-    proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
-    signed_prefs = build_signed_proposer_preferences(
-        spec,
-        state,
-        proposal_slot=proposal_slot,
-        validator_index=validator_index,
-        fee_recipient=common_fee,
-        target_gas_limit=parent_gas_limit,
-    )
-    yield get_filename(signed_prefs), signed_prefs
-    result, reason = run_validate_gossip(
-        spec,
-        seen=seen,
-        store=store,
-        signed_proposer_preferences=signed_prefs,
-        current_time_ms=current_time_ms,
-    )
-    assert result == "valid"
-    assert reason is None
-    messages.append(
-        {
-            "current_time_ms": int(current_time_ms),
-            "message": get_filename(signed_prefs),
-            "expected": result,
-        }
-    )
-
-    current_time_ms += 10
-    yield get_filename(head_payload), head_payload
-    result, reason = run_validate_gossip(spec, seen=seen, store=store, envelope=head_payload)
-    assert result == "valid"
-    assert reason is None
-    messages.append(
-        {
-            "message": get_filename(head_payload),
-            "expected": result,
-        }
-    )
-
-    # All other checks pass and only payload_root is wrong: it equals the
-    # root of the parent payload, which a real execution payload can never
-    # produce.
-    parent_block_hash = head_payload.payload.block_hash
-    signed_bid = build_signed_bid(
-        spec,
-        state,
-        builder_index=spec.BuilderIndex(0),
-        slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
-        parent_block_root=parent_root,
-        fee_recipient=common_fee,
-        gas_limit=parent_gas_limit,
-        value=spec.Gwei(1),
-        payload_root=spec.hash_tree_root(head_payload.payload),
-    )
-    yield get_filename(signed_bid), signed_bid
-
-    current_time_ms += 40
-    result, reason = run_validate_gossip(
-        spec,
-        seen=seen,
-        store=store,
-        signed_execution_payload_bid=signed_bid,
-        current_time_ms=current_time_ms,
-    )
-    assert result == "reject"
-    assert reason == "bid's payload root equals its parent payload root"
-    messages.append(
-        {
-            "current_time_ms": int(current_time_ms),
-            "message": get_filename(signed_bid),
-            "expected": result,
-            "reason": reason,
-        }
-    )
-
-    yield "messages", "meta", messages
-
-
-@with_gloas_and_later
-@spec_state_test_with_matching_config
-def test_gossip_execution_payload_bid__reject_parent_block_hash_mismatch(spec, state):
-    """A bid whose parent_block_hash is not an execution head of its parent block is rejected."""
-    anchor_state = state.copy()
-    yield "topic", "meta", "execution_payload_bid"
-
-    store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
-    finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
-    head_payload = record_head_payload(spec, state, store, blocks)
-    yield "state", anchor_state
-    for signed in blocks:
-        yield get_filename(signed), signed
-    yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
-    yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
-
-    seen = get_seen(spec)
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
-    messages = []
-
-    common_fee = spec.ExecutionAddress(b"\x11" * 20)
-    parent_gas_limit = state.latest_execution_payload_bid.gas_limit
-    current_time_ms += 50
-    proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
-    signed_prefs = build_signed_proposer_preferences(
-        spec,
-        state,
-        proposal_slot=proposal_slot,
-        validator_index=validator_index,
-        fee_recipient=common_fee,
-        target_gas_limit=parent_gas_limit,
-    )
-    yield get_filename(signed_prefs), signed_prefs
-    result, reason = run_validate_gossip(
-        spec,
-        seen=seen,
-        store=store,
-        signed_proposer_preferences=signed_prefs,
-        current_time_ms=current_time_ms,
-    )
-    assert result == "valid"
-    assert reason is None
-    messages.append(
-        {
-            "current_time_ms": int(current_time_ms),
-            "message": get_filename(signed_prefs),
-            "expected": result,
-        }
-    )
-
-    current_time_ms += 10
-    yield get_filename(head_payload), head_payload
-    result, reason = run_validate_gossip(spec, seen=seen, store=store, envelope=head_payload)
-    assert result == "valid"
-    assert reason is None
-    messages.append(
-        {
-            "message": get_filename(head_payload),
-            "expected": result,
-        }
-    )
-
-    # All other checks pass and only parent_block_hash is wrong: it is neither
-    # the block hash of the parent block's payload nor the block hash of the
-    # payload that the parent block builds on.
-    signed_bid = build_signed_bid(
-        spec,
-        state,
-        builder_index=spec.BuilderIndex(0),
-        slot=proposal_slot,
-        parent_block_hash=spec.Hash32(b"\x42" * 32),
-        parent_block_root=parent_root,
-        fee_recipient=common_fee,
-        gas_limit=parent_gas_limit,
-        value=spec.Gwei(1),
-    )
-    yield get_filename(signed_bid), signed_bid
-
-    current_time_ms += 40
-    result, reason = run_validate_gossip(
-        spec,
-        seen=seen,
-        store=store,
-        signed_execution_payload_bid=signed_bid,
-        current_time_ms=current_time_ms,
-    )
-    assert result == "reject"
-    assert reason == "bid does not build on the parent's execution head"
-    messages.append(
-        {
-            "current_time_ms": int(current_time_ms),
-            "message": get_filename(signed_bid),
-            "expected": result,
-            "reason": reason,
-        }
-    )
-
-    yield "messages", "meta", messages
-
-
-@with_gloas_and_later
-@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
     """A bid with an invalid signature is rejected once all other checks pass."""
     anchor_state = state.copy()
@@ -3134,8 +2929,7 @@ def _run_bid_gas_limit_scenario(
     yield "topic", "meta", "execution_payload_bid"
 
     # The head block's bid commits to parent_gas_limit, so the envelope's
-    # payload.gas_limit (which gets seeded into seen.execution_payloads)
-    # equals it.
+    # payload.gas_limit (which is recorded in the store) equals it.
     store, blocks, parent_root = setup_store_advanced_for_bid(
         spec, state, head_gas_limit=spec.Uint64(parent_gas_limit)
     )

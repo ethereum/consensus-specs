@@ -217,7 +217,7 @@ top of a `state` MUST take the following actions in order to construct the
   - The `bid.parent_block_hash` equals
     `state.latest_execution_payload_bid.block_hash` if
     `should_build_on_full(store, head, state.slot)` is true, otherwise
-    `state.latest_block_hash`.
+    `state.latest_execution_payload_bid.parent_block_hash`.
   - The `bid.parent_block_root` equals the current block's `parent_root`.
   - The `bid.prev_randao` equals
     `get_randao_mix(state, get_current_epoch(state))`.
@@ -360,7 +360,7 @@ def prepare_execution_payload(
         head_block_hash = parent_bid.block_hash
     else:
         withdrawals = state.payload_expected_withdrawals
-        head_block_hash = state.latest_block_hash
+        head_block_hash = parent_bid.parent_block_hash
 
     # Set the forkchoice head and initiate the payload build process
     payload_attributes = PayloadAttributes(

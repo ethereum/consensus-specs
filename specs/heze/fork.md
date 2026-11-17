@@ -115,7 +115,6 @@ def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
         latest_execution_payload_bid=latest_execution_payload_bid,
         payload_expected_withdrawals=pre.payload_expected_withdrawals,
         ptc_window=pre.ptc_window,
-        latest_payload_root=pre.latest_payload_root,
     )
 
     return post
