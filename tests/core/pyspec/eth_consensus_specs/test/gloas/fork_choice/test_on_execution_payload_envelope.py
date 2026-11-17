@@ -38,19 +38,6 @@ def _build_invalid_envelope(spec, state, block_root, signed_block, **overrides):
         update_payload(payload)
         assert spec.hash_tree_root(payload) == bid.payload_root
 
-    # Apply payload-level overrides
-    for key in (
-        "block_hash",
-        "gas_limit",
-        "parent_hash",
-        "prev_randao",
-        "slot_number",
-        "timestamp",
-        "withdrawals",
-    ):
-        if key in overrides:
-            setattr(payload, key, overrides.pop(key))
-
     return spec.ExecutionPayloadEnvelope(
         payload=payload,
         execution_requests=overrides.pop("execution_requests", spec.ExecutionRequests()),
@@ -171,14 +158,20 @@ def test_on_execution_payload_envelope_wrong_prev_randao(spec, state):
     """
     Test that an envelope whose payload.prev_randao doesn't match the bid is rejected.
     """
-    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(spec, state)
+
+    def update_payload(payload):
+        payload.prev_randao = spec.Bytes32(b"\x42" * 32)
+
+    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(
+        spec, state, update_payload=update_payload
+    )
 
     envelope = _build_invalid_envelope(
         spec,
         state,
         block_root,
         signed_block,
-        prev_randao=spec.Bytes32(b"\x42" * 32),
+        update_payload=update_payload,
     )
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 
@@ -318,14 +311,20 @@ def test_on_execution_payload_envelope_wrong_gas_limit(spec, state):
     """
     Test that an envelope whose payload.gas_limit doesn't match the bid is rejected.
     """
-    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(spec, state)
+
+    def update_payload(payload):
+        payload.gas_limit = payload.gas_limit + 1
+
+    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(
+        spec, state, update_payload=update_payload
+    )
 
     envelope = _build_invalid_envelope(
         spec,
         state,
         block_root,
         signed_block,
-        gas_limit=state.latest_execution_payload_bid.gas_limit + 1,
+        update_payload=update_payload,
     )
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 
@@ -340,14 +339,20 @@ def test_on_execution_payload_envelope_wrong_block_hash(spec, state):
     """
     Test that an envelope whose payload.block_hash doesn't match the bid is rejected.
     """
-    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(spec, state)
+
+    def update_payload(payload):
+        payload.block_hash = spec.Hash32(b"\x42" * 32)
+
+    store, block_root, _, signed_block, test_steps = yield from setup_one_block_store(
+        spec, state, update_payload=update_payload
+    )
 
     envelope = _build_invalid_envelope(
         spec,
         state,
         block_root,
         signed_block,
-        block_hash=spec.Hash32(b"\x42" * 32),
+        update_payload=update_payload,
     )
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 
@@ -419,8 +424,12 @@ def test_on_execution_payload_envelope_invalid_full_child(spec, state):
     Test that a rejected invalid envelope cannot mark the parent payload as
     verified and make a later FULL child pass on_block validation.
     """
+
+    def update_payload(payload):
+        payload.block_hash = spec.Hash32(b"\x99" * 32)
+
     store, block_root, block_state, signed_block, test_steps = yield from setup_one_block_store(
-        spec, state
+        spec, state, update_payload=update_payload
     )
 
     envelope = _build_invalid_envelope(
@@ -428,7 +437,7 @@ def test_on_execution_payload_envelope_invalid_full_child(spec, state):
         block_state,
         block_root,
         signed_block,
-        block_hash=spec.Hash32(b"\x99" * 32),
+        update_payload=update_payload,
     )
     yield from add_execution_payload(spec, store, envelope, test_steps, valid=False)
 
