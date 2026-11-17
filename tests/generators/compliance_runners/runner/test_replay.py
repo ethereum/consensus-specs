@@ -3,9 +3,11 @@
 import pytest
 import snappy
 
+from eth_consensus_specs.test.context import get_copy_of_spec, spec_with_config_overrides
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.test.helpers.voluntary_exits import prepare_signed_exits
+from eth_consensus_specs.test.utils.dumper import Dumper
 from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.evaluation import cli as evaluation_cli
 
@@ -93,3 +95,61 @@ def test_state_transition_replay_bls_settings(
     else:
         replay_case()
     assert bls.bls_active is initial_bls_active
+
+
+@pytest.fixture(params=["capella", "gloas"])
+def configured_exit_case(tmp_path, monkeypatch, request):
+    spec = spec_targets["minimal"][request.param]
+    overrides = {
+        "SHARD_COMMITTEE_PERIOD": 0,
+        "MIN_VALIDATOR_WITHDRAWABILITY_DELAY": 3,
+        "CAPELLA_FORK_VERSION": b"\x00\x00\xab\xcd",
+    }
+    configured, output_config = spec_with_config_overrides(get_copy_of_spec(spec), overrides)
+    monkeypatch.setattr(bls, "bls_active", True)
+    pre = create_genesis_state(
+        configured, [configured.MAX_EFFECTIVE_BALANCE] * 64, configured.MAX_EFFECTIVE_BALANCE
+    )
+    operation = prepare_signed_exits(configured, pre, [0])[0]
+    post = pre.copy()
+    configured.process_voluntary_exit(post, operation)
+    for name, value in (("pre", pre), ("voluntary_exit", operation), ("post", post)):
+        (tmp_path / f"{name}.ssz_snappy").write_bytes(snappy.compress(value.encode_bytes()))
+    (tmp_path / "meta.yaml").write_text("bls_setting: 1\n")
+    case = VectorCase("minimal", request.param, "operations", "voluntary_exit", "main", tmp_path)
+    return spec, configured, output_config, overrides, post, case
+
+
+@pytest.mark.parametrize("full_config", [False, True])
+@pytest.mark.parametrize("corrupt_post", [False, True])
+def test_state_transition_case_config_is_isolated(configured_exit_case, full_config, corrupt_post):
+    spec, configured, output_config, overrides, post, case = configured_exit_case
+    original_config = spec.config
+    Dumper().dump_cfg(case.test_dir, "config", output_config if full_config else overrides)
+    loaded = state_transition.load_spec(case.preset, case.fork, case.test_dir)
+    assert loaded.config == configured.config
+    assert hash(loaded.config) == hash(configured.config)
+    if corrupt_post:
+        post.slot += 1
+        (case.test_dir / "post.ssz_snappy").write_bytes(snappy.compress(post.encode_bytes()))
+        with pytest.raises(AssertionError):
+            state_transition.run_test(case)
+    else:
+        state_transition.run_test(case)
+    assert spec.config is original_config
+    assert spec.config.SHARD_COMMITTEE_PERIOD != configured.config.SHARD_COMMITTEE_PERIOD
+    # The next replay without config.yaml must use the default committee period.
+    (case.test_dir / "config.yaml").unlink()
+    with pytest.raises(AssertionError):
+        state_transition.run_test(case)
+
+
+def test_case_config_prevents_unrelated_negative_pass(configured_exit_case):
+    spec, _, output_config, _, _, case = configured_exit_case
+    original_config = spec.config
+    Dumper().dump_cfg(case.test_dir, "config", output_config)
+    (case.test_dir / "post.ssz_snappy").unlink()
+    # This exit is valid under its case config, so declaring it invalid must fail.
+    with pytest.raises(AssertionError, match="expected an assertion error, but got none"):
+        state_transition.run_test(case)
+    assert spec.config is original_config
