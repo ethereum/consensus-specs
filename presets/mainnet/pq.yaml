@@ -26,8 +26,8 @@ MAX_VOLUNTARY_EXIT_REQUESTS_PER_PAYLOAD: 16
 
 # Type-specific SSZ bounds
 # ---------------------------------------------------------------
-# 1,056,255 bytes, ~1 MiB
-MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE_PQ: 1056255
+# 1,055,231 bytes, ~1 MiB
+MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE_PQ: 1055231
 # 2,621,720 bytes, ~2.5 MiB
 MAX_ATTESTER_SLASHING_SIZE_PQ: 2621720
 # 199,240 bytes, ~195 KiB

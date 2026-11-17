@@ -238,6 +238,9 @@ def create_genesis_state(spec, validator_balances, activation_threshold, builder
         state.builder_pending_withdrawals = spec.BuilderPendingWithdrawals()
         state.ptc_window = initialize_ptc_window(spec, state)
 
+    if is_post_pq(spec):
+        state.aggregation_committee_window = spec.initialize_aggregation_committee_window(state)
+
     if is_post_eip8148(spec):
         state.validator_sweep_thresholds = spec.SweepThresholds(
             data=[spec.Gwei(0)] * len(validator_balances)

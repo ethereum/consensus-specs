@@ -148,6 +148,18 @@ def run_fork_test(post_spec, pre_state):
         else:
             assert post_deposit.pubkey == pre_deposit.pubkey
 
+    # The aggregator window is empty for the previous epoch and filled for the
+    # current and lookahead epochs
+    start_slot = post_spec.compute_start_slot_at_epoch(post_spec.get_current_epoch(post_state))
+    for offset, aggregation_committees in enumerate(post_state.aggregation_committee_window):
+        if offset < post_spec.SLOTS_PER_EPOCH:
+            assert len(aggregation_committees) == 0
+        else:
+            slot = post_spec.Slot(start_slot + offset - post_spec.SLOTS_PER_EPOCH)
+            assert aggregation_committees == post_spec.compute_aggregation_committees(
+                post_state, slot
+            )
+
     # Sync committees are removed
     assert not hasattr(post_state, "current_sync_committee")
     assert not hasattr(post_state, "next_sync_committee")

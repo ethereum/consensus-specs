@@ -16,7 +16,11 @@
   - [New `ValidatorPreregistrations`](#new-validatorpreregistrations)
   - [New `BuilderPreregistrations`](#new-builderpreregistrations)
   - [New `VoluntaryExitRequests`](#new-voluntaryexitrequests)
+  - [New `AggregationCommittee`](#new-aggregationcommittee)
+  - [New `AggregationCommittees`](#new-aggregationcommittees)
+  - [New `AggregationCommitteeWindow`](#new-aggregationcommitteewindow)
 - [Constants](#constants)
+  - [Misc](#misc)
   - [XMSS](#xmss)
   - [VRF](#vrf)
   - [XMSS leaf offsets](#xmss-leaf-offsets)
@@ -24,7 +28,7 @@
   - [Legacy domains](#legacy-domains)
   - [Execution-layer triggered requests](#execution-layer-triggered-requests)
 - [Presets](#presets)
-  - [Misc](#misc)
+  - [Misc](#misc-1)
   - [XMSS](#xmss-1)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
@@ -64,13 +68,15 @@
   - [Crypto](#crypto)
     - [XMSS signatures](#xmss-signatures)
     - [STARK proofs](#stark-proofs)
-  - [Misc](#misc-1)
+  - [Misc](#misc-2)
     - [New `compute_legacy_xmss_pubkey`](#new-compute_legacy_xmss_pubkey)
     - [New `compute_legacy_vrf_root`](#new-compute_legacy_vrf_root)
     - [New `compute_deposit_pubkey`](#new-compute_deposit_pubkey)
     - [New `compute_deposit_vrf_root`](#new-compute_deposit_vrf_root)
     - [New `compute_xmss_attestation_leaf_index`](#new-compute_xmss_attestation_leaf_index)
     - [New `compute_xmss_leaf_index`](#new-compute_xmss_leaf_index)
+    - [New `compute_aggregation_committee`](#new-compute_aggregation_committee)
+    - [New `compute_aggregation_committees`](#new-compute_aggregation_committees)
   - [Predicates](#predicates)
     - [New `is_active_validator_preregistration`](#new-is_active_validator_preregistration)
     - [New `is_active_builder_preregistration`](#new-is_active_builder_preregistration)
@@ -84,6 +90,7 @@
     - [Modified `get_beacon_committee`](#modified-get_beacon_committee)
     - [Modified `get_committee_count_per_slot`](#modified-get_committee_count_per_slot)
     - [Modified `get_indexed_attestation`](#modified-get_indexed_attestation)
+    - [New `get_aggregation_committee`](#new-get_aggregation_committee)
     - [New `get_attestation_statements`](#new-get_attestation_statements)
     - [New `get_validator_preregistration_index`](#new-get_validator_preregistration_index)
     - [New `get_active_validator_preregistration`](#new-get_active_validator_preregistration)
@@ -97,6 +104,7 @@
   - [Modified `verify_block_signature`](#modified-verify_block_signature)
   - [Epoch processing](#epoch-processing)
     - [Modified `process_epoch`](#modified-process_epoch)
+    - [New `process_aggregation_committee_window`](#new-process_aggregation_committee_window)
     - [New `process_preregistration_expiry`](#new-process_preregistration_expiry)
     - [Modified `apply_pending_deposit`](#modified-apply_pending_deposit)
     - [Modified `process_pending_deposits`](#modified-process_pending_deposits)
@@ -170,8 +178,11 @@ XMSS signatures are not unique, so a proposer could grind a signature-based
 RANDAO reveal. Each validator instead registers the root of a Merkle tree of
 secret random values, one for each slot, as its VRF root. Its RANDAO reveal is
 the leaf for the slot with the leaf's Merkle branch, a `VRFProof`, which the
-proposer committed to before the fork. The same proof serves as its selection
-proof when it aggregates.
+proposer committed to before the fork.
+
+Aggregators no longer select themselves. Each beacon committee has an
+aggregation committee, sampled by effective balance and kept in
+`aggregation_committee_window`.
 
 A validator's record carries the XMSS public key and VRF root it registered with
 EIP-8483 before the fork in place of its BLS public key, and a builder's record
@@ -328,7 +339,44 @@ class VoluntaryExitRequests(ProgressiveList[VoluntaryExitRequest]):
     """
 ```
 
+### New `AggregationCommittee`
+
+```python
+class AggregationCommittee(ProgressiveList[ValidatorIndex]):
+    """
+    The aggregators of a beacon committee.
+    """
+```
+
+### New `AggregationCommittees`
+
+```python
+class AggregationCommittees(ProgressiveList[AggregationCommittee]):
+    """
+    The aggregation committee of each beacon committee of a slot, in committee
+    order.
+    """
+```
+
+### New `AggregationCommitteeWindow`
+
+```python
+class AggregationCommitteeWindow(Vector[AggregationCommittees]):
+    """
+    A rolling window of the aggregation committees of the previous, current, and
+    lookahead epochs.
+    """
+
+    LENGTH = Uint64(MIN_SEED_LOOKAHEAD + 2) * Uint64(SLOTS_PER_EPOCH)
+```
+
 ## Constants
+
+### Misc
+
+| Name                        | Value                |
+| --------------------------- | -------------------- |
+| `AGGREGATORS_PER_COMMITTEE` | `Uint64(2**2)` (= 4) |
 
 ### XMSS
 
@@ -468,7 +516,7 @@ class BeaconBlockBody(ProgressiveContainer):
 
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=50, gaps=(22, 23, 46, 47))
+    ACTIVE_FIELDS = active_fields(width=51, gaps=(22, 23, 46, 47))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -526,6 +574,8 @@ class BeaconState(ProgressiveContainer):
     validator_preregistrations: ValidatorPreregistrations
     # [New in PQ:EIP8205]
     builder_preregistrations: BuilderPreregistrations
+    # [New in PQ]
+    aggregation_committee_window: AggregationCommitteeWindow
 ```
 
 #### `Builder`
@@ -916,6 +966,52 @@ def compute_xmss_leaf_index(slot: Slot, leaf_offset: Uint64) -> Uint64:
     )
 ```
 
+#### New `compute_aggregation_committee`
+
+```python
+def compute_aggregation_committee(
+    state: BeaconState, slot: Slot, index: CommitteeIndex
+) -> AggregationCommittee:
+    """
+    Return the aggregation committee of the beacon committee at ``slot`` for
+    ``index``, sampled by effective balance without duplicates.
+    """
+    epoch = compute_epoch_at_slot(slot)
+    seed = sha256(
+        get_seed(state, epoch, DOMAIN_SELECTION_PROOF) + uint_to_bytes(slot) + uint_to_bytes(index)
+    )
+    candidates = list(get_beacon_committee(state, slot, index))
+    aggregators: list[ValidatorIndex] = []
+    while len(aggregators) < AGGREGATORS_PER_COMMITTEE and len(candidates) > 0:
+        aggregator = compute_balance_weighted_selection(
+            state,
+            candidates,
+            sha256(seed + uint_to_bytes(Uint64(len(aggregators)))),
+            size=Uint64(1),
+            shuffle_indices=False,
+        )[0]
+        aggregators.append(aggregator)
+        candidates = [candidate for candidate in candidates if candidate != aggregator]
+    return AggregationCommittee(data=aggregators)
+```
+
+#### New `compute_aggregation_committees`
+
+```python
+def compute_aggregation_committees(state: BeaconState, slot: Slot) -> AggregationCommittees:
+    """
+    Return the aggregation committee of each beacon committee at ``slot``, in
+    committee order.
+    """
+    committees_per_slot = get_committee_count_per_slot(state, compute_epoch_at_slot(slot))
+    return AggregationCommittees(
+        data=[
+            compute_aggregation_committee(state, slot, CommitteeIndex(index))
+            for index in range(committees_per_slot)
+        ]
+    )
+```
+
 ### Predicates
 
 #### New `is_active_validator_preregistration`
@@ -1137,6 +1233,26 @@ def get_indexed_attestation(
     )
 ```
 
+#### New `get_aggregation_committee`
+
+```python
+def get_aggregation_committee(
+    state: BeaconState, slot: Slot, index: CommitteeIndex
+) -> AggregationCommittee:
+    """
+    Return the aggregation committee of the beacon committee at ``slot`` for
+    ``index``.
+    """
+    epoch = compute_epoch_at_slot(slot)
+    state_epoch = get_current_epoch(state)
+    if epoch < state_epoch:
+        assert epoch + 1 == state_epoch
+        return state.aggregation_committee_window[slot % SLOTS_PER_EPOCH][index]
+    assert epoch <= state_epoch + MIN_SEED_LOOKAHEAD
+    offset = Uint64(epoch - state_epoch + 1) * SLOTS_PER_EPOCH
+    return state.aggregation_committee_window[offset + slot % SLOTS_PER_EPOCH][index]
+```
+
 #### New `get_attestation_statements`
 
 *Note*: A network aggregate covers one committee, so its `proof` proves one
@@ -1332,8 +1448,31 @@ def process_epoch(state: BeaconState) -> None:
     # Removed `process_sync_committee_updates`
     process_proposer_lookahead(state)
     process_ptc_window(state)
+    # [New in PQ]
+    process_aggregation_committee_window(state)
     # [New in PQ:EIP8205]
     process_preregistration_expiry(state)
+```
+
+#### New `process_aggregation_committee_window`
+
+```python
+def process_aggregation_committee_window(state: BeaconState) -> None:
+    """
+    Update the cached aggregator window.
+    """
+    # Shift all epochs forward by one
+    window_length = len(state.aggregation_committee_window)
+    state.aggregation_committee_window[: window_length - SLOTS_PER_EPOCH] = (
+        state.aggregation_committee_window[SLOTS_PER_EPOCH:]
+    )
+    # Fill in the last epoch
+    next_epoch = get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1
+    start_slot = compute_start_slot_at_epoch(next_epoch)
+    state.aggregation_committee_window[window_length - SLOTS_PER_EPOCH :] = [
+        compute_aggregation_committees(state, Slot(slot))
+        for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH)
+    ]
 ```
 
 #### New `process_preregistration_expiry`

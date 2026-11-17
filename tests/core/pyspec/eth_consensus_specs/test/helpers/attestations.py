@@ -9,7 +9,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_gloas,
     is_post_pq,
 )
-from eth_consensus_specs.test.helpers.keys import get_vrf_proof, privkeys
+from eth_consensus_specs.test.helpers.keys import privkeys
 from eth_consensus_specs.test.helpers.signatures import aggregate, sign
 from eth_consensus_specs.test.helpers.state import (
     next_epoch,
@@ -31,24 +31,14 @@ def get_max_committees_per_slot(spec):
     return spec.MAX_COMMITTEES_PER_SLOT
 
 
-def get_selection_proof(spec, state, validator_index, slot):
-    """
-    The selection proof of the validator at ``validator_index`` for ``slot``, which
-    from PQ onwards opens a leaf of its VRF tree.
-    """
-    if is_post_pq(spec):
-        return spec.VRFProof(data=get_vrf_proof(validator_index))
-    return spec.get_slot_signature(state, slot, privkeys[validator_index])
-
-
 def is_aggregator(spec, state, slot, committee_index, validator_index):
     """
     Whether the validator at ``validator_index`` is selected to aggregate, which
-    from PQ onwards also depends on its index.
+    from PQ onwards is read from the state's aggregator window.
     """
-    selection_proof = get_selection_proof(spec, state, validator_index, slot)
     if is_post_pq(spec):
-        return spec.is_aggregator(state, slot, committee_index, validator_index, selection_proof)
+        return spec.is_aggregator(state, slot, committee_index, validator_index)
+    selection_proof = spec.get_slot_signature(state, slot, privkeys[validator_index])
     return spec.is_aggregator(state, slot, committee_index, selection_proof)
 
 
@@ -67,16 +57,15 @@ def get_aggregator_index(spec, state, slot, committee_index):
 def get_aggregate_and_proof(spec, state, aggregator_index, aggregate, privkey):
     """
     The ``AggregateAndProof`` of ``aggregate``, which from PQ onwards carries a
-    selection proof from the aggregator's VRF tree and a stark proof of the aggregate.
+    stark proof of the aggregate instead of a selection proof.
     """
     if is_post_pq(spec):
-        selection_proof = get_selection_proof(spec, state, aggregator_index, aggregate.data.slot)
         signatures = [
             get_attestation_signature(spec, state, aggregate.data, privkeys[index])
             for index in get_committee_attesters(spec, state, aggregate)
         ]
         proof = spec.get_aggregate_stark(state, aggregate, signatures)
-        return spec.get_aggregate_and_proof(aggregator_index, aggregate, selection_proof, proof)
+        return spec.get_aggregate_and_proof(aggregator_index, aggregate, proof)
     return spec.get_aggregate_and_proof(state, aggregator_index, aggregate, privkey)
 
 

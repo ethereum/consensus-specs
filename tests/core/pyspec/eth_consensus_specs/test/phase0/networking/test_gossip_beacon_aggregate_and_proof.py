@@ -28,7 +28,7 @@ from eth_consensus_specs.test.helpers.constants import (
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_gloas
+from eth_consensus_specs.test.helpers.forks import is_post_electra, is_post_gloas, is_post_pq
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
     get_seen,
@@ -1186,7 +1186,11 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregator_not_in_committee(s
         **kwargs,
     )
     assert result == "reject"
-    assert reason == "aggregator is not a member of the committee"
+    if is_post_pq(spec):
+        # Only committee members are aggregators
+        assert reason == "validator is not selected as aggregator"
+    else:
+        assert reason == "aggregator is not a member of the committee"
 
     yield (
         "messages",
@@ -1244,7 +1248,11 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregator_index_out_of_range
         **kwargs,
     )
     assert result == "reject"
-    assert reason == "aggregator is not a member of the committee"
+    if is_post_pq(spec):
+        # Only committee members are aggregators
+        assert reason == "validator is not selected as aggregator"
+    else:
+        assert reason == "aggregator is not a member of the committee"
 
     yield (
         "messages",

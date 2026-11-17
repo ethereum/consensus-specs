@@ -14,6 +14,7 @@
   - [New `compute_pending_deposits`](#new-compute_pending_deposits)
   - [New `compute_builder_pending_withdrawals`](#new-compute_builder_pending_withdrawals)
   - [New `compute_builder_pending_payments`](#new-compute_builder_pending_payments)
+  - [New `initialize_aggregation_committee_window`](#new-initialize_aggregation_committee_window)
 - [Fork to PQ](#fork-to-pq)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -265,6 +266,25 @@ def compute_builder_pending_payments(pre: eip8483.BeaconState) -> BuilderPending
     return BuilderPendingPayments(data=payments)
 ```
 
+### New `initialize_aggregation_committee_window`
+
+```python
+def initialize_aggregation_committee_window(state: BeaconState) -> AggregationCommitteeWindow:
+    """
+    Return the cached aggregation committee window starting from the current
+    epoch. Used to initialize the ``aggregation_committee_window`` field in the
+    beacon state at genesis and after forks.
+    """
+    empty_previous_epoch = [AggregationCommittees() for _ in range(SLOTS_PER_EPOCH)]
+    current_epoch = get_current_epoch(state)
+    start_slot = compute_start_slot_at_epoch(current_epoch)
+    end_slot = compute_start_slot_at_epoch(Epoch(current_epoch + MIN_SEED_LOOKAHEAD + 1))
+    aggregation_committees = [
+        compute_aggregation_committees(state, Slot(slot)) for slot in range(start_slot, end_slot)
+    ]
+    return AggregationCommitteeWindow(data=empty_previous_epoch + aggregation_committees)
+```
+
 ## Fork to PQ
 
 ### Fork trigger
@@ -354,7 +374,12 @@ def upgrade_to_pq(pre: eip8483.BeaconState) -> BeaconState:
         validator_preregistrations=ValidatorPreregistrations(),
         # [New in PQ:EIP8205]
         builder_preregistrations=BuilderPreregistrations(),
+        # [New in PQ]
+        aggregation_committee_window=AggregationCommitteeWindow(),
     )
+
+    # [New in PQ]
+    post.aggregation_committee_window = initialize_aggregation_committee_window(post)
 
     return post
 ```

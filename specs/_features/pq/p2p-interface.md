@@ -63,7 +63,7 @@ which were sized for BLS signatures.
 
 | Name                                       | Value                          |
 | ------------------------------------------ | ------------------------------ |
-| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE_PQ`   | `Uint64(1056255)` (= ~1 MiB)   |
+| `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE_PQ`   | `Uint64(1055231)` (= ~1 MiB)   |
 | `MAX_ATTESTER_SLASHING_SIZE_PQ`            | `Uint64(2621720)` (= ~2.5 MiB) |
 | `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_PQ` | `Uint64(199240)` (= ~195 KiB)  |
 
@@ -395,13 +395,6 @@ def validate_beacon_aggregate_and_proof_gossip(
     if block_root not in store.block_states:
         raise GossipReject("block being voted for failed validation")
 
-    state = store.block_states[get_head(store).root]
-
-    # [REJECT] The committee index is within the expected range
-    committee_count = get_committee_count_per_slot(state, aggregate.data.target.epoch)
-    if index >= committee_count:
-        raise GossipReject("committee index out of range")
-
     # [IGNORE] The aggregate attestation's slot is not from a future slot
     # (MAY be queued for processing at the appropriate slot)
     if is_future_slot(store, aggregate.data.slot, current_time_ms):
@@ -416,6 +409,19 @@ def validate_beacon_aggregate_and_proof_gossip(
     if aggregate.data.target.epoch != compute_epoch_at_slot(aggregate.data.slot):
         raise GossipReject("attestation epoch does not match target epoch")
 
+    state = store.block_states[get_head(store).root]
+
+    # [New in PQ]
+    if get_current_epoch(state) + MIN_SEED_LOOKAHEAD < attestation_epoch:
+        state = state.copy()
+        start_slot = compute_start_slot_at_epoch(attestation_epoch)
+        process_slots(state, start_slot)
+
+    # [REJECT] The committee index is within the expected range
+    committee_count = get_committee_count_per_slot(state, aggregate.data.target.epoch)
+    if index >= committee_count:
+        raise GossipReject("committee index out of range")
+
     # [REJECT] The number of aggregation bits matches the committee size
     committee = get_beacon_committee(state, aggregate.data.slot, index)
     if len(aggregation_bits) != len(committee):
@@ -427,26 +433,9 @@ def validate_beacon_aggregate_and_proof_gossip(
         raise GossipReject("aggregate has no participants")
 
     # [Modified in PQ]
-    # [REJECT] The selection proof selects the validator as an aggregator
-    if not is_aggregator(
-        state,
-        aggregate.data.slot,
-        index,
-        aggregator_index,
-        aggregate_and_proof.selection_proof,
-    ):
+    # [REJECT] The validator is one of the committee's aggregators
+    if not is_aggregator(state, aggregate.data.slot, index, aggregator_index):
         raise GossipReject("validator is not selected as aggregator")
-
-    # [REJECT] The aggregator is a member of the committee
-    if aggregator_index not in committee:
-        raise GossipReject("aggregator is not a member of the committee")
-
-    # [Modified in PQ]
-    # [REJECT] The selection proof is valid
-    if not is_valid_vrf_proof(
-        state, aggregator_index, aggregate.data.slot, aggregate_and_proof.selection_proof
-    ):
-        raise GossipReject("invalid selection proof")
 
     # [REJECT] The aggregator signature is valid
     domain = get_domain(state, DOMAIN_AGGREGATE_AND_PROOF, target_epoch)

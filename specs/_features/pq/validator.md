@@ -5,8 +5,6 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
-- [Constants](#constants)
-  - [Misc](#misc)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
     - [`AggregateAndProof`](#aggregateandproof)
@@ -70,20 +68,6 @@ exited at the upgrade and becomes withdrawable
 withdrawn, unless it has `0x00` withdrawal credentials, in which case its
 balance stays locked. See [the fork document](./fork.md) for details.
 
-## Constants
-
-### Misc
-
-*[New in PQ]*
-
-| Name                                  | Value                |
-| ------------------------------------- | -------------------- |
-| `TARGET_AGGREGATORS_PER_COMMITTEE_PQ` | `Uint64(2**2)` (= 4) |
-
-*Note*: Aggregates are much larger than with BLS, so fewer validators are
-selected to aggregate. `TARGET_AGGREGATORS_PER_COMMITTEE_PQ` replaces
-`TARGET_AGGREGATORS_PER_COMMITTEE`.
-
 ## Containers
 
 ### Modified containers
@@ -95,7 +79,7 @@ class AggregateAndProof(Container):
     aggregator_index: ValidatorIndex
     aggregate: Attestation
     # [Modified in PQ]
-    selection_proof: VRFProof
+    # Removed `selection_proof`
     # [New in PQ]
     proof: AttestationProof
 ```
@@ -119,10 +103,9 @@ A validator builds a Merkle tree of depth `VRF_TREE_DEPTH` whose leaves are
 secret random values, one for each slot, and registers the root of the tree as
 its VRF root with EIP-8483, as the last 32 bytes of the registration's
 `pq_data`. Its VRF proof for a slot is the leaf at index `slot`, followed by the
-leaf's Merkle branch. It reveals the proof as its RANDAO reveal when it proposes
-and as its selection proof when it aggregates. The tree is fixed at
-registration, so a validator cannot grind its proofs, and nobody can predict
-them before they are revealed.
+leaf's Merkle branch. It reveals the proof as its RANDAO reveal when it
+proposes. The tree is fixed at registration, so a validator cannot grind its
+proofs, and nobody can predict them before they are revealed.
 
 #### XMSS public key
 
@@ -494,12 +477,8 @@ def compute_subnet_for_attestation(
 
 #### Aggregation selection
 
-A validator's selection proof for a slot is its VRF proof for that slot.
-`get_slot_signature` is deprecated.
-
-`is_aggregator` hashes the leaf with the validator index and the root of the
-finalized checkpoint. That root is unknown when the tree is registered, so a
-validator cannot fill its tree with leaves that always select it.
+`get_slot_signature` is deprecated. A validator aggregates for its committee if
+it is in the committee's aggregation committee.
 
 ```python
 def is_aggregator(
@@ -509,20 +488,10 @@ def is_aggregator(
     # [New in PQ]
     validator_index: ValidatorIndex,
     # [Modified in PQ]
-    selection_proof: VRFProof,
+    # Removed `slot_signature`
 ) -> bool:
-    committee = get_beacon_committee(state, slot, index)
     # [Modified in PQ]
-    modulo = max(1, len(committee) // TARGET_AGGREGATORS_PER_COMMITTEE_PQ)
-    # [Modified in PQ]
-    finalized_root = state.finalized_checkpoint.root
-    selection = sha256(
-        selection_proof[0]
-        + DOMAIN_SELECTION_PROOF
-        + uint_to_bytes(validator_index)
-        + finalized_root
-    )
-    return bytes_to_uint64(selection[0:8]) % modulo == 0
+    return validator_index in get_aggregation_committee(state, slot, index)
 ```
 
 #### Construct aggregate
@@ -553,15 +522,13 @@ def get_aggregate_and_proof(
     # [Modified in PQ]
     # Removed `privkey`
     # [New in PQ]
-    selection_proof: VRFProof,
-    # [New in PQ]
     proof: AttestationProof,
 ) -> AggregateAndProof:
     return AggregateAndProof(
         aggregator_index=aggregator_index,
         aggregate=aggregate,
         # [Modified in PQ]
-        selection_proof=selection_proof,
+        # Removed `selection_proof`
         # [New in PQ]
         proof=proof,
     )
