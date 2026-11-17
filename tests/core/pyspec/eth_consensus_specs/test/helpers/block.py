@@ -129,7 +129,6 @@ def build_empty_block(spec, state, slot=None, proposer_index=None):
         signed_bid = build_empty_signed_execution_payload_bid(spec, state)
         signed_bid.message.block_hash = spec.Hash32()
         signed_bid.message.parent_block_hash = state.latest_block_hash
-        signed_bid.message.parent_payload_root = state.latest_payload_root
         empty_requests_root = spec.hash_tree_root(spec.ExecutionRequests())
         signed_bid.message.execution_requests_root = empty_requests_root
         empty_block.body.signed_execution_payload_bid = signed_bid

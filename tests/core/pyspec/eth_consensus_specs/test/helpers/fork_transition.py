@@ -554,9 +554,6 @@ def run_transition_with_operation(
             child.body.signed_execution_payload_bid.message.parent_block_hash = (
                 state.latest_execution_payload_bid.block_hash
             )
-            child.body.signed_execution_payload_bid.message.parent_payload_root = (
-                state.latest_execution_payload_bid.payload_root
-            )
             child.body.parent_execution_requests = execution_requests
             blocks.append(post_tag(state_transition_and_sign_block(post_spec, state, child)))
         _check_state()

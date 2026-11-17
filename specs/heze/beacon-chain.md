@@ -121,10 +121,9 @@ class SignedInclusionList(Container):
 
 ```python
 class ExecutionPayloadBid(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=15)
+    ACTIVE_FIELDS = active_fields(width=14)
 
     parent_block_hash: Hash32
-    parent_payload_root: Root
     parent_block_root: Root
     block_hash: Hash32
     payload_root: Root

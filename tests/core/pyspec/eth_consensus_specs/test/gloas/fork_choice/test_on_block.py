@@ -37,9 +37,6 @@ def test_on_block_parent_full_rejects_unverified_payload(spec, state):
     child.body.signed_execution_payload_bid.message.parent_block_hash = (
         signed_block.message.body.signed_execution_payload_bid.message.block_hash
     )
-    child.body.signed_execution_payload_bid.message.parent_payload_root = (
-        signed_block.message.body.signed_execution_payload_bid.message.payload_root
-    )
     child.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(b"\x42" * 32)
     signed_child = state_transition_and_sign_block(spec, child_state, child)
 
@@ -69,9 +66,6 @@ def test_on_block_parent_full_accepts_verified_payload(spec, state):
     child = build_empty_block_for_next_slot(spec, child_state)
     child.body.signed_execution_payload_bid.message.parent_block_hash = (
         signed_block.message.body.signed_execution_payload_bid.message.block_hash
-    )
-    child.body.signed_execution_payload_bid.message.parent_payload_root = (
-        signed_block.message.body.signed_execution_payload_bid.message.payload_root
     )
     child.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(b"\x42" * 32)
     signed_child = state_transition_and_sign_block(spec, child_state, child)

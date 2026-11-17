@@ -251,7 +251,7 @@ def test_get_head_prunes_childless_unviable_empty_variant(spec, state):
 
     # Intermediate blocks on the B fork carry the attestations.
     # The first block building directly on B explicitly claims FULL parent payload status
-    # by matching parent_payload_root to signed_b's bid payload_root.
+    # by matching parent_block_hash to signed_b's bid block_hash.
     branch_state = b_state.copy()
     branch_root = b_root
     first_branch_block = None
@@ -266,9 +266,6 @@ def test_get_head_prunes_childless_unviable_empty_variant(spec, state):
         if branch_root == b_root:
             branch_block.body.signed_execution_payload_bid.message.parent_block_hash = (
                 signed_b.message.body.signed_execution_payload_bid.message.block_hash
-            )
-            branch_block.body.signed_execution_payload_bid.message.parent_payload_root = (
-                signed_b.message.body.signed_execution_payload_bid.message.payload_root
             )
             branch_block.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(
                 b"\x02" + b"\x00" * 31

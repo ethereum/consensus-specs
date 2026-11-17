@@ -745,10 +745,9 @@ class IndexedPayloadAttestation(ProgressiveContainer):
 
 ```python
 class ExecutionPayloadBid(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=14)
+    ACTIVE_FIELDS = active_fields(width=13)
 
     parent_block_hash: Hash32
-    parent_payload_root: Root
     parent_block_root: Root
     block_hash: Hash32
     payload_root: Root
@@ -1838,7 +1837,7 @@ def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> 
     parent_bid = state.latest_execution_payload_bid
     requests = block.body.parent_execution_requests
 
-    if bid.parent_payload_root != parent_bid.payload_root:
+    if bid.parent_block_hash != parent_bid.block_hash:
         # Parent was EMPTY -- no execution requests expected
         assert requests == ExecutionRequests.empty()
         return
@@ -2167,10 +2166,9 @@ def process_execution_payload_bid(
     assert state.slot > GENESIS_SLOT
     # Verify that the bid is for the right parent payload
     assert bid.parent_block_hash == state.latest_block_hash
-    assert bid.parent_payload_root == state.latest_payload_root
     # Verify that the bid's payload differs from its parent payload
     assert bid.block_hash != bid.parent_block_hash
-    assert bid.payload_root != bid.parent_payload_root
+    assert bid.payload_root != state.latest_payload_root
     assert bid.parent_block_root == get_block_root_at_slot(state, state.slot - 1)
     assert bid.prev_randao == get_randao_mix(state, get_current_epoch(state))
 

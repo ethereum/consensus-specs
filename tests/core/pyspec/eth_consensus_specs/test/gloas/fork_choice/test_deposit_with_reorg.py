@@ -78,9 +78,6 @@ def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):
     # Build the child block that carries parent_execution_requests
     child_block = build_empty_block_for_next_slot(spec, state)
     child_block.body.signed_execution_payload_bid.message.parent_block_hash = deposit_bid.block_hash
-    child_block.body.signed_execution_payload_bid.message.parent_payload_root = (
-        deposit_bid.payload_root
-    )
     child_block.body.parent_execution_requests = execution_requests
     signed_child_block = state_transition_and_sign_block(spec, state, child_block)
 

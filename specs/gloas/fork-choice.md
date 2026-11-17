@@ -367,11 +367,9 @@ def payload_data_availability(store: Store, root: Root, available: bool) -> bool
 ```python
 def get_parent_payload_status(store: Store, block: BeaconBlock) -> PayloadStatus:
     parent = store.blocks[block.parent_root]
-    parent_payload_root = block.body.signed_execution_payload_bid.message.parent_payload_root
-    message_payload_root = parent.body.signed_execution_payload_bid.message.payload_root
-    return (
-        PAYLOAD_STATUS_FULL if parent_payload_root == message_payload_root else PAYLOAD_STATUS_EMPTY
-    )
+    parent_block_hash = block.body.signed_execution_payload_bid.message.parent_block_hash
+    message_block_hash = parent.body.signed_execution_payload_bid.message.block_hash
+    return PAYLOAD_STATUS_FULL if parent_block_hash == message_block_hash else PAYLOAD_STATUS_EMPTY
 ```
 
 ### New `is_parent_node_full`

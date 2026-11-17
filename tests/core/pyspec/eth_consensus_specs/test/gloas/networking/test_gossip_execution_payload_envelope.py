@@ -456,13 +456,11 @@ def _assert_envelope_withdrawals(spec, state, count, expected, reason=None):
     store.payloads[anchor_root] = anchor_envelope
 
     block = build_empty_block_for_next_slot(spec, state)
-    # Claim the parent is full by matching the bid's parent_block_hash and
-    # parent_payload_root to the parent bid's block_hash and payload_root. The
-    # bid's block_hash and payload_root must differ from them.
+    # Claim the parent is full by matching the bid's parent_block_hash to the
+    # parent bid's block_hash. The bid's block_hash must differ from it.
     anchor_bid = anchor_block.body.signed_execution_payload_bid.message
     bid = block.body.signed_execution_payload_bid.message
     bid.parent_block_hash = anchor_bid.block_hash
-    bid.parent_payload_root = anchor_bid.payload_root
     bid.block_hash = spec.Hash32(b"\x42" * 32)
 
     def update_payload(payload):

@@ -42,7 +42,6 @@ def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
     epoch = gloas.get_current_epoch(pre)
     latest_execution_payload_bid = ExecutionPayloadBid(
         parent_block_hash=pre.latest_execution_payload_bid.parent_block_hash,
-        parent_payload_root=pre.latest_execution_payload_bid.parent_payload_root,
         parent_block_root=pre.latest_execution_payload_bid.parent_block_root,
         block_hash=pre.latest_execution_payload_bid.block_hash,
         payload_root=pre.latest_execution_payload_bid.payload_root,

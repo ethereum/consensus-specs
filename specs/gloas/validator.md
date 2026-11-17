@@ -218,10 +218,6 @@ top of a `state` MUST take the following actions in order to construct the
     `state.latest_execution_payload_bid.block_hash` if
     `should_build_on_full(store, head, state.slot)` is true, otherwise
     `state.latest_block_hash`.
-  - The `bid.parent_payload_root` equals
-    `state.latest_execution_payload_bid.payload_root` if
-    `should_build_on_full(store, head, state.slot)` is true, otherwise
-    `state.latest_payload_root`.
   - The `bid.parent_block_root` equals the current block's `parent_root`.
   - The `bid.prev_randao` equals
     `get_randao_mix(state, get_current_epoch(state))`.
