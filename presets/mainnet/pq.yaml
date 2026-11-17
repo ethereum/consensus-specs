@@ -1,9 +1,35 @@
 # Mainnet preset - PQ
 
-# Misc
+# Finality gadget
 # ---------------------------------------------------------------
-# 2**4 (= 16) committees
-MAX_COMMITTEES_PER_SLOT_PQ: 16
+# 2**2 (= 4)
+PENDING_FINALITY_WINDOW: 4
+
+# Rounds
+# ---------------------------------------------------------------
+# 2**3 (= 8)
+SLOTS_PER_ROUND: 8
+# 2**11 (= 2,048)
+ATTESTATION_COMMITTEES_PER_ROUND: 2048
+# 2**17 (= 131,072)
+MAX_VALIDATORS_PER_AGGREGATE: 131072
+
+# Head votes
+# ---------------------------------------------------------------
+# 2**10 (= 1,024)
+HEAD_VOTE_COMMITTEE_SIZE: 1024
+
+# Rewards
+# ---------------------------------------------------------------
+# 2**4 (= 16)
+ROUND_REWARD_FACTOR: 16
+
+# Inactivity leak
+# ---------------------------------------------------------------
+# 2**4 (= 16)
+MIN_ROUNDS_TO_INACTIVITY_LEAK: 16
+# 2**16 (= 65,536)
+EJECTION_INACTIVITY_SCORE: 65536
 
 # XMSS
 # ---------------------------------------------------------------
@@ -14,6 +40,8 @@ MAX_STARK_PROOF_SIZE: 1048576
 # ---------------------------------------------------------------
 # 2**4 (= 16)
 MAX_ATTESTATIONS_PQ: 16
+# 2**3 (= 8)
+MAX_HEAD_VOTES: 8
 
 # Execution
 # ---------------------------------------------------------------
@@ -26,9 +54,7 @@ MAX_VOLUNTARY_EXIT_REQUESTS_PER_PAYLOAD: 16
 
 # Type-specific SSZ bounds
 # ---------------------------------------------------------------
-# 1,055,231 bytes, ~1 MiB
-MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE_PQ: 1055231
-# 2,621,720 bytes, ~2.5 MiB
-MAX_ATTESTER_SLASHING_SIZE_PQ: 2621720
+# 4,194,506 bytes, ~4 MiB
+MAX_ATTESTER_SLASHING_SIZE_PQ: 4194506
 # 199,240 bytes, ~195 KiB
 MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_PQ: 199240

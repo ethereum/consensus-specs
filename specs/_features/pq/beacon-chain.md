@@ -6,7 +6,6 @@
 
 - [Introduction](#introduction)
 - [Types](#types)
-  - [Modified `CommitteeBits`](#modified-committeebits)
   - [New `VRFProof`](#new-vrfproof)
   - [New `AttestationProof`](#new-attestationproof)
   - [New `XMSSPubkey`](#new-xmsspubkey)
@@ -16,10 +15,25 @@
   - [New `ValidatorPreregistrations`](#new-validatorpreregistrations)
   - [New `BuilderPreregistrations`](#new-builderpreregistrations)
   - [New `VoluntaryExitRequests`](#new-voluntaryexitrequests)
-  - [New `AggregationCommittee`](#new-aggregationcommittee)
-  - [New `AggregationCommittees`](#new-aggregationcommittees)
-  - [New `AggregationCommitteeWindow`](#new-aggregationcommitteewindow)
+  - [New `AttestationCommittee`](#new-attestationcommittee)
+  - [New `AttestationCommitteeBits`](#new-attestationcommitteebits)
+  - [New `HeadVoteCommittee`](#new-headvotecommittee)
+  - [New `HeadVoteCommitteeBits`](#new-headvotecommitteebits)
+  - [New `HeadVoteCommitteeIndices`](#new-headvotecommitteeindices)
+  - [New `HeadVoteCommitteeWindow`](#new-headvotecommitteewindow)
+  - [New `HeadVoteParticipation`](#new-headvoteparticipation)
+  - [New `HeadVoteSupport`](#new-headvotesupport)
+  - [New `HeadVoteSupportBits`](#new-headvotesupportbits)
+  - [New `HeadVotes`](#new-headvotes)
+  - [New `Height`](#new-height)
+  - [New `HeightParticipation`](#new-heightparticipation)
+  - [New `PendingFinalities`](#new-pendingfinalities)
+  - [New `Round`](#new-round)
+  - [New `RoundParticipation`](#new-roundparticipation)
 - [Constants](#constants)
+  - [Participation flag indices](#participation-flag-indices)
+  - [Incentivization weights](#incentivization-weights)
+  - [Domains](#domains)
   - [Misc](#misc)
   - [XMSS](#xmss)
   - [VRF](#vrf)
@@ -28,7 +42,11 @@
   - [Legacy domains](#legacy-domains)
   - [Execution-layer triggered requests](#execution-layer-triggered-requests)
 - [Presets](#presets)
-  - [Misc](#misc-1)
+  - [Finality gadget](#finality-gadget)
+  - [Rounds](#rounds)
+  - [Head votes](#head-votes)
+  - [Rewards](#rewards)
+  - [Inactivity leak](#inactivity-leak)
   - [XMSS](#xmss-1)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
@@ -37,6 +55,7 @@
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
     - [`Attestation`](#attestation)
+    - [`AttestationData`](#attestationdata)
     - [`BeaconBlockBody`](#beaconblockbody)
     - [`BeaconState`](#beaconstate)
     - [`Builder`](#builder)
@@ -56,6 +75,11 @@
     - [`Validator`](#validator)
     - [`WithdrawalRequest`](#withdrawalrequest)
   - [New containers](#new-containers)
+    - [`HeightCheckpoint`](#heightcheckpoint)
+    - [`PendingFinality`](#pendingfinality)
+    - [`HeadVoteData`](#headvotedata)
+    - [`HeadVote`](#headvote)
+    - [`HeadVoteMessage`](#headvotemessage)
     - [`ValidatorPreregistrationRequest`](#validatorpreregistrationrequest)
     - [`ValidatorPreregistration`](#validatorpreregistration)
     - [`BuilderPreregistrationRequest`](#builderpreregistrationrequest)
@@ -68,15 +92,19 @@
   - [Crypto](#crypto)
     - [XMSS signatures](#xmss-signatures)
     - [STARK proofs](#stark-proofs)
-  - [Misc](#misc-2)
+  - [Misc](#misc-1)
     - [New `compute_legacy_xmss_pubkey`](#new-compute_legacy_xmss_pubkey)
     - [New `compute_legacy_vrf_root`](#new-compute_legacy_vrf_root)
     - [New `compute_deposit_pubkey`](#new-compute_deposit_pubkey)
     - [New `compute_deposit_vrf_root`](#new-compute_deposit_vrf_root)
     - [New `compute_xmss_attestation_leaf_index`](#new-compute_xmss_attestation_leaf_index)
     - [New `compute_xmss_leaf_index`](#new-compute_xmss_leaf_index)
-    - [New `compute_aggregation_committee`](#new-compute_aggregation_committee)
-    - [New `compute_aggregation_committees`](#new-compute_aggregation_committees)
+    - [New `compute_round_at_slot`](#new-compute_round_at_slot)
+    - [New `compute_start_slot_at_round`](#new-compute_start_slot_at_round)
+    - [New `compute_epoch_at_round`](#new-compute_epoch_at_round)
+    - [New `compute_attestation_committee_slot`](#new-compute_attestation_committee_slot)
+    - [Modified `compute_ptc`](#modified-compute_ptc)
+    - [New `compute_head_vote_committee`](#new-compute_head_vote_committee)
   - [Predicates](#predicates)
     - [New `is_active_validator_preregistration`](#new-is_active_validator_preregistration)
     - [New `is_active_builder_preregistration`](#new-is_active_builder_preregistration)
@@ -85,26 +113,57 @@
     - [New `is_valid_vrf_proof`](#new-is_valid_vrf_proof)
     - [Modified `is_pending_validator`](#modified-is_pending_validator)
     - [Modified `is_valid_indexed_attestation`](#modified-is_valid_indexed_attestation)
+    - [New `is_well_formed_attestation_data`](#new-is_well_formed_attestation_data)
+    - [New `is_valid_attestation_data`](#new-is_valid_attestation_data)
+    - [New `is_double_target_vote`](#new-is_double_target_vote)
+    - [New `is_conflicting_with_finality_pair`](#new-is_conflicting_with_finality_pair)
+    - [Modified `is_slashable_attestation_data`](#modified-is_slashable_attestation_data)
+    - [Modified `is_eligible_for_activation`](#modified-is_eligible_for_activation)
+    - [Modified `is_active_builder`](#modified-is_active_builder)
+    - [New `is_head_vote_same_slot`](#new-is_head_vote_same_slot)
+    - [New `has_builder_payment_quorum`](#new-has_builder_payment_quorum)
+    - [New `has_quorum`](#new-has_quorum)
+    - [Modified `is_in_inactivity_leak`](#modified-is_in_inactivity_leak)
+    - [New `is_valid_aggregation_bits`](#new-is_valid_aggregation_bits)
   - [Beacon state accessors](#beacon-state-accessors)
     - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
-    - [Modified `get_beacon_committee`](#modified-get_beacon_committee)
-    - [Modified `get_committee_count_per_slot`](#modified-get_committee_count_per_slot)
     - [Modified `get_indexed_attestation`](#modified-get_indexed_attestation)
-    - [New `get_aggregation_committee`](#new-get_aggregation_committee)
     - [New `get_attestation_statements`](#new-get_attestation_statements)
+    - [New `get_head_vote_statement`](#new-get_head_vote_statement)
     - [New `get_validator_preregistration_index`](#new-get_validator_preregistration_index)
     - [New `get_active_validator_preregistration`](#new-get_active_validator_preregistration)
     - [New `get_builder_preregistration_index`](#new-get_builder_preregistration_index)
     - [New `get_active_builder_preregistration`](#new-get_active_builder_preregistration)
+    - [New `get_current_round`](#new-get_current_round)
+    - [New `get_previous_round`](#new-get_previous_round)
+    - [New `get_attestation_committee`](#new-get_attestation_committee)
+    - [New `get_aggregate_participants`](#new-get_aggregate_participants)
+    - [New `get_head_vote_committee`](#new-get_head_vote_committee)
+    - [Modified `get_unslashed_participating_indices`](#modified-get_unslashed_participating_indices)
+    - [New `get_validator_weight`](#new-get_validator_weight)
+    - [New `get_total_weight`](#new-get_total_weight)
+    - [New `get_participating_weight`](#new-get_participating_weight)
+    - [Modified `get_finality_delay`](#modified-get_finality_delay)
+    - [New `get_round_base_reward`](#new-get_round_base_reward)
+    - [New `get_flag_index_rewards`](#new-get_flag_index_rewards)
   - [Beacon state mutators](#beacon-state-mutators)
     - [Modified `queue_excess_active_balance`](#modified-queue_excess_active_balance)
     - [New `remove_validator_preregistration`](#new-remove_validator_preregistration)
     - [New `remove_builder_preregistration`](#new-remove_builder_preregistration)
+    - [New `add_participation_flag`](#new-add_participation_flag)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Modified `verify_block_signature`](#modified-verify_block_signature)
+  - [Modified `process_slots`](#modified-process_slots)
+  - [Modified `process_slot`](#modified-process_slot)
+  - [Round processing](#round-processing)
+    - [New `process_round`](#new-process_round)
+    - [Modified `process_inactivity_updates`](#modified-process_inactivity_updates)
+    - [New `process_rewards`](#new-process_rewards)
+    - [Modified `process_participation_flag_updates`](#modified-process_participation_flag_updates)
   - [Epoch processing](#epoch-processing)
     - [Modified `process_epoch`](#modified-process_epoch)
-    - [New `process_aggregation_committee_window`](#new-process_aggregation_committee_window)
+    - [Modified `process_builder_pending_payments`](#modified-process_builder_pending_payments)
+    - [New `process_head_vote_committee_window`](#new-process_head_vote_committee_window)
     - [New `process_preregistration_expiry`](#new-process_preregistration_expiry)
     - [Modified `apply_pending_deposit`](#modified-apply_pending_deposit)
     - [Modified `process_pending_deposits`](#modified-process_pending_deposits)
@@ -123,6 +182,8 @@
       - [Modified `process_proposer_slashing`](#modified-process_proposer_slashing)
       - [Attestations](#attestations)
         - [Modified `process_attestation`](#modified-process_attestation)
+      - [Head votes](#head-votes-1)
+        - [New `process_head_vote`](#new-process_head_vote)
       - [Deposit requests](#deposit-requests)
         - [Modified `process_deposit_request`](#modified-process_deposit_request)
         - [Modified `get_validator_from_deposit`](#modified-get_validator_from_deposit)
@@ -145,6 +206,9 @@
         - [New `process_voluntary_exit_request`](#new-process_voluntary_exit_request)
     - [Parent execution payload](#parent-execution-payload)
       - [Modified `apply_parent_execution_payload`](#modified-apply_parent_execution_payload)
+    - [Height events](#height-events)
+      - [New `process_height_events`](#new-process_height_events)
+      - [New `advance_height`](#new-advance_height)
 
 <!-- mdformat-toc end -->
 
@@ -152,37 +216,69 @@
 
 This upgrade replaces the BLS signatures used by validators and builders with
 leanXMSS, a hash-based signature scheme believed to be secure against a quantum
-adversary.
+adversary. It also replaces the combined LMD-GHOST and Casper FFG attestation
+with EIP-8453 ("Decoupled Consensus"), which separates head votes from finality
+attestations.
 
 This upgrade is meant as an emergency fork for when elliptic curve cryptography
 can no longer be trusted, so it keeps only what consensus needs. It removes sync
 committees, whose hundreds of signatures per slot serve only light clients, and
 with them the light client protocol.
 
+Decoupled consensus has two parts. The finality gadget (FG) replaces Casper FFG
+and finalizes blocks. The available chain (AC) follows the head with head votes.
+
+The FG advances through heights, and the block that opens a height is its
+target. An attestation is a target vote or a timeout for a height, with an
+optional finality pair naming a justification not yet finalized. A quorum of
+target votes justifies the target and opens the next height. A quorum of target
+votes and timeouts also opens the next height, but only `TIMEOUT_DELAY_SLOTS`
+slots after the target. A quorum of finality pairs finalizes a pending
+justification.
+
+In every slot, a head vote committee of `HEAD_VOTE_COMMITTEE_SIZE` validators,
+sampled by effective balance, casts head votes. A block carries head votes and
+marks which of the previous slot's votes the proposer counted as support. The
+beacon state records only which seats voted for the block of their slot, to
+weigh builder payments.
+
+Validators cast FG attestations in rounds of `SLOTS_PER_ROUND` slots. Each epoch
+splits the active validators into `ATTESTATION_COMMITTEES_PER_ROUND` attestation
+committees, spread evenly over the slots of a round. Each validator attests once
+per round, in the slot of its committee. Rewards and inactivity are settled at
+the end of each round, in `process_round`.
+
+A validator earns the progress flag for a target vote or a timeout at the
+current height, and the finality flag for a finality pair of a pending
+justification. There are no penalties. Inactivity instead lowers a validator's
+weight in FG quorums, and a validator whose weight reaches zero is exited and
+keeps its stake.
+
+*Note*: A quorum is two thirds of the total weight of the active validators.
+Slashed validators count toward the total but not toward a quorum.
+
+*Note*: This upgrade does not yet specify rewards for head votes.
+
 XMSS is a stateful scheme. A key covers a fixed number of one-time leaves, and
 signing two different messages at the same leaf breaks the key. This upgrade
 therefore assigns every validator message a leaf derived from its slot and its
 type, see `compute_xmss_leaf_index`. An attestation instead uses the leaf of its
-target epoch, see `compute_xmss_attestation_leaf_index`. A message without a
-leaf of its own, such as a voluntary exit, instead uses any reserved leaf, one
-of the first `XMSS_RESERVED_LEAVES` leaves. A bid instead uses any leaf reserved
-for bids, see `is_builder_bid_leaf_index`. An honest signer never equivocates
-and uses each leaf it chooses at most once, so it never reuses a leaf. Each
+round, see `compute_xmss_attestation_leaf_index`. A message without a leaf of
+its own, such as a voluntary exit, instead uses any reserved leaf, one of the
+first `XMSS_RESERVED_LEAVES` leaves. A bid instead uses any leaf reserved for
+bids, see `is_builder_bid_leaf_index`. An honest signer never equivocates and
+uses each leaf it chooses at most once, so it never reuses a leaf. Each
 signature carries its leaf index, and verification checks that the message may
 use it.
 
 XMSS has no native aggregation. A STARK instead proves many XMSS signatures at
-once, such as those of attestations in an `AttestationProof`.
+once, such as those of attestations and head votes in an `AttestationProof`.
 
 XMSS signatures are not unique, so a proposer could grind a signature-based
 RANDAO reveal. Each validator instead registers the root of a Merkle tree of
 secret random values, one for each slot, as its VRF root. Its RANDAO reveal is
 the leaf for the slot with the leaf's Merkle branch, a `VRFProof`, which the
 proposer committed to before the fork.
-
-Aggregators no longer select themselves. Each beacon committee has an
-aggregation committee, sampled by effective balance and kept in
-`aggregation_committee_window`.
 
 A validator's record carries the XMSS public key and VRF root it registered with
 EIP-8483 before the fork in place of its BLS public key, and a builder's record
@@ -224,28 +320,23 @@ Blocks no longer carry payload attestations, which spares proposers from
 aggregating them. The payload timeliness committee still broadcasts its votes,
 which fork choice uses as before.
 
-Attestations no longer carry a signature. A block instead carries one `proof` of
-the signatures of all its attestations, which replaces verifying each
-attestation's aggregate signature in turn. An aggregate on the wire carries a
-`proof` of its own in `AggregateAndProof`, and the proposer merges those into
-the block's `proof`.
+Attestations and head votes in a block carry no signature. A block instead
+carries one `proof` of the signatures of all its attestations and head votes,
+which replaces verifying each aggregate signature in turn.
+
+*TODO*: Specify how the signatures of head votes are proven. For now, the
+block's `proof` covers them together with the attestations.
+
+*TODO*: Specify how `AttestationProof` fits attestations aggregated over
+multiple slots. For now, an aggregate covers one round, since its signers must
+share an XMSS leaf, and its statements are per attestation committee.
+
+*TODO*: Specify aggregator selection for head votes and attestations.
 
 *Note*: This specification is built upon [EIP-8483](../eip8483/beacon-chain.md),
 which is built upon [Gloas](../../gloas/beacon-chain.md).
 
 ## Types
-
-### Modified `CommitteeBits`
-
-```python
-class CommitteeBits(BitVector):
-    """
-    Bits marking which committees of a slot participate in an attestation.
-    """
-
-    # [Modified in PQ]
-    LENGTH = MAX_COMMITTEES_PER_SLOT_PQ
-```
 
 ### New `VRFProof`
 
@@ -264,7 +355,7 @@ class VRFProof(Vector[Bytes32]):
 ```python
 class AttestationProof(ByteList):
     """
-    A STARK proof of the XMSS signatures of attestations.
+    A STARK proof of the XMSS signatures of attestations and head votes.
     """
 
     LIMIT = MAX_STARK_PROOF_SIZE
@@ -339,44 +430,201 @@ class VoluntaryExitRequests(ProgressiveList[VoluntaryExitRequest]):
     """
 ```
 
-### New `AggregationCommittee`
+### New `AttestationCommittee`
 
 ```python
-class AggregationCommittee(ProgressiveList[ValidatorIndex]):
+class AttestationCommittee(ProgressiveList[ValidatorIndex]):
     """
-    The aggregators of a beacon committee.
+    An attestation committee of an epoch.
     """
 ```
 
-### New `AggregationCommittees`
+### New `AttestationCommitteeBits`
 
 ```python
-class AggregationCommittees(ProgressiveList[AggregationCommittee]):
+class AttestationCommitteeBits(BitVector):
     """
-    The aggregation committee of each beacon committee of a slot, in committee
-    order.
+    Bits marking which attestation committees of an epoch participate in an
+    attestation.
     """
+
+    LENGTH = ATTESTATION_COMMITTEES_PER_ROUND
 ```
 
-### New `AggregationCommitteeWindow`
+### New `HeadVoteCommittee`
 
 ```python
-class AggregationCommitteeWindow(Vector[AggregationCommittees]):
+class HeadVoteCommittee(Vector[ValidatorIndex]):
     """
-    A rolling window of the aggregation committees of the previous, current, and
+    The head vote committee of a slot.
+    """
+
+    LENGTH = HEAD_VOTE_COMMITTEE_SIZE
+```
+
+### New `HeadVoteCommitteeBits`
+
+```python
+class HeadVoteCommitteeBits(BitVector):
+    """
+    The participation bits of the head vote committee, one bit per member in
+    committee order.
+    """
+
+    LENGTH = HEAD_VOTE_COMMITTEE_SIZE
+```
+
+### New `HeadVoteCommitteeIndices`
+
+```python
+class HeadVoteCommitteeIndices(List[ValidatorIndex]):
+    """
+    The indices of the validators participating in a head vote.
+    """
+
+    LIMIT = HEAD_VOTE_COMMITTEE_SIZE
+```
+
+### New `HeadVoteCommitteeWindow`
+
+```python
+class HeadVoteCommitteeWindow(Vector[HeadVoteCommittee]):
+    """
+    A rolling window of head vote committees for the previous, current, and
     lookahead epochs.
     """
 
     LENGTH = Uint64(MIN_SEED_LOOKAHEAD + 2) * Uint64(SLOTS_PER_EPOCH)
 ```
 
+### New `HeadVoteParticipation`
+
+```python
+class HeadVoteParticipation(Vector[HeadVoteCommitteeBits]):
+    """
+    The seats of each slot's head vote committee that voted for the block of
+    that slot, for the previous and current epochs.
+    """
+
+    LENGTH = 2 * SLOTS_PER_EPOCH
+```
+
+### New `HeadVoteSupport`
+
+```python
+class HeadVoteSupport(ProgressiveList[HeadVoteSupportBits]):
+    """
+    The support bits of each head vote in a beacon block.
+    """
+```
+
+### New `HeadVoteSupportBits`
+
+```python
+class HeadVoteSupportBits(ProgressiveBitList):
+    """
+    One bit per voter of a head vote, in the order of its ``voter_indices``,
+    set when the proposer counted that voter's vote as support.
+    """
+```
+
+### New `HeadVotes`
+
+```python
+class HeadVotes(ProgressiveList[HeadVote]):
+    """
+    The head votes included in a beacon block.
+    """
+```
+
+### New `Height`
+
+```python
+class Height(Uint64):
+    """
+    A height of the finality gadget. The chain moves to the next height when it
+    justifies the target of the current height, or after a delay when target
+    votes and timeouts together reach a quorum.
+    """
+```
+
+### New `HeightParticipation`
+
+```python
+class HeightParticipation(ProgressiveList[Boolean]):
+    """
+    Whether each validator in the registry voted at a height, in validator index
+    order.
+    """
+```
+
+### New `PendingFinalities`
+
+```python
+class PendingFinalities(List[PendingFinality]):
+    """
+    The justifications on the chain that are not yet finalized, in increasing
+    order of height.
+    """
+
+    LIMIT = PENDING_FINALITY_WINDOW
+```
+
+### New `Round`
+
+```python
+class Round(Uint64):
+    """
+    A round number. A round spans ``SLOTS_PER_ROUND`` slots, in which each
+    active validator casts one FG attestation and after which the FG settles
+    rewards and inactivity.
+    """
+```
+
+### New `RoundParticipation`
+
+```python
+class RoundParticipation(ProgressiveList[ParticipationFlags]):
+    """
+    The participation flags of each validator for a round.
+    """
+```
+
 ## Constants
+
+### Participation flag indices
+
+| Name                  | Value       |
+| --------------------- | ----------- |
+| `PROGRESS_FLAG_INDEX` | `Uint64(0)` |
+| `FINALITY_FLAG_INDEX` | `Uint64(1)` |
+
+### Incentivization weights
+
+| Name              | Value        |
+| ----------------- | ------------ |
+| `PROGRESS_WEIGHT` | `Uint64(40)` |
+| `FINALITY_WEIGHT` | `Uint64(14)` |
+
+*Note*: The progress flag takes the Altair weights of the source and target
+flags, and the finality flag takes the weight of the head flag, so the sum of
+the weights still equals `WEIGHT_DENOMINATOR`.
+
+### Domains
+
+| Name                         | Value                      |
+| ---------------------------- | -------------------------- |
+| `DOMAIN_HEAD_VOTE`           | `DomainType("0x12000000")` |
+| `DOMAIN_HEAD_VOTE_COMMITTEE` | `DomainType("0x13000000")` |
+| `DOMAIN_FINALITY_ATTESTER`   | `DomainType("0x14000000")` |
 
 ### Misc
 
-| Name                        | Value                |
-| --------------------------- | -------------------- |
-| `AGGREGATORS_PER_COMMITTEE` | `Uint64(2**2)` (= 4) |
+| Name                            | Value                                |
+| ------------------------------- | ------------------------------------ |
+| `GENESIS_ROUND`                 | `Round(0)`                           |
+| `TIMEOUT_DELAY_SLOTS`           | `SLOTS_PER_ROUND`                    |
+| `PARTICIPATION_FLAG_WEIGHTS_PQ` | `[PROGRESS_WEIGHT, FINALITY_WEIGHT]` |
 
 ### XMSS
 
@@ -403,6 +651,7 @@ class AggregationCommitteeWindow(Vector[AggregationCommittees]):
 | `LEAF_OFFSET_PTC_ATTESTER`               | `Uint64(2)` |
 | `LEAF_OFFSET_PROPOSER_PREFERENCES`       | `Uint64(3)` |
 | `LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE` | `Uint64(4)` |
+| `LEAF_OFFSET_HEAD_VOTE`                  | `Uint64(5)` |
 
 ### Deposits
 
@@ -427,11 +676,43 @@ class AggregationCommitteeWindow(Vector[AggregationCommittees]):
 
 ## Presets
 
-### Misc
+### Finality gadget
 
-| Name                         | Value                 |
-| ---------------------------- | --------------------- |
-| `MAX_COMMITTEES_PER_SLOT_PQ` | `Uint64(2**4)` (= 16) |
+| Name                      | Value                |
+| ------------------------- | -------------------- |
+| `PENDING_FINALITY_WINDOW` | `Uint64(2**2)` (= 4) |
+
+*Note*: `PENDING_FINALITY_WINDOW` must be at least 2.
+
+### Rounds
+
+| Name                               | Value                       |
+| ---------------------------------- | --------------------------- |
+| `SLOTS_PER_ROUND`                  | `Slot(2**3)` (= 8)          |
+| `ATTESTATION_COMMITTEES_PER_ROUND` | `Uint64(2**11)` (= 2,048)   |
+| `MAX_VALIDATORS_PER_AGGREGATE`     | `Uint64(2**17)` (= 131,072) |
+
+*Note*: `SLOTS_PER_EPOCH` must be a multiple of `SLOTS_PER_ROUND`, and
+`ATTESTATION_COMMITTEES_PER_ROUND` must be a multiple of `SLOTS_PER_ROUND`.
+
+### Head votes
+
+| Name                       | Value                     |
+| -------------------------- | ------------------------- |
+| `HEAD_VOTE_COMMITTEE_SIZE` | `Uint64(2**10)` (= 1,024) |
+
+### Rewards
+
+| Name                  | Value                 |
+| --------------------- | --------------------- |
+| `ROUND_REWARD_FACTOR` | `Uint64(2**4)` (= 16) |
+
+### Inactivity leak
+
+| Name                            | Value                      |
+| ------------------------------- | -------------------------- |
+| `MIN_ROUNDS_TO_INACTIVITY_LEAK` | `Round(2**4)` (= 16)       |
+| `EJECTION_INACTIVITY_SCORE`     | `Uint64(2**16)` (= 65,536) |
 
 ### XMSS
 
@@ -448,6 +729,7 @@ The reference concatenation fits at most
 | Name                  | Value                 |
 | --------------------- | --------------------- |
 | `MAX_ATTESTATIONS_PQ` | `Uint64(2**4)` (= 16) |
+| `MAX_HEAD_VOTES`      | `Uint64(2**3)` (= 8)  |
 
 ### Execution
 
@@ -473,22 +755,52 @@ The reference concatenation fits at most
 
 #### `Attestation`
 
+*Note*: `round` is not signed. It selects the attestation committees that
+`committee_bits` and `aggregation_bits` refer to, the signature domain, and the
+XMSS leaf at which the attesters signed.
+
 ```python
 class Attestation(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=4, gaps=(2,))
+    ACTIVE_FIELDS = active_fields(width=5, gaps=(2,))
 
     aggregation_bits: AggregationBits
     data: AttestationData
     # [Modified in PQ]
     # Removed `signature`
-    committee_bits: CommitteeBits
+    # [Modified in PQ:EIP8453]
+    committee_bits: AttestationCommitteeBits
+    # [New in PQ:EIP8453]
+    round: Round
+```
+
+#### `AttestationData`
+
+*Note*: The height pair is (`target`, `timeout`): a target vote when `timeout`
+is false, and a timeout when it is true. The finality pair is `finality`.
+
+```python
+class AttestationData(Container):
+    # [Modified in PQ:EIP8453]
+    # Removed `slot`
+    # [Modified in PQ:EIP8453]
+    # Removed `index`
+    # [Modified in PQ:EIP8453]
+    # Removed `beacon_block_root`
+    # [Modified in PQ:EIP8453]
+    # Removed `source`
+    # [Modified in PQ:EIP8453]
+    target: HeightCheckpoint
+    # [New in PQ:EIP8453]
+    timeout: Boolean
+    # [New in PQ:EIP8453]
+    finality: HeightCheckpoint
 ```
 
 #### `BeaconBlockBody`
 
 ```python
 class BeaconBlockBody(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=14, gaps=(7, 8, 9, 11))
+    ACTIVE_FIELDS = active_fields(width=16, gaps=(7, 8, 9, 11))
 
     # [Modified in PQ]
     randao_reveal: VRFProof
@@ -510,13 +822,21 @@ class BeaconBlockBody(ProgressiveContainer):
     parent_execution_requests: ExecutionRequests
     # [New in PQ]
     proof: AttestationProof
+    # [New in PQ:EIP8453]
+    head_votes: HeadVotes
+    # [New in PQ:EIP8453]
+    head_vote_support: HeadVoteSupport
 ```
 
 #### `BeaconState`
 
+*Note*: The positions of the epoch participation and Casper FFG fields are left
+as gaps, so their generalized indices are never reused. `finalized_checkpoint`
+keeps its name but moves to a new position.
+
 ```python
 class BeaconState(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=51, gaps=(22, 23, 46, 47))
+    ACTIVE_FIELDS = active_fields(width=61, gaps=(15, 16, 17, 18, 19, 20, 22, 23, 46, 47))
 
     genesis_time: Uint64
     genesis_validators_root: Root
@@ -533,12 +853,18 @@ class BeaconState(ProgressiveContainer):
     balances: Balances
     randao_mixes: RandaoMixes
     slashings: Slashings
-    previous_epoch_participation: EpochParticipation
-    current_epoch_participation: EpochParticipation
-    justification_bits: JustificationBits
-    previous_justified_checkpoint: Checkpoint
-    current_justified_checkpoint: Checkpoint
-    finalized_checkpoint: Checkpoint
+    # [Modified in PQ:EIP8453]
+    # Removed `previous_epoch_participation`
+    # [Modified in PQ:EIP8453]
+    # Removed `current_epoch_participation`
+    # [Modified in PQ:EIP8453]
+    # Removed `justification_bits`
+    # [Modified in PQ:EIP8453]
+    # Removed `previous_justified_checkpoint`
+    # [Modified in PQ:EIP8453]
+    # Removed `current_justified_checkpoint`
+    # [Modified in PQ:EIP8453]
+    # Removed `finalized_checkpoint`
     inactivity_scores: InactivityScores
     # [Modified in PQ]
     # Removed `current_sync_committee`
@@ -574,8 +900,28 @@ class BeaconState(ProgressiveContainer):
     validator_preregistrations: ValidatorPreregistrations
     # [New in PQ:EIP8205]
     builder_preregistrations: BuilderPreregistrations
-    # [New in PQ]
-    aggregation_committee_window: AggregationCommitteeWindow
+    # [New in PQ:EIP8453]
+    target_checkpoint: HeightCheckpoint
+    # [New in PQ:EIP8453]
+    justified_checkpoint: HeightCheckpoint
+    # [New in PQ:EIP8453]
+    finalized_checkpoint: HeightCheckpoint
+    # [New in PQ:EIP8453]
+    target_slot: Slot
+    # [New in PQ:EIP8453]
+    finalized_slot: Slot
+    # [New in PQ:EIP8453]
+    target_participation: HeightParticipation
+    # [New in PQ:EIP8453]
+    progress_participation: HeightParticipation
+    # [New in PQ:EIP8453]
+    round_participation: RoundParticipation
+    # [New in PQ:EIP8453]
+    pending_finality: PendingFinalities
+    # [New in PQ:EIP8453]
+    head_vote_participation: HeadVoteParticipation
+    # [New in PQ:EIP8453]
+    head_vote_committee_window: HeadVoteCommitteeWindow
 ```
 
 #### `Builder`
@@ -663,7 +1009,7 @@ class ExecutionRequests(ProgressiveContainer):
 
 ```python
 class IndexedAttestation(ProgressiveContainer):
-    ACTIVE_FIELDS = active_fields(width=3)
+    ACTIVE_FIELDS = active_fields(width=4)
 
     attesting_indices: AttestingIndices
     data: AttestationData
@@ -671,6 +1017,8 @@ class IndexedAttestation(ProgressiveContainer):
     # Removed `signature`
     # [New in PQ]
     proof: AttestationProof
+    # [New in PQ:EIP8453]
+    round: Round
 ```
 
 #### `PayloadAttestationMessage`
@@ -741,6 +1089,8 @@ class SingleAttestation(Container):
     data: AttestationData
     # [Modified in PQ]
     signature: XMSSSignature
+    # [New in PQ:EIP8453]
+    round: Round
 ```
 
 #### `Validator`
@@ -771,6 +1121,57 @@ class WithdrawalRequest(Container):
 ```
 
 ### New containers
+
+#### `HeightCheckpoint`
+
+*Note*: The empty checkpoint, `HeightCheckpoint.empty()`, stands for an absent
+finality pair.
+
+```python
+class HeightCheckpoint(Container):
+    height: Height
+    root: Root
+```
+
+#### `PendingFinality`
+
+```python
+class PendingFinality(Container):
+    checkpoint: HeightCheckpoint
+    slot: Slot
+    participation: HeightParticipation
+```
+
+#### `HeadVoteData`
+
+```python
+class HeadVoteData(Container):
+    slot: Slot
+    beacon_block_root: Root
+    payload_status: PayloadStatus
+```
+
+#### `HeadVote`
+
+*Note*: A head vote in a block carries no signature. The block's `proof` proves
+the signatures of its voters.
+
+```python
+class HeadVote(ProgressiveContainer):
+    ACTIVE_FIELDS = active_fields(width=2)
+
+    voter_indices: HeadVoteCommitteeIndices
+    data: HeadVoteData
+```
+
+#### `HeadVoteMessage`
+
+```python
+class HeadVoteMessage(Container):
+    validator_index: ValidatorIndex
+    data: HeadVoteData
+    signature: XMSSSignature
+```
 
 #### `ValidatorPreregistrationRequest`
 
@@ -938,15 +1339,15 @@ def compute_deposit_vrf_root(deposit: PendingDeposit) -> Root:
 #### New `compute_xmss_attestation_leaf_index`
 
 *Note*: The attestation leaves follow the `XMSS_RESERVED_LEAVES` reserved
-leaves. They hold one attestation per target epoch, since a validator that
-attests twice for the same target epoch is slashed for a double vote.
+leaves. They hold one attestation per round, since a validator attests at most
+once per round, in the slot of its attestation committee.
 
 ```python
-def compute_xmss_attestation_leaf_index(epoch: Epoch) -> Uint64:
+def compute_xmss_attestation_leaf_index(round: Round) -> Uint64:
     """
-    Return the XMSS leaf at which an attestation is signed for target ``epoch``.
+    Return the XMSS leaf at which an attestation is signed in ``round``.
     """
-    return Uint64(XMSS_RESERVED_LEAVES + epoch)
+    return Uint64(XMSS_RESERVED_LEAVES + round)
 ```
 
 #### New `compute_xmss_leaf_index`
@@ -966,49 +1367,91 @@ def compute_xmss_leaf_index(slot: Slot, leaf_offset: Uint64) -> Uint64:
     )
 ```
 
-#### New `compute_aggregation_committee`
+#### New `compute_round_at_slot`
 
 ```python
-def compute_aggregation_committee(
-    state: BeaconState, slot: Slot, index: CommitteeIndex
-) -> AggregationCommittee:
+def compute_round_at_slot(slot: Slot) -> Round:
     """
-    Return the aggregation committee of the beacon committee at ``slot`` for
-    ``index``, sampled by effective balance without duplicates.
+    Return the round number at ``slot``.
     """
-    epoch = compute_epoch_at_slot(slot)
-    seed = sha256(
-        get_seed(state, epoch, DOMAIN_SELECTION_PROOF) + uint_to_bytes(slot) + uint_to_bytes(index)
-    )
-    candidates = list(get_beacon_committee(state, slot, index))
-    aggregators: list[ValidatorIndex] = []
-    while len(aggregators) < AGGREGATORS_PER_COMMITTEE and len(candidates) > 0:
-        aggregator = compute_balance_weighted_selection(
-            state,
-            candidates,
-            sha256(seed + uint_to_bytes(Uint64(len(aggregators)))),
-            size=Uint64(1),
-            shuffle_indices=False,
-        )[0]
-        aggregators.append(aggregator)
-        candidates = [candidate for candidate in candidates if candidate != aggregator]
-    return AggregationCommittee(data=aggregators)
+    return Round(slot // SLOTS_PER_ROUND)
 ```
 
-#### New `compute_aggregation_committees`
+#### New `compute_start_slot_at_round`
 
 ```python
-def compute_aggregation_committees(state: BeaconState, slot: Slot) -> AggregationCommittees:
+def compute_start_slot_at_round(round: Round) -> Slot:
     """
-    Return the aggregation committee of each beacon committee at ``slot``, in
-    committee order.
+    Return the start slot of ``round``.
     """
-    committees_per_slot = get_committee_count_per_slot(state, compute_epoch_at_slot(slot))
-    return AggregationCommittees(
-        data=[
-            compute_aggregation_committee(state, slot, CommitteeIndex(index))
-            for index in range(committees_per_slot)
-        ]
+    return Slot(round) * SLOTS_PER_ROUND
+```
+
+#### New `compute_epoch_at_round`
+
+```python
+def compute_epoch_at_round(round: Round) -> Epoch:
+    """
+    Return the epoch that ``round`` belongs to.
+    """
+    return compute_epoch_at_slot(compute_start_slot_at_round(round))
+```
+
+#### New `compute_attestation_committee_slot`
+
+*Note*: The committees of a round are assigned to its slots in order, with
+`ATTESTATION_COMMITTEES_PER_ROUND // SLOTS_PER_ROUND` committees per slot.
+
+```python
+def compute_attestation_committee_slot(round: Round, index: CommitteeIndex) -> Slot:
+    """
+    Return the slot of ``round`` assigned to the committee at ``index``.
+    """
+    committees_per_slot = ATTESTATION_COMMITTEES_PER_ROUND // Uint64(SLOTS_PER_ROUND)
+    return compute_start_slot_at_round(round) + Slot(index // committees_per_slot)
+```
+
+#### Modified `compute_ptc`
+
+```python
+def compute_ptc(state: BeaconState, slot: Slot) -> PayloadTimelinessCommittee:
+    """
+    Get the payload timeliness committee for ``slot``, with possible duplicates.
+    """
+    epoch = compute_epoch_at_slot(slot)
+    seed = sha256(get_seed(state, epoch, DOMAIN_PTC_ATTESTER) + uint_to_bytes(slot))
+    # [Modified in PQ:EIP8453]
+    indices = get_active_validator_indices(state, epoch)
+    # [Modified in PQ:EIP8453]
+    return PayloadTimelinessCommittee(
+        data=compute_balance_weighted_selection(
+            state,
+            indices,
+            seed,
+            size=PTC_SIZE,
+            shuffle_indices=True,
+        )
+    )
+```
+
+#### New `compute_head_vote_committee`
+
+```python
+def compute_head_vote_committee(state: BeaconState, slot: Slot) -> HeadVoteCommittee:
+    """
+    Return the head vote committee for ``slot``, with possible duplicates.
+    """
+    epoch = compute_epoch_at_slot(slot)
+    seed = sha256(get_seed(state, epoch, DOMAIN_HEAD_VOTE_COMMITTEE) + uint_to_bytes(slot))
+    indices = get_active_validator_indices(state, epoch)
+    return HeadVoteCommittee(
+        data=compute_balance_weighted_selection(
+            state,
+            indices,
+            seed,
+            size=HEAD_VOTE_COMMITTEE_SIZE,
+            shuffle_indices=True,
+        )
     )
 ```
 
@@ -1118,96 +1561,235 @@ def is_valid_indexed_attestation(
     state: BeaconState, indexed_attestation: IndexedAttestation
 ) -> bool:
     """
-    Check if ``indexed_attestation`` is not empty, has sorted and unique indices and has a valid stark proof.
+    Check if ``indexed_attestation`` is not empty, has sorted and unique
+    indices and has a valid stark proof.
     """
     # Verify indices are sorted and unique
     indices = indexed_attestation.attesting_indices
     if (
         len(indices) == 0
-        # [Modified in PQ]
-        or len(indices) > MAX_VALIDATORS_PER_COMMITTEE * MAX_COMMITTEES_PER_SLOT_PQ
+        # [Modified in PQ:EIP8453]
+        or len(indices) > MAX_VALIDATORS_PER_AGGREGATE
         or list(indices) != sorted(set(indices))
     ):
         return False
     # [Modified in PQ]
     # Verify the proof of the attesters' signatures
     pubkeys = [state.validators[index].pubkey for index in indices]
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
+    # [Modified in PQ:EIP8453]
+    epoch = compute_epoch_at_round(indexed_attestation.round)
+    domain = get_domain(state, DOMAIN_FINALITY_ATTESTER, epoch)
     signing_root = compute_signing_root(indexed_attestation.data, domain)
-    leaf_index = compute_xmss_attestation_leaf_index(indexed_attestation.data.target.epoch)
+    leaf_index = compute_xmss_attestation_leaf_index(indexed_attestation.round)
     statement = XMSSAggregateStatement(pubkeys=pubkeys, leaf_index=leaf_index, message=signing_root)
     return stark.VerifyAggregates([statement], indexed_attestation.proof)
+```
+
+#### New `is_well_formed_attestation_data`
+
+```python
+def is_well_formed_attestation_data(data: AttestationData) -> bool:
+    """
+    Check if the height pair and the finality pair of ``data`` have valid
+    forms.
+    """
+    if data.target.height == 0 or data.target.root == Root():
+        return False
+    if data.finality == HeightCheckpoint.empty():
+        return True
+    return data.finality.root != Root() and data.finality.height < data.target.height
+```
+
+#### New `is_valid_attestation_data`
+
+```python
+def is_valid_attestation_data(state: BeaconState, data: AttestationData) -> bool:
+    """
+    Check if ``data`` names the target checkpoint of ``state``, or is a vote
+    below the current height whose finality pair is pending.
+    """
+    if data.target == state.target_checkpoint:
+        return True
+    return (
+        data.finality in [pending.checkpoint for pending in state.pending_finality]
+        and data.finality.height < data.target.height < state.target_checkpoint.height
+    )
+```
+
+#### New `is_double_target_vote`
+
+```python
+def is_double_target_vote(data_1: AttestationData, data_2: AttestationData) -> bool:
+    """
+    Check if ``data_1`` and ``data_2`` are target votes for different roots
+    at the same height.
+    """
+    if data_1.timeout:
+        return False
+    if data_2.timeout:
+        return False
+    if data_1.target.height != data_2.target.height:
+        return False
+    if data_1.target.root == data_2.target.root:
+        return False
+    return True
+```
+
+#### New `is_conflicting_with_finality_pair`
+
+```python
+def is_conflicting_with_finality_pair(data: AttestationData, finality: HeightCheckpoint) -> bool:
+    """
+    Check if ``data`` votes at the height of the non-empty ``finality`` pair
+    without a target vote for its root.
+    """
+    if finality == HeightCheckpoint.empty():
+        return False
+    if data.target.height != finality.height:
+        return False
+    if data.timeout:
+        return True
+    if data.target.root != finality.root:
+        return True
+    return False
+```
+
+#### Modified `is_slashable_attestation_data`
+
+*Note*: The function `is_slashable_attestation_data` is rewritten for the
+finality gadget.
+
+```python
+def is_slashable_attestation_data(data_1: AttestationData, data_2: AttestationData) -> bool:
+    """
+    Check if ``data_1`` and ``data_2`` are slashable according to the finality
+    gadget rules.
+    """
+    if is_double_target_vote(data_1, data_2):
+        return True
+    if is_conflicting_with_finality_pair(data_1, data_2.finality):
+        return True
+    if is_conflicting_with_finality_pair(data_2, data_1.finality):
+        return True
+    return False
+```
+
+#### Modified `is_eligible_for_activation`
+
+```python
+def is_eligible_for_activation(state: BeaconState, validator: Validator) -> bool:
+    """
+    Check if ``validator`` is eligible for activation.
+    """
+    return (
+        # [Modified in PQ:EIP8453]
+        # Placement in queue is finalized
+        validator.activation_eligibility_epoch <= compute_epoch_at_slot(state.finalized_slot)
+        # Has not yet been activated
+        and validator.activation_epoch == FAR_FUTURE_EPOCH
+    )
+```
+
+#### Modified `is_active_builder`
+
+```python
+def is_active_builder(state: BeaconState, builder_index: BuilderIndex) -> bool:
+    """
+    Check if the builder at ``builder_index`` is active for the given ``state``.
+    """
+    builder = state.builders[builder_index]
+    return (
+        # [Modified in PQ:EIP8453]
+        # Placement in builder list is finalized
+        builder.deposit_epoch < compute_epoch_at_slot(state.finalized_slot)
+        # Has not initiated exit
+        and builder.withdrawable_epoch == FAR_FUTURE_EPOCH
+    )
+```
+
+#### New `is_head_vote_same_slot`
+
+```python
+def is_head_vote_same_slot(state: BeaconState, data: HeadVoteData) -> bool:
+    """
+    Check if ``data`` votes for the block proposed at its slot.
+    """
+    if data.slot == GENESIS_SLOT:
+        return True
+    if data.beacon_block_root != get_block_root_at_slot(state, data.slot):
+        return False
+    if data.beacon_block_root == get_block_root_at_slot(state, data.slot - 1):
+        return False
+    return True
+```
+
+#### New `has_builder_payment_quorum`
+
+```python
+def has_builder_payment_quorum(participation: HeadVoteCommitteeBits) -> bool:
+    """
+    Check if the seats set in ``participation`` reach the payment quorum.
+    """
+    seats = 0
+    for is_set in participation:
+        if is_set:
+            seats += 1
+    quorum = HEAD_VOTE_COMMITTEE_SIZE * BUILDER_PAYMENT_THRESHOLD_NUMERATOR
+    return seats * BUILDER_PAYMENT_THRESHOLD_DENOMINATOR >= quorum
+```
+
+#### New `has_quorum`
+
+```python
+def has_quorum(state: BeaconState, participation: HeightParticipation) -> bool:
+    """
+    Check if the validators marked in ``participation`` hold at least two
+    thirds of the total weight of the active validators.
+    """
+    active_indices = set(get_active_validator_indices(state, get_current_epoch(state)))
+    participating_weight = get_participating_weight(state, participation)
+    total_weight = get_total_weight(state, active_indices)
+    return participating_weight > 0 and participating_weight * 3 >= total_weight * 2
+```
+
+#### Modified `is_in_inactivity_leak`
+
+```python
+def is_in_inactivity_leak(state: BeaconState) -> bool:
+    # [Modified in PQ:EIP8453]
+    return get_finality_delay(state) > MIN_ROUNDS_TO_INACTIVITY_LEAK
+```
+
+#### New `is_valid_aggregation_bits`
+
+```python
+def is_valid_aggregation_bits(state: BeaconState, epoch: Epoch, aggregate: Attestation) -> bool:
+    """
+    Check if the ``aggregation_bits`` of ``aggregate`` has one bit for each
+    member of the attestation committees marked in its ``committee_bits``,
+    within the aggregate limit.
+    """
+    committees_size = 0
+    for committee_index in get_committee_indices(aggregate.committee_bits):
+        committees_size += len(get_attestation_committee(state, epoch, committee_index))
+    if committees_size > MAX_VALIDATORS_PER_AGGREGATE:
+        return False
+    return len(aggregate.aggregation_bits) == committees_size
 ```
 
 ### Beacon state accessors
 
 #### Modified `get_attesting_indices`
 
-*Note*: The body is unchanged, but `committee_bits` now has
-`MAX_COMMITTEES_PER_SLOT_PQ` bits, and each committee comes from the modified
-`get_beacon_committee`.
-
 ```python
 def get_attesting_indices(state: BeaconState, attestation: Attestation) -> set[ValidatorIndex]:
     """
-    Return the set of attesting indices corresponding to ``aggregation_bits`` and ``committee_bits``.
+    Return the set of attesting indices corresponding to ``aggregation_bits``
+    and ``committee_bits``.
     """
-    output: set[ValidatorIndex] = set()
-    committee_indices = get_committee_indices(attestation.committee_bits)
-    committee_offset = 0
-    for committee_index in committee_indices:
-        committee = get_beacon_committee(state, attestation.data.slot, committee_index)
-        committee_attesters = {
-            attester_index
-            for index, attester_index in enumerate(committee)
-            if attestation.aggregation_bits[committee_offset + index]
-        }
-        output = output.union(committee_attesters)
-
-        committee_offset += len(committee)
-
-    return output
-```
-
-#### Modified `get_beacon_committee`
-
-*Note*: The body is unchanged, but each slot now has at most
-`MAX_COMMITTEES_PER_SLOT_PQ` committees, so committees are larger.
-
-```python
-def get_beacon_committee(
-    state: BeaconState, slot: Slot, index: CommitteeIndex
-) -> Sequence[ValidatorIndex]:
-    """
-    Return the beacon committee at ``slot`` for ``index``.
-    """
-    epoch = compute_epoch_at_slot(slot)
-    committees_per_slot = get_committee_count_per_slot(state, epoch)
-    return compute_committee(
-        indices=get_active_validator_indices(state, epoch),
-        seed=get_seed(state, epoch, DOMAIN_BEACON_ATTESTER),
-        index=Uint64(slot % SLOTS_PER_EPOCH) * committees_per_slot + index,
-        count=committees_per_slot * Uint64(SLOTS_PER_EPOCH),
-    )
-```
-
-#### Modified `get_committee_count_per_slot`
-
-```python
-def get_committee_count_per_slot(state: BeaconState, epoch: Epoch) -> Uint64:
-    """
-    Return the number of committees in each slot for the given ``epoch``.
-    """
-    return max(
-        Uint64(1),
-        min(
-            # [Modified in PQ]
-            MAX_COMMITTEES_PER_SLOT_PQ,
-            Uint64(len(get_active_validator_indices(state, epoch)))
-            // Uint64(SLOTS_PER_EPOCH)
-            // TARGET_COMMITTEE_SIZE,
-        ),
-    )
+    # [Modified in PQ:EIP8453]
+    epoch = compute_epoch_at_round(attestation.round)
+    return get_aggregate_participants(state, epoch, attestation)
 ```
 
 #### Modified `get_indexed_attestation`
@@ -1230,34 +1812,19 @@ def get_indexed_attestation(
         data=attestation.data,
         # [Modified in PQ]
         proof=proof,
+        # [New in PQ:EIP8453]
+        round=attestation.round,
     )
-```
-
-#### New `get_aggregation_committee`
-
-```python
-def get_aggregation_committee(
-    state: BeaconState, slot: Slot, index: CommitteeIndex
-) -> AggregationCommittee:
-    """
-    Return the aggregation committee of the beacon committee at ``slot`` for
-    ``index``.
-    """
-    epoch = compute_epoch_at_slot(slot)
-    state_epoch = get_current_epoch(state)
-    if epoch < state_epoch:
-        assert epoch + 1 == state_epoch
-        return state.aggregation_committee_window[slot % SLOTS_PER_EPOCH][index]
-    assert epoch <= state_epoch + MIN_SEED_LOOKAHEAD
-    offset = Uint64(epoch - state_epoch + 1) * SLOTS_PER_EPOCH
-    return state.aggregation_committee_window[offset + slot % SLOTS_PER_EPOCH][index]
 ```
 
 #### New `get_attestation_statements`
 
-*Note*: A network aggregate covers one committee, so its `proof` proves one
-statement. Statements are per committee so that the proposer can merge those
-proofs into the block's `proof`.
+*Note*: Statements are per attestation committee so that the proposer can merge
+the proofs of aggregates that cover different committees into the block's
+`proof`. All attesters of an attestation signed at the leaf of its `round`.
+
+*TODO*: Revisit the statements once the aggregation of attestations over
+multiple slots is specified.
 
 ```python
 def get_attestation_statements(
@@ -1267,13 +1834,14 @@ def get_attestation_statements(
     Return, for each committee of ``attestation`` in order, the statement that the
     signatures of its attesters in that committee prove.
     """
-    domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
+    epoch = compute_epoch_at_round(attestation.round)
+    domain = get_domain(state, DOMAIN_FINALITY_ATTESTER, epoch)
     message = compute_signing_root(attestation.data, domain)
-    leaf_index = compute_xmss_attestation_leaf_index(attestation.data.target.epoch)
+    leaf_index = compute_xmss_attestation_leaf_index(attestation.round)
     statements = []
     committee_offset = 0
     for committee_index in get_committee_indices(attestation.committee_bits):
-        committee = get_beacon_committee(state, attestation.data.slot, committee_index)
+        committee = get_attestation_committee(state, epoch, committee_index)
         pubkeys = [
             state.validators[validator_index].pubkey
             for i, validator_index in enumerate(committee)
@@ -1284,6 +1852,23 @@ def get_attestation_statements(
         )
         committee_offset += len(committee)
     return statements
+```
+
+#### New `get_head_vote_statement`
+
+*TODO*: Revisit once the proof of head vote signatures is specified.
+
+```python
+def get_head_vote_statement(state: BeaconState, vote: HeadVote) -> XMSSAggregateStatement:
+    """
+    Return the statement that the signatures of the voters of ``vote`` prove.
+    """
+    data = vote.data
+    domain = get_domain(state, DOMAIN_HEAD_VOTE, compute_epoch_at_slot(data.slot))
+    message = compute_signing_root(data, domain)
+    leaf_index = compute_xmss_leaf_index(data.slot, LEAF_OFFSET_HEAD_VOTE)
+    pubkeys = [state.validators[index].pubkey for index in vote.voter_indices]
+    return XMSSAggregateStatement(pubkeys=pubkeys, leaf_index=leaf_index, message=message)
 ```
 
 #### New `get_validator_preregistration_index`
@@ -1348,6 +1933,218 @@ def get_active_builder_preregistration(
     return preregistration
 ```
 
+#### New `get_current_round`
+
+```python
+def get_current_round(state: BeaconState) -> Round:
+    """
+    Return the current round.
+    """
+    return compute_round_at_slot(state.slot)
+```
+
+#### New `get_previous_round`
+
+```python
+def get_previous_round(state: BeaconState) -> Round:
+    """
+    Return the previous round, or ``GENESIS_ROUND`` if that is
+    the current round.
+    """
+    current_round = get_current_round(state)
+    if current_round == GENESIS_ROUND:
+        return GENESIS_ROUND
+    return current_round - 1
+```
+
+#### New `get_attestation_committee`
+
+*Note*: The active validators are not shuffled. They are split evenly into
+`ATTESTATION_COMMITTEES_PER_ROUND` committees, in index order rotated by
+`epoch`, so each validator sits on exactly one.
+
+```python
+def get_attestation_committee(
+    state: BeaconState, epoch: Epoch, index: CommitteeIndex
+) -> AttestationCommittee:
+    """
+    Return the attestation committee at ``index`` for ``epoch``.
+    """
+    indices = get_active_validator_indices(state, epoch)
+    start = (len(indices) * index) // ATTESTATION_COMMITTEES_PER_ROUND
+    end = (len(indices) * (index + 1)) // ATTESTATION_COMMITTEES_PER_ROUND
+    committee = AttestationCommittee()
+    for position in range(start, end):
+        committee.append(indices[(position + epoch) % len(indices)])
+    return committee
+```
+
+#### New `get_aggregate_participants`
+
+```python
+def get_aggregate_participants(
+    state: BeaconState, epoch: Epoch, aggregate: Attestation
+) -> set[ValidatorIndex]:
+    """
+    Return the validators marked in the ``aggregation_bits`` of ``aggregate``,
+    which concatenates the attestation committees marked in its
+    ``committee_bits`` for ``epoch``.
+    """
+    participants: set[ValidatorIndex] = set()
+    committee_offset = 0
+    for committee_index in get_committee_indices(aggregate.committee_bits):
+        committee = get_attestation_committee(state, epoch, committee_index)
+        for i, validator_index in enumerate(committee):
+            if aggregate.aggregation_bits[committee_offset + i]:
+                participants.add(validator_index)
+        committee_offset += len(committee)
+    return participants
+```
+
+#### New `get_head_vote_committee`
+
+```python
+def get_head_vote_committee(state: BeaconState, slot: Slot) -> HeadVoteCommittee:
+    """
+    Return the head vote committee for ``slot``.
+    """
+    epoch = compute_epoch_at_slot(slot)
+    assert epoch >= PQ_FORK_EPOCH
+    state_epoch = get_current_epoch(state)
+    if epoch < state_epoch:
+        assert epoch + 1 == state_epoch
+        return state.head_vote_committee_window[slot % SLOTS_PER_EPOCH]
+    assert epoch <= state_epoch + MIN_SEED_LOOKAHEAD
+    offset = Uint64(epoch - state_epoch + 1) * SLOTS_PER_EPOCH
+    return state.head_vote_committee_window[offset + slot % SLOTS_PER_EPOCH]
+```
+
+#### Modified `get_unslashed_participating_indices`
+
+*Note*: The function `get_unslashed_participating_indices` is rewritten to use
+round participation.
+
+```python
+def get_unslashed_participating_indices(state: BeaconState, flag_index: int) -> set[ValidatorIndex]:
+    """
+    Return the set of validator indices that are both active and unslashed for
+    the given ``flag_index`` in the current round.
+    """
+    participating_indices: set[ValidatorIndex] = set()
+    for index in get_active_validator_indices(state, get_current_epoch(state)):
+        flags = state.round_participation[index]
+        if has_flag(flags, flag_index) and not state.validators[index].slashed:
+            participating_indices.add(index)
+    return participating_indices
+```
+
+#### New `get_validator_weight`
+
+*Note*: A validator's weight is its current effective balance in increments,
+multiplied by `EJECTION_INACTIVITY_SCORE**2 - inactivity_score**2`. The weight
+reaches zero at `EJECTION_INACTIVITY_SCORE`. Weight calculations use `Uint256`
+to avoid overflow when summing weights and checking quorums.
+
+```python
+def get_validator_weight(state: BeaconState, index: ValidatorIndex) -> Uint256:
+    """
+    Return the weight of the validator at ``index`` in finality gadget quorums.
+    """
+    increments = Uint256(state.validators[index].effective_balance // EFFECTIVE_BALANCE_INCREMENT)
+    inactivity_score = min(state.inactivity_scores[index], EJECTION_INACTIVITY_SCORE)
+    inactivity_weight = (EJECTION_INACTIVITY_SCORE - inactivity_score) * (
+        EJECTION_INACTIVITY_SCORE + inactivity_score
+    )
+    return increments * Uint256(inactivity_weight)
+```
+
+#### New `get_total_weight`
+
+```python
+def get_total_weight(state: BeaconState, indices: set[ValidatorIndex]) -> Uint256:
+    """
+    Return the combined weight of the ``indices``.
+    """
+    total_weight = Uint256(0)
+    for index in indices:
+        total_weight += get_validator_weight(state, index)
+    return total_weight
+```
+
+#### New `get_participating_weight`
+
+```python
+def get_participating_weight(state: BeaconState, participation: HeightParticipation) -> Uint256:
+    """
+    Return the combined weight of the active and unslashed validators marked in
+    ``participation``.
+    """
+    participating_indices: set[ValidatorIndex] = set()
+    for index in get_active_validator_indices(state, get_current_epoch(state)):
+        if participation[index] and not state.validators[index].slashed:
+            participating_indices.add(index)
+    return get_total_weight(state, participating_indices)
+```
+
+#### Modified `get_finality_delay`
+
+*Note*: The function `get_finality_delay` is rewritten to measure the delay in
+rounds. The finality gadget can finalize a block of the current round, so the
+delay stops at zero rather than going negative.
+
+```python
+def get_finality_delay(state: BeaconState) -> Round:
+    previous_round = get_previous_round(state)
+    finalized_round = compute_round_at_slot(state.finalized_slot)
+    if finalized_round > previous_round:
+        return Round(0)
+    return previous_round - finalized_round
+```
+
+#### New `get_round_base_reward`
+
+```python
+def get_round_base_reward(state: BeaconState, index: ValidatorIndex) -> Gwei:
+    """
+    Return the base reward for one round of the validator at ``index``.
+    """
+    increments = state.validators[index].effective_balance // EFFECTIVE_BALANCE_INCREMENT
+    total_balance_root = integer_squareroot(get_total_active_balance(state))
+    reward_per_increment = EFFECTIVE_BALANCE_INCREMENT * ROUND_REWARD_FACTOR // total_balance_root
+    return increments * reward_per_increment
+```
+
+#### New `get_flag_index_rewards`
+
+*Note*: This replaces `get_flag_index_deltas`. A validator without the flag
+forfeits the reward and is not penalized, and no rewards are paid during an
+inactivity leak. Rewards are settled at the end of each round.
+
+```python
+def get_flag_index_rewards(state: BeaconState, flag_index: int) -> Sequence[Gwei]:
+    """
+    Return the rewards for a given ``flag_index`` by scanning through the
+    participation flags.
+    """
+    rewards = [Gwei(0)] * len(state.validators)
+    if is_in_inactivity_leak(state):
+        return rewards
+
+    unslashed_participating_indices = get_unslashed_participating_indices(state, flag_index)
+    weight = PARTICIPATION_FLAG_WEIGHTS_PQ[flag_index]
+    unslashed_participating_balance = get_total_balance(state, unslashed_participating_indices)
+    unslashed_participating_increments = (
+        unslashed_participating_balance // EFFECTIVE_BALANCE_INCREMENT
+    )
+    active_increments = get_total_active_balance(state) // EFFECTIVE_BALANCE_INCREMENT
+    for index in unslashed_participating_indices:
+        base_reward = get_round_base_reward(state, index)
+        reward_numerator = base_reward * weight * unslashed_participating_increments
+        reward_denominator = active_increments * WEIGHT_DENOMINATOR
+        rewards[index] += reward_numerator // reward_denominator
+    return rewards
+```
+
 ### Beacon state mutators
 
 #### Modified `queue_excess_active_balance`
@@ -1409,6 +2206,17 @@ def remove_builder_preregistration(state: BeaconState, pubkey: XMSSPubkey) -> No
     )
 ```
 
+#### New `add_participation_flag`
+
+```python
+def add_participation_flag(state: BeaconState, index: ValidatorIndex, flag_index: int) -> None:
+    """
+    Add the flag at ``flag_index`` to the participation of the validator at
+    ``index`` in the current round.
+    """
+    state.round_participation[index] = add_flag(state.round_participation[index], flag_index)
+```
+
 ## Beacon chain state transition function
 
 ### Modified `verify_block_signature`
@@ -1424,15 +2232,159 @@ def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) 
     return xmss.Verify(proposer.pubkey, leaf_index, signing_root, signed_block.signature)
 ```
 
+### Modified `process_slots`
+
+*Note*: At an epoch boundary, the round is processed before the epoch.
+
+```python
+def process_slots(state: BeaconState, slot: Slot) -> None:
+    assert state.slot < slot
+    while state.slot < slot:
+        process_slot(state)
+        # [New in PQ:EIP8453]
+        # Process round on the start slot of the next round
+        if (state.slot + 1) % SLOTS_PER_ROUND == 0:
+            process_round(state)
+        # Process epoch on the start slot of the next epoch
+        if (state.slot + 1) % SLOTS_PER_EPOCH == 0:
+            process_epoch(state)
+        state.slot = state.slot + 1
+```
+
+### Modified `process_slot`
+
+*Note*: The block that moves the chain to a new height is the target of that
+height, and a post-state cannot contain the root of its own block. So
+`advance_height` leaves the root of `target_checkpoint` empty, and the next
+`process_slot` fills it in, as it does for the state root of
+`latest_block_header`.
+
+```python
+def process_slot(state: BeaconState) -> None:
+    slot_index = state.slot % SLOTS_PER_HISTORICAL_ROOT
+    # Cache state root
+    previous_state_root = hash_tree_root(state)
+    state.state_roots[slot_index] = previous_state_root
+    # Cache latest block header state root
+    if state.latest_block_header.state_root == Bytes32():
+        state.latest_block_header.state_root = previous_state_root
+    # Cache block root
+    previous_block_root = hash_tree_root(state.latest_block_header)
+    state.block_roots[slot_index] = previous_block_root
+    # [New in PQ:EIP8453]
+    # Cache target checkpoint root
+    if state.target_checkpoint.root == Root():
+        state.target_checkpoint.root = previous_block_root
+    # Unset the next payload availability
+    next_slot_index = (state.slot + 1) % SLOTS_PER_HISTORICAL_ROOT
+    state.execution_payload_availability[next_slot_index] = Boolean(False)
+```
+
+### Round processing
+
+#### New `process_round`
+
+```python
+def process_round(state: BeaconState) -> None:
+    process_inactivity_updates(state)
+    process_rewards(state)
+    process_participation_flag_updates(state)
+```
+
+#### Modified `process_inactivity_updates`
+
+*Note*: The function `process_inactivity_updates` is rewritten to use a virtual
+penalty system. Inactivity scores are updated in every round, not only during an
+inactivity leak.
+
+```python
+def process_inactivity_updates(state: BeaconState) -> None:
+    participating_indices = get_unslashed_participating_indices(state, PROGRESS_FLAG_INDEX)
+    for index in get_active_validator_indices(state, get_current_epoch(state)):
+        if index in participating_indices:
+            state.inactivity_scores[index] = saturating_sub(
+                state.inactivity_scores[index], INACTIVITY_SCORE_RECOVERY_RATE
+            )
+        else:
+            state.inactivity_scores[index] += INACTIVITY_SCORE_BIAS
+            if state.inactivity_scores[index] >= EJECTION_INACTIVITY_SCORE:
+                initiate_validator_exit(state, index)
+```
+
+*Note*: A validator gains `INACTIVITY_SCORE_BIAS` points for each round it is
+offline, and its weight falls with the square of its score. The table below
+shows the weight of a validator that was fully active and then stays offline.
+Weights are shown as a percentage of full weight. Inactivity does not reduce a
+validator's balance. When the weight reaches zero, the validator is force-exited
+and keeps its stake.
+
+| Rounds offline | Inactivity score | Voting weight |
+| -------------: | ---------------: | ------------: |
+|              0 |                0 |       100.00% |
+|          1,024 |            4,096 |        99.61% |
+|          2,048 |            8,192 |        98.44% |
+|          3,072 |           12,288 |        96.48% |
+|          4,096 |           16,384 |        93.75% |
+|          5,120 |           20,480 |        90.23% |
+|          6,144 |           24,576 |        85.94% |
+|          7,168 |           28,672 |        80.86% |
+|          8,192 |           32,768 |        75.00% |
+|          9,216 |           36,864 |        68.36% |
+|         10,240 |           40,960 |        60.94% |
+|         11,264 |           45,056 |        52.73% |
+|         12,288 |           49,152 |        43.75% |
+|         13,312 |           53,248 |        33.98% |
+|         14,336 |           57,344 |        23.44% |
+|         15,360 |           61,440 |        12.11% |
+|         16,384 |           65,536 |         0.00% |
+
+#### New `process_rewards`
+
+*Note*: This replaces `process_rewards_and_penalties`, since inactivity is no
+longer penalized.
+
+```python
+def process_rewards(state: BeaconState) -> None:
+    for flag_index in range(len(PARTICIPATION_FLAG_WEIGHTS_PQ)):
+        rewards = get_flag_index_rewards(state, flag_index)
+        for index in range(len(state.validators)):
+            increase_balance(state, ValidatorIndex(index), rewards[index])
+```
+
+#### Modified `process_participation_flag_updates`
+
+*Note*: A validator sends at most one target vote per height and names each
+entry at most once, so it cannot vote again while a height lasts across rounds.
+Progress already made at the current height therefore carries into the new
+round.
+
+```python
+def process_participation_flag_updates(state: BeaconState) -> None:
+    # [Modified in PQ:EIP8453]
+    state.round_participation = RoundParticipation(
+        data=[ParticipationFlags(0b0000_0000)] * len(state.validators)
+    )
+    # [New in PQ:EIP8453]
+    for index in range(len(state.validators)):
+        if state.progress_participation[index]:
+            add_participation_flag(state, ValidatorIndex(index), PROGRESS_FLAG_INDEX)
+```
+
 ### Epoch processing
 
 #### Modified `process_epoch`
 
+*Note*: Inactivity updates, rewards, and participation flag updates run in
+`process_round` instead.
+
 ```python
 def process_epoch(state: BeaconState) -> None:
-    process_justification_and_finalization(state)
-    process_inactivity_updates(state)
-    process_rewards_and_penalties(state)
+    # [Modified in PQ:EIP8453]
+    # Removed `process_justification_and_finalization`
+    # [Modified in PQ:EIP8453]
+    # Removed `process_inactivity_updates`
+    # [Modified in PQ:EIP8453]
+    # Removed `process_rewards_and_penalties`
     process_registry_updates(state)
     process_slashings(state)
     process_eth1_data_reset(state)
@@ -1443,36 +2395,59 @@ def process_epoch(state: BeaconState) -> None:
     process_slashings_reset(state)
     process_randao_mixes_reset(state)
     process_historical_summaries_update(state)
-    process_participation_flag_updates(state)
+    # [Modified in PQ:EIP8453]
+    # Removed `process_participation_flag_updates`
     # [Modified in PQ]
     # Removed `process_sync_committee_updates`
     process_proposer_lookahead(state)
     process_ptc_window(state)
-    # [New in PQ]
-    process_aggregation_committee_window(state)
+    # [New in PQ:EIP8453]
+    process_head_vote_committee_window(state)
     # [New in PQ:EIP8205]
     process_preregistration_expiry(state)
 ```
 
-#### New `process_aggregation_committee_window`
+#### Modified `process_builder_pending_payments`
+
+*Note*: The function `process_builder_pending_payments` is rewritten to weigh
+payments by the head votes recorded in `head_vote_participation`.
 
 ```python
-def process_aggregation_committee_window(state: BeaconState) -> None:
+def process_builder_pending_payments(state: BeaconState) -> None:
     """
-    Update the cached aggregator window.
+    Processes the builder pending payments from the previous epoch.
     """
-    # Shift all epochs forward by one
-    window_length = len(state.aggregation_committee_window)
-    state.aggregation_committee_window[: window_length - SLOTS_PER_EPOCH] = (
-        state.aggregation_committee_window[SLOTS_PER_EPOCH:]
-    )
-    # Fill in the last epoch
-    next_epoch = get_current_epoch(state) + MIN_SEED_LOOKAHEAD + 1
-    start_slot = compute_start_slot_at_epoch(next_epoch)
-    state.aggregation_committee_window[window_length - SLOTS_PER_EPOCH :] = [
-        compute_aggregation_committees(state, Slot(slot))
-        for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH)
-    ]
+    for index in range(SLOTS_PER_EPOCH):
+        payment = state.builder_pending_payments[index]
+        if payment.withdrawal.amount == 0:
+            continue
+        if has_builder_payment_quorum(state.head_vote_participation[index]):
+            state.builder_pending_withdrawals.append(payment.withdrawal)
+
+    old_payments = state.builder_pending_payments[SLOTS_PER_EPOCH:]
+    state.builder_pending_payments[:SLOTS_PER_EPOCH] = old_payments
+    new_payments = [BuilderPendingPayment.empty() for _ in range(SLOTS_PER_EPOCH)]
+    state.builder_pending_payments[SLOTS_PER_EPOCH:] = new_payments
+
+    old_participation = state.head_vote_participation[SLOTS_PER_EPOCH:]
+    state.head_vote_participation[:SLOTS_PER_EPOCH] = old_participation
+    new_participation = [HeadVoteCommitteeBits() for _ in range(SLOTS_PER_EPOCH)]
+    state.head_vote_participation[SLOTS_PER_EPOCH:] = new_participation
+```
+
+#### New `process_head_vote_committee_window`
+
+```python
+def process_head_vote_committee_window(state: BeaconState) -> None:
+    """
+    Update the cached head vote committee window.
+    """
+    current_epoch = get_current_epoch(state)
+    committees = list(state.head_vote_committee_window[SLOTS_PER_EPOCH:])
+    start_slot = compute_start_slot_at_epoch(current_epoch + MIN_SEED_LOOKAHEAD + 1)
+    for slot in range(start_slot, start_slot + SLOTS_PER_EPOCH):
+        committees.append(compute_head_vote_committee(state, Slot(slot)))
+    state.head_vote_committee_window = HeadVoteCommitteeWindow(data=committees)
 ```
 
 #### New `process_preregistration_expiry`
@@ -1548,11 +2523,11 @@ def process_pending_deposits(state: BeaconState) -> None:
     next_deposit_index = 0
     deposits_to_postpone = []
     is_churn_limit_reached = False
-    finalized_slot = compute_start_slot_at_epoch(state.finalized_checkpoint.epoch)
 
     for deposit in state.pending_deposits:
+        # [Modified in PQ:EIP8453]
         # Check if deposit has been finalized, otherwise, stop processing.
-        if deposit.slot > finalized_slot:
+        if deposit.slot > state.finalized_slot:
             break
 
         # Check if number of processed deposits has not reached the limit, otherwise, stop processing.
@@ -1604,20 +2579,23 @@ def process_pending_deposits(state: BeaconState) -> None:
 #### Modified `process_block`
 
 *Note*: Without sync aggregates, the sync committee rewards are no longer
-issued, which lowers issuance by `SYNC_REWARD_WEIGHT / WEIGHT_DENOMINATOR`.
+issued, which lowers issuance by `SYNC_REWARD_WEIGHT / WEIGHT_DENOMINATOR`. The
+height events of a block are processed once, after all of its attestations.
 
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
-    parent_slot = state.latest_block_header.slot
     process_parent_execution_payload(state, block)
     process_block_header(state, block)
     process_withdrawals(state)
     process_execution_payload_bid(state, block.body.signed_execution_payload_bid)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_operations(state, block.body, parent_slot)
+    # [Modified in PQ:EIP8453]
+    process_operations(state, block.body)
     # [Modified in PQ]
     # Removed `process_sync_aggregate`
+    # [New in PQ:EIP8453]
+    process_height_events(state)
 ```
 
 #### Modified `process_randao`
@@ -1785,7 +2763,12 @@ def process_execution_payload_bid(
 ##### Modified `process_operations`
 
 ```python
-def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: Slot) -> None:
+def process_operations(
+    state: BeaconState,
+    body: BeaconBlockBody,
+    # [Modified in PQ:EIP8453]
+    # Removed `parent_slot`
+) -> None:
     assert len(body.deposits) == 0
 
     def for_ops(operations: Sequence[Any], fn: Callable[..., None], *args: Any) -> None:
@@ -1802,27 +2785,40 @@ def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: S
     # Removed the BLS to execution change limit
     # [Modified in PQ]
     # Removed the payload attestation limit
+    # [New in PQ:EIP8453]
+    assert len(body.head_votes) <= MAX_HEAD_VOTES
+    # [New in PQ:EIP8453]
+    assert len(body.head_vote_support) == len(body.head_votes)
 
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
-    for_ops(body.attestations, process_attestation, parent_slot)
-    # [New in PQ]
-    process_stark(state, body)
+    # [Modified in PQ:EIP8453]
+    for_ops(body.attestations, process_attestation)
     # [Modified in PQ]
     # Removed `process_voluntary_exit`
     # [Modified in PQ]
     # Removed `process_bls_to_execution_change`
     # [Modified in PQ]
     # Removed `process_payload_attestation`
+    # [New in PQ:EIP8453]
+    for vote_index in range(len(body.head_votes)):
+        process_head_vote(state, body.head_votes[vote_index], body.head_vote_support[vote_index])
+    # [New in PQ]
+    process_stark(state, body)
 ```
 
 ##### New `process_stark`
+
+*Note*: The block's `proof` proves the statements of its attestations, followed
+by those of its head votes.
 
 ```python
 def process_stark(state: BeaconState, body: BeaconBlockBody) -> None:
     statements = []
     for attestation in body.attestations:
         statements.extend(get_attestation_statements(state, attestation))
+    for vote in body.head_votes:
+        statements.append(get_head_vote_statement(state, vote))
     assert stark.VerifyAggregates(statements, body.proof)
 ```
 
@@ -1864,84 +2860,88 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
 
 ###### Modified `process_attestation`
 
-*Note*: An attestation no longer carries a signature, so `process_stark`
-verifies the signatures of all attestations in the block instead.
+*Note*: The function `process_attestation` is rewritten for the finality gadget.
+Flags are credited only the first time a validator's progress or finality
+participation is recorded, and count toward the round in which the attestation
+is included. An attestation carries no signature, so `process_stark` verifies
+the signatures of all attestations in the block instead.
 
 ```python
-def process_attestation(
-    state: BeaconState,
-    attestation: Attestation,
-    parent_slot: Slot,
-) -> None:
+def process_attestation(state: BeaconState, attestation: Attestation) -> None:
     data = attestation.data
-    assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
-    assert data.target.epoch == compute_epoch_at_slot(data.slot)
-    assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
+    epoch = compute_epoch_at_round(attestation.round)
 
-    assert data.index < 2
-    committee_indices = get_committee_indices(attestation.committee_bits)
-    committee_offset = 0
-    for committee_index in committee_indices:
-        assert committee_index < get_committee_count_per_slot(state, data.target.epoch)
-        committee = get_beacon_committee(state, data.slot, committee_index)
-        committee_attesters = {
-            attester_index
-            for index, attester_index in enumerate(committee)
-            if attestation.aggregation_bits[committee_offset + index]
-        }
-        assert len(committee_attesters) > 0
-        committee_offset += len(committee)
-
-    # Bitfield length matches total number of participants
-    assert len(attestation.aggregation_bits) == committee_offset
-
-    # Participation flag indices
-    participation_flag_indices = get_attestation_participation_flag_indices(
-        state, data, state.slot - data.slot, parent_slot
-    )
-
-    if data.target.epoch == get_current_epoch(state):
-        current_epoch_target = True
-        epoch_participation = state.current_epoch_participation
-        payment = state.builder_pending_payments[SLOTS_PER_EPOCH + data.slot % SLOTS_PER_EPOCH]
-    else:
-        current_epoch_target = False
-        epoch_participation = state.previous_epoch_participation
-        payment = state.builder_pending_payments[data.slot % SLOTS_PER_EPOCH]
+    assert is_well_formed_attestation_data(data)
+    assert is_valid_attestation_data(state, data)
+    assert attestation.round <= get_current_round(state)
+    assert epoch >= compute_epoch_at_slot(state.finalized_slot)
+    assert is_valid_aggregation_bits(state, epoch, attestation)
 
     proposer_reward_numerator = 0
     for index in get_attesting_indices(state, attestation):
-        had_no_participation = epoch_participation[index] == 0b0000_0000
-        will_set_new_flag = False
+        base_reward = get_round_base_reward(state, index)
+        for pending in state.pending_finality:
+            if pending.checkpoint == data.finality and not pending.participation[index]:
+                pending.participation[index] = Boolean(True)
+                add_participation_flag(state, index, FINALITY_FLAG_INDEX)
+                proposer_reward_numerator += base_reward * FINALITY_WEIGHT
+        if data.target == state.target_checkpoint:
+            if not state.progress_participation[index]:
+                state.progress_participation[index] = Boolean(True)
+                add_participation_flag(state, index, PROGRESS_FLAG_INDEX)
+                proposer_reward_numerator += base_reward * PROGRESS_WEIGHT
+            if not data.timeout:
+                state.target_participation[index] = Boolean(True)
 
-        for flag_index, weight in enumerate(PARTICIPATION_FLAG_WEIGHTS):
-            if flag_index in participation_flag_indices and not has_flag(
-                epoch_participation[index], flag_index
-            ):
-                epoch_participation[index] = add_flag(epoch_participation[index], flag_index)
-                proposer_reward_numerator += get_base_reward(state, index) * weight
-                will_set_new_flag = True
-
-        if (
-            will_set_new_flag
-            and had_no_participation
-            and is_attestation_same_slot(state, data)
-            and payment.withdrawal.amount > 0
-        ):
-            payment.weight += state.validators[index].effective_balance
-
-    # Reward proposer
-    proposer_reward_denominator = (
-        (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
-    )
-    proposer_reward = Gwei(proposer_reward_numerator // proposer_reward_denominator)
+    reward_divisor = (WEIGHT_DENOMINATOR - PROPOSER_WEIGHT) * WEIGHT_DENOMINATOR // PROPOSER_WEIGHT
+    proposer_reward = Gwei(proposer_reward_numerator // reward_divisor)
     increase_balance(state, get_beacon_proposer_index(state), proposer_reward)
+```
 
-    # Update builder payment weight
-    if current_epoch_target:
-        state.builder_pending_payments[SLOTS_PER_EPOCH + data.slot % SLOTS_PER_EPOCH] = payment
-    else:
-        state.builder_pending_payments[data.slot % SLOTS_PER_EPOCH] = payment
+##### Head votes
+
+###### New `process_head_vote`
+
+*Note*: Head votes belong to the available chain. The beacon state records only
+which seats voted for the block of their slot, to weigh builder payments. A head
+vote carries no signature, so `process_stark` verifies the signatures of all
+head votes in the block instead.
+
+```python
+def process_head_vote(
+    state: BeaconState, vote: HeadVote, support_bits: HeadVoteSupportBits
+) -> None:
+    data = vote.data
+    assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
+    assert compute_epoch_at_slot(data.slot) in (get_previous_epoch(state), get_current_epoch(state))
+    assert data.payload_status in (
+        PAYLOAD_STATUS_EMPTY,
+        PAYLOAD_STATUS_FULL,
+        PAYLOAD_STATUS_PENDING,
+    )
+    if is_head_vote_same_slot(state, data):
+        assert data.payload_status == PAYLOAD_STATUS_PENDING
+
+    committee = get_head_vote_committee(state, data.slot)
+    assert len(vote.voter_indices) > 0
+    assert list(vote.voter_indices) == sorted(set(vote.voter_indices))
+    for index in vote.voter_indices:
+        assert index in committee
+
+    assert len(support_bits) == len(vote.voter_indices)
+    for is_supported in support_bits:
+        if is_supported:
+            assert data.slot == state.slot - 1
+
+    # Record the seats that voted for the block of their slot
+    if is_head_vote_same_slot(state, data):
+        if compute_epoch_at_slot(data.slot) == get_current_epoch(state):
+            participation_index = SLOTS_PER_EPOCH + data.slot % SLOTS_PER_EPOCH
+        else:
+            participation_index = data.slot % SLOTS_PER_EPOCH
+        for position, index in enumerate(committee):
+            if index in vote.voter_indices:
+                state.head_vote_participation[participation_index][position] = Boolean(True)
 ```
 
 ##### Deposit requests
@@ -2020,9 +3020,16 @@ def add_validator_to_registry(
     validator = get_validator_from_deposit(pubkey, vrf_root, withdrawal_credentials, amount)
     set_or_append_list(state.validators, index, validator)
     set_or_append_list(state.balances, index, amount)
-    set_or_append_list(state.previous_epoch_participation, index, ParticipationFlags(0b0000_0000))
-    set_or_append_list(state.current_epoch_participation, index, ParticipationFlags(0b0000_0000))
     set_or_append_list(state.inactivity_scores, index, Uint64(0))
+    # [New in PQ:EIP8453]
+    set_or_append_list(state.round_participation, index, ParticipationFlags(0b0000_0000))
+    # [New in PQ:EIP8453]
+    set_or_append_list(state.target_participation, index, Boolean(False))
+    # [New in PQ:EIP8453]
+    set_or_append_list(state.progress_participation, index, Boolean(False))
+    # [New in PQ:EIP8453]
+    for pending in state.pending_finality:
+        set_or_append_list(pending.participation, index, Boolean(False))
 ```
 
 ##### Builder deposit requests
@@ -2527,4 +3534,60 @@ def apply_parent_execution_payload(
     # Update parent payload availability and latest block hash
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
     state.latest_block_hash = parent_bid.block_hash
+```
+
+#### Height events
+
+##### New `process_height_events`
+
+```python
+def process_height_events(state: BeaconState) -> None:
+    # Finalize the highest pending justification with a quorum
+    for pending in state.pending_finality:
+        if has_quorum(state, pending.participation):
+            state.finalized_checkpoint = pending.checkpoint
+            state.finalized_slot = pending.slot
+    state.pending_finality = PendingFinalities(
+        data=[
+            pending
+            for pending in state.pending_finality
+            if pending.checkpoint.height > state.finalized_checkpoint.height
+        ]
+    )
+
+    if has_quorum(state, state.target_participation):
+        state.justified_checkpoint = state.target_checkpoint
+        # Keep only the newest pending justifications
+        if len(state.pending_finality) == PENDING_FINALITY_WINDOW:
+            state.pending_finality = state.pending_finality[1:]
+        state.pending_finality.append(
+            PendingFinality(
+                checkpoint=state.target_checkpoint,
+                slot=state.target_slot,
+                participation=HeightParticipation(data=[Boolean(False)] * len(state.validators)),
+            )
+        )
+        advance_height(state)
+    elif (
+        has_quorum(state, state.progress_participation)
+        # Timeouts count only after the delay
+        and state.slot >= state.target_slot + TIMEOUT_DELAY_SLOTS
+    ):
+        advance_height(state)
+```
+
+##### New `advance_height`
+
+```python
+def advance_height(state: BeaconState) -> None:
+    state.target_checkpoint = HeightCheckpoint(
+        height=state.target_checkpoint.height + 1,
+        # Filled in by the next ``process_slot``
+        root=Root(),
+    )
+    state.target_slot = state.latest_block_header.slot
+    state.target_participation = HeightParticipation(data=[Boolean(False)] * len(state.validators))
+    state.progress_participation = HeightParticipation(
+        data=[Boolean(False)] * len(state.validators)
+    )
 ```

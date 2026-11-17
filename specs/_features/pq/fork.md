@@ -14,7 +14,7 @@
   - [New `compute_pending_deposits`](#new-compute_pending_deposits)
   - [New `compute_builder_pending_withdrawals`](#new-compute_builder_pending_withdrawals)
   - [New `compute_builder_pending_payments`](#new-compute_builder_pending_payments)
-  - [New `initialize_aggregation_committee_window`](#new-initialize_aggregation_committee_window)
+  - [New `initialize_head_vote_committee_window`](#new-initialize_head_vote_committee_window)
 - [Fork to PQ](#fork-to-pq)
   - [Fork trigger](#fork-trigger)
   - [Upgrading the state](#upgrading-the-state)
@@ -266,23 +266,20 @@ def compute_builder_pending_payments(pre: eip8483.BeaconState) -> BuilderPending
     return BuilderPendingPayments(data=payments)
 ```
 
-### New `initialize_aggregation_committee_window`
+### New `initialize_head_vote_committee_window`
 
 ```python
-def initialize_aggregation_committee_window(state: BeaconState) -> AggregationCommitteeWindow:
+def initialize_head_vote_committee_window(state: BeaconState) -> HeadVoteCommitteeWindow:
     """
-    Return the cached aggregation committee window starting from the current
-    epoch. Used to initialize the ``aggregation_committee_window`` field in the
-    beacon state at genesis and after forks.
+    Return the head vote committee window starting from the current epoch.
     """
-    empty_previous_epoch = [AggregationCommittees() for _ in range(SLOTS_PER_EPOCH)]
+    committees = [HeadVoteCommittee() for _ in range(SLOTS_PER_EPOCH)]
     current_epoch = get_current_epoch(state)
     start_slot = compute_start_slot_at_epoch(current_epoch)
-    end_slot = compute_start_slot_at_epoch(Epoch(current_epoch + MIN_SEED_LOOKAHEAD + 1))
-    aggregation_committees = [
-        compute_aggregation_committees(state, Slot(slot)) for slot in range(start_slot, end_slot)
-    ]
-    return AggregationCommitteeWindow(data=empty_previous_epoch + aggregation_committees)
+    end_slot = compute_start_slot_at_epoch(current_epoch + MIN_SEED_LOOKAHEAD + 1)
+    for slot in range(start_slot, end_slot):
+        committees.append(compute_head_vote_committee(state, Slot(slot)))
+    return HeadVoteCommitteeWindow(data=committees)
 ```
 
 ## Fork to PQ
@@ -301,6 +298,10 @@ is made to upgrade to PQ.
 which may commit to the pre-fork `ExecutionRequests` type, whose root differs
 from the PQ type even for identical content. The upgrade cannot recompute it
 because the state stores only the commitment.
+
+*Note*: The finality gadget starts at height 0 from the last finalized Casper
+FFG checkpoint, and the target of height 1 is the latest block before the
+upgrade. Participation in the last epoch before the upgrade is not rewarded.
 
 ```python
 def upgrade_to_pq(pre: eip8483.BeaconState) -> BeaconState:
@@ -329,12 +330,18 @@ def upgrade_to_pq(pre: eip8483.BeaconState) -> BeaconState:
         balances=pre.balances,
         randao_mixes=pre.randao_mixes,
         slashings=pre.slashings,
-        previous_epoch_participation=pre.previous_epoch_participation,
-        current_epoch_participation=pre.current_epoch_participation,
-        justification_bits=pre.justification_bits,
-        previous_justified_checkpoint=pre.previous_justified_checkpoint,
-        current_justified_checkpoint=pre.current_justified_checkpoint,
-        finalized_checkpoint=pre.finalized_checkpoint,
+        # [Modified in PQ:EIP8453]
+        # Removed `previous_epoch_participation`
+        # [Modified in PQ:EIP8453]
+        # Removed `current_epoch_participation`
+        # [Modified in PQ:EIP8453]
+        # Removed `justification_bits`
+        # [Modified in PQ:EIP8453]
+        # Removed `previous_justified_checkpoint`
+        # [Modified in PQ:EIP8453]
+        # Removed `current_justified_checkpoint`
+        # [Modified in PQ:EIP8453]
+        # Removed `finalized_checkpoint`
         inactivity_scores=pre.inactivity_scores,
         # [Modified in PQ]
         # Removed `current_sync_committee`
@@ -374,12 +381,41 @@ def upgrade_to_pq(pre: eip8483.BeaconState) -> BeaconState:
         validator_preregistrations=ValidatorPreregistrations(),
         # [New in PQ:EIP8205]
         builder_preregistrations=BuilderPreregistrations(),
-        # [New in PQ]
-        aggregation_committee_window=AggregationCommitteeWindow(),
+        # [New in PQ:EIP8453]
+        target_checkpoint=HeightCheckpoint(
+            height=Height(1),
+            root=hash_tree_root(pre.latest_block_header),
+        ),
+        # [New in PQ:EIP8453]
+        justified_checkpoint=HeightCheckpoint(
+            height=Height(0),
+            root=pre.finalized_checkpoint.root,
+        ),
+        # [New in PQ:EIP8453]
+        finalized_checkpoint=HeightCheckpoint(
+            height=Height(0),
+            root=pre.finalized_checkpoint.root,
+        ),
+        # [New in PQ:EIP8453]
+        target_slot=pre.latest_block_header.slot,
+        # [New in PQ:EIP8453]
+        finalized_slot=compute_start_slot_at_epoch(pre.finalized_checkpoint.epoch),
+        # [New in PQ:EIP8453]
+        target_participation=HeightParticipation(data=[Boolean(False)] * len(pre.validators)),
+        # [New in PQ:EIP8453]
+        progress_participation=HeightParticipation(data=[Boolean(False)] * len(pre.validators)),
+        # [New in PQ:EIP8453]
+        round_participation=RoundParticipation(data=[ParticipationFlags(0)] * len(pre.validators)),
+        # [New in PQ:EIP8453]
+        pending_finality=PendingFinalities(),
+        # [New in PQ:EIP8453]
+        head_vote_participation=HeadVoteParticipation(),
+        # [New in PQ:EIP8453]
+        head_vote_committee_window=HeadVoteCommitteeWindow(),
     )
 
-    # [New in PQ]
-    post.aggregation_committee_window = initialize_aggregation_committee_window(post)
+    # [New in PQ:EIP8453]
+    post.head_vote_committee_window = initialize_head_vote_committee_window(post)
 
     return post
 ```
