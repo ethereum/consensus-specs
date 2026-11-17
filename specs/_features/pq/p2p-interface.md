@@ -11,6 +11,7 @@
 - [Containers](#containers)
   - [Modified `SignedProposerPreferences`](#modified-signedproposerpreferences)
 - [Helpers](#helpers)
+  - [Modified `Seen`](#modified-seen)
   - [Modified `compute_fork_version`](#modified-compute_fork_version)
   - [Modified `verify_block_body_operation_limits`](#modified-verify_block_body_operation_limits)
   - [Modified `verify_execution_requests_limits`](#modified-verify_execution_requests_limits)
@@ -79,6 +80,34 @@ class SignedProposerPreferences(Container):
 ```
 
 ## Helpers
+
+### Modified `Seen`
+
+```python
+@dataclass
+class Seen:
+    proposer_slots: set[tuple[Slot, ValidatorIndex]]
+    aggregator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    # [Modified in PQ]
+    # Removed `aggregate_data_roots`
+    voluntary_exit_indices: set[ValidatorIndex]
+    proposer_slashing_indices: set[ValidatorIndex]
+    attester_slashing_indices: set[ValidatorIndex]
+    attestation_validator_epochs: set[tuple[Epoch, ValidatorIndex]]
+    sync_contribution_aggregator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    sync_contribution_data: dict[tuple[Slot, Root, Uint64], set[tuple[bool, ...]]]
+    sync_message_validator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
+    bls_to_execution_change_indices: set[ValidatorIndex]
+    data_column_sidecar_tuples: set[tuple[Root, ColumnIndex]]
+    execution_payloads: dict[Hash32, ExecutionPayload]
+    execution_payload_envelopes: set[tuple[Root, BuilderIndex]]
+    payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
+    execution_payload_bid_counts: Counter[tuple[Slot, Hash32, Root, BuilderIndex]]
+    best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
+    proposer_preferences: dict[tuple[Slot, Root], ProposerPreferences]
+    # [New in PQ]
+    best_aggregate_attesting_balance: dict[tuple[Root, CommitteeIndex], Gwei]
+```
 
 ### Modified `compute_fork_version`
 
@@ -370,14 +399,6 @@ def validate_beacon_aggregate_and_proof_gossip(
         raise GossipReject("aggregate committee bits must specify exactly one committee")
     index = committee_indices[0]
 
-    # [IGNORE] A valid aggregate with a superset of aggregation bits has not already been seen
-    aggregate_data_root = hash_tree_root(aggregate.data)
-    aggregate_cache_key = (aggregate_data_root, index)
-    aggregate_bits = tuple(bool(bit) for bit in aggregation_bits)
-    seen_bits = seen.aggregate_data_roots.get(aggregate_cache_key, set())
-    if is_non_strict_superset(seen_bits, aggregate_bits):
-        raise GossipIgnore("already seen aggregate for this data")
-
     # [IGNORE] This is the first valid aggregate for this epoch and aggregator
     aggregator_index = aggregate_and_proof.aggregator_index
     target_epoch = aggregate.data.target.epoch
@@ -433,6 +454,14 @@ def validate_beacon_aggregate_and_proof_gossip(
         raise GossipReject("aggregate has no participants")
 
     # [Modified in PQ]
+    # [IGNORE] The aggregate has more attesting balance than the best one seen
+    aggregate_cache_key = (hash_tree_root(aggregate.data), index)
+    attesting_balance = get_total_balance(state, attesting_indices)
+    best_attesting_balance = seen.best_aggregate_attesting_balance.get(aggregate_cache_key, Gwei(0))
+    if attesting_balance <= best_attesting_balance:
+        raise GossipIgnore("aggregate does not have more attesting balance")
+
+    # [Modified in PQ]
     # [REJECT] The validator is one of the committee's aggregators
     if not is_aggregator(state, aggregate.data.slot, index, aggregator_index):
         raise GossipReject("validator is not selected as aggregator")
@@ -468,9 +497,8 @@ def validate_beacon_aggregate_and_proof_gossip(
 
     # Mark this aggregate as seen
     seen.aggregator_epochs.add(aggregator_epoch_key)
-    if aggregate_cache_key not in seen.aggregate_data_roots:
-        seen.aggregate_data_roots[aggregate_cache_key] = set()
-    seen.aggregate_data_roots[aggregate_cache_key].add(aggregate_bits)
+    # [Modified in PQ]
+    seen.best_aggregate_attesting_balance[aggregate_cache_key] = attesting_balance
 ```
 
 ##### Removed `voluntary_exit`

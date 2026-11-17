@@ -133,6 +133,7 @@ from eth_consensus_specs.utils.ssz.bytes import Bytes16
             "is_better_update",
             "is_finality_update",
             "is_next_sync_committee_known",
+            "is_non_strict_superset",
             "is_sync_committee_aggregator",
             "is_sync_committee_update",
             "is_valid_builder_deposit_signature",
