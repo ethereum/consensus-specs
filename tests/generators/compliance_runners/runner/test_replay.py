@@ -2,6 +2,7 @@
 
 import pytest
 import snappy
+from ssz.exceptions import SSZValueError, ValueFault
 
 from eth_consensus_specs.test.context import get_copy_of_spec, spec_with_config_overrides
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
@@ -13,6 +14,42 @@ from tests.generators.compliance_runners.state_transition.evaluation import cli 
 
 from . import fork_choice, state_transition
 from .discovery import VectorCase
+
+
+@pytest.mark.parametrize("case_type", ["processing", "blocks"])
+@pytest.mark.parametrize("direction", ["overflow", "underflow"])
+def test_invalid_transition_accepts_uint64_range_error(case_type, direction):
+    spec = spec_targets["minimal"]["gloas"]
+
+    def process(*args, **kwargs):
+        if direction == "overflow":
+            return spec.Uint64((1 << 64) - 1) + 1
+        return spec.Uint64(0) - 1
+
+    if case_type == "processing":
+        state_transition.run_processing_case(process, None, None, None)
+    else:
+        class BlockSpec:
+            state_transition = staticmethod(process)
+
+        state_transition.run_sanity_blocks_case(BlockSpec, None, [object()], None)
+
+
+def test_invalid_transition_does_not_hide_other_ssz_errors():
+    def process(state):
+        raise SSZValueError(ValueFault.NOT_A_BIT, value=2)
+
+    with pytest.raises(SSZValueError, match="boolean"):
+        state_transition.run_processing_case(process, None, None, None)
+
+
+def test_valid_transition_does_not_hide_uint64_range_error():
+    def process(state):
+        spec = spec_targets["minimal"]["gloas"]
+        return spec.Uint64(0) - 1
+
+    with pytest.raises(SSZValueError):
+        state_transition.run_processing_case(process, None, None, object())
 
 
 @pytest.mark.parametrize(

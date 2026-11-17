@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from frozendict import deepfreeze
+from ssz.exceptions import SSZValueError, ValueFault
 
 from eth_consensus_specs.test.context import (
     expect_assertion_error,
@@ -208,7 +209,7 @@ def run_sanity_blocks_case(spec, state, blocks, expected_post):
             spec.state_transition(state, block, validate_result=True)
 
     if expected_post is None:
-        expect_assertion_error(run_blocks)
+        expect_invalid_transition(run_blocks)
     else:
         run_blocks()
         assert state.hash_tree_root() == expected_post.hash_tree_root()
@@ -231,8 +232,16 @@ def run_processing_case(process_fn, state, operation, expected_post, extra_args=
             process_fn(state, operation, *extra_args)
 
     if expected_post is None:
-        expect_assertion_error(run_processing)
+        expect_invalid_transition(run_processing)
         return
 
     run_processing()
     assert state == expected_post
+
+
+def expect_invalid_transition(process):
+    try:
+        expect_assertion_error(process)
+    except SSZValueError as error:
+        if error.fault != ValueFault.RANGE:
+            raise
