@@ -16,6 +16,39 @@ from . import fork_choice, state_transition
 from .discovery import VectorCase
 
 
+@pytest.mark.parametrize("fork", ["bellatrix", "capella", "deneb", "electra", "fulu"])
+def test_execution_payload_replay_uses_engine_result(tmp_path, fork):
+    spec = spec_targets["minimal"][fork]
+    pre = create_genesis_state(spec, [spec.MAX_EFFECTIVE_BALANCE] * 64, spec.MAX_EFFECTIVE_BALANCE)
+    body = spec.BeaconBlockBody(
+        execution_payload=spec.ExecutionPayload(
+            parent_hash=pre.latest_execution_payload_header.block_hash,
+            prev_randao=spec.get_randao_mix(pre, spec.get_current_epoch(pre)),
+            timestamp=spec.compute_time_at_slot(pre.genesis_time, pre.slot),
+        )
+    )
+    post = pre.copy()
+    spec.process_execution_payload(post, body, spec.NoopExecutionEngine())
+    for name, value in (("pre", pre), ("body", body), ("post", post)):
+        (tmp_path / f"{name}.ssz_snappy").write_bytes(snappy.compress(value.encode_bytes()))
+    case = VectorCase("minimal", fork, "operations", "execution_payload", "main", tmp_path)
+    execution_path = tmp_path / "execution.yaml"
+    execution_path.write_text("execution_valid: true\n")
+    state_transition.run_test(case)
+
+    execution_path.write_text("execution_valid: false\n")
+    with pytest.raises(AssertionError):
+        state_transition.run_test(case)
+    (tmp_path / "post.ssz_snappy").unlink()
+    state_transition.run_test(case)
+    execution_path.write_text("execution_valid: true\n")
+    with pytest.raises(AssertionError, match="expected an assertion error, but got none"):
+        state_transition.run_test(case)
+    execution_path.write_text("execution_valid: invalid\n")
+    with pytest.raises(ValueError, match="boolean execution_valid"):
+        state_transition.run_test(case)
+
+
 @pytest.mark.parametrize("case_type", ["processing", "blocks"])
 @pytest.mark.parametrize("direction", ["overflow", "underflow"])
 def test_invalid_transition_accepts_uint64_range_error(case_type, direction):
@@ -29,6 +62,7 @@ def test_invalid_transition_accepts_uint64_range_error(case_type, direction):
     if case_type == "processing":
         state_transition.run_processing_case(process, None, None, None)
     else:
+
         class BlockSpec:
             state_transition = staticmethod(process)
 

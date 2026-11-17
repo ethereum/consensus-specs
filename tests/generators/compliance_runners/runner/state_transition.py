@@ -30,6 +30,7 @@ OPERATION_PROCESSORS = {
     "builder_exit_request": "process_builder_exit_request",
     "consolidation_request": "process_consolidation_request",
     "deposit_request": "process_deposit_request",
+    "execution_payload": "process_execution_payload",
     "execution_payload_bid": "process_execution_payload_bid",
     "parent_execution_payload": "process_parent_execution_payload",
     "payload_attestation": "process_payload_attestation",
@@ -182,6 +183,21 @@ def run_test(test_info: VectorCase):
             extra_args = ()
             if handler == "attestation" and is_post_gloas(spec):
                 extra_args = (spec.Slot(test_case["meta"]["parent_slot"]),)
+            if handler == "execution_payload":
+                if test_case["operation"] is None:
+                    raise ValueError("execution_payload case is missing body.ssz_snappy")
+                execution = read_yaml(test_dir / "execution.yaml")
+                if (
+                    not isinstance(execution, dict)
+                    or type(execution.get("execution_valid")) is not bool
+                ):
+                    raise ValueError("execution.yaml requires a boolean execution_valid")
+
+                class TestExecutionEngine(spec.NoopExecutionEngine):
+                    def verify_and_notify_new_payload(self, new_payload_request):
+                        return execution["execution_valid"]
+
+                extra_args = (TestExecutionEngine(),)
             run_processing_case(
                 process_fn,
                 state,
