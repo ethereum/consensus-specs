@@ -30,6 +30,8 @@ payload-attestation conversion in `payload_attestation.py` with replay.
 
 State-transition replay applies `config.yaml`, when present, to an isolated copy
 of the case's preset/fork spec. Cases without it use the default configuration.
+Execution-payload operation vectors use `body.ssz_snappy` and the
+`execution_valid` result in `execution.yaml` to simulate the execution engine.
 
 Run the runner's regression tests without supplying vector directories:
 

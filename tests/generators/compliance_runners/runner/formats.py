@@ -7,6 +7,7 @@ OPERATION_INPUTS = {
     "builder_exit_request": ("builder_exit_request", "BuilderExitRequest"),
     "consolidation_request": ("consolidation_request", "ConsolidationRequest"),
     "deposit_request": ("deposit_request", "DepositRequest"),
+    "execution_payload": ("body", "BeaconBlockBody"),
     "execution_payload_bid": ("execution_payload_bid", "SignedExecutionPayloadBid"),
     "parent_execution_payload": ("block", "BeaconBlock"),
     "payload_attestation": ("payload_attestation", "PayloadAttestation"),
