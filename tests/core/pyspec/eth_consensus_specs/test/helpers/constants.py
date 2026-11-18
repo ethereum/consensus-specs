@@ -49,7 +49,7 @@ ALL_PHASES = (
 # The forks that have light client specs
 LIGHT_CLIENT_TESTING_FORKS = [item for item in MAINNET_FORKS if item != PHASE0] + [GLOAS]
 # The forks that output to the test vectors.
-TESTGEN_FORKS = (*MAINNET_FORKS, GLOAS, HEZE)
+TESTGEN_FORKS = (*MAINNET_FORKS, GLOAS, HEZE, PQ)
 # Forks allowed in the test runner `--fork` flag, to fail fast in case of typos
 ALLOWED_TEST_RUNNER_FORKS = ALL_PHASES
 
