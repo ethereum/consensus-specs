@@ -20,7 +20,7 @@ from eth_consensus_specs.test.helpers.execution_payload import (
     build_randomized_execution_payload,
     compute_el_block_hash_for_block,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_fulu, is_post_gloas
+from eth_consensus_specs.test.helpers.forks import is_post_fulu, is_post_gloas, is_post_pq
 from eth_consensus_specs.test.helpers.genesis import build_mock_builder
 from eth_consensus_specs.test.helpers.inactivity_scores import (
     randomize_inactivity_scores,
@@ -37,6 +37,10 @@ from eth_consensus_specs.test.helpers.payload_attestation import get_random_payl
 from eth_consensus_specs.test.helpers.random import (
     patch_state_to_non_leaking,
     randomize_state as randomize_state_helper,
+)
+from eth_consensus_specs.test.helpers.signatures import (
+    get_execution_payload_bid_signature,
+    get_placeholder_signature,
 )
 from eth_consensus_specs.test.helpers.state import (
     ensure_state_has_validators_across_lifecycle,
@@ -158,6 +162,17 @@ def randomize_state_heze(spec, state, stats, exit_fraction=0.1, slash_fraction=0
     return scenario_state
 
 
+def randomize_state_pq(spec, state, stats, exit_fraction=0.1, slash_fraction=0.1):
+    scenario_state = randomize_state_gloas(
+        spec,
+        state,
+        stats,
+        exit_fraction=exit_fraction,
+        slash_fraction=slash_fraction,
+    )
+    return scenario_state
+
+
 # epochs
 
 
@@ -202,7 +217,7 @@ def no_block(_spec, _pre_state, _signed_blocks, _scenario_state):
 BLOCK_ATTEMPTS = 32
 
 
-def _warn_if_empty_operations(block):
+def _warn_if_empty_operations(spec, block):
     """
     NOTE: a block may be missing deposits depending on how many were created
     and already inserted into existing blocks in a given scenario.
@@ -216,7 +231,8 @@ def _warn_if_empty_operations(block):
     if len(block.body.attestations) == 0:
         warnings.warn(f"attestations missing in block at slot {block.slot}", stacklevel=2)
 
-    if len(block.body.voluntary_exits) == 0:
+    # Validators exit through execution requests after PQ
+    if not is_post_pq(spec) and len(block.body.voluntary_exits) == 0:
         warnings.warn(f"voluntary exits missing in block at slot {block.slot}", stacklevel=2)
 
 
@@ -257,7 +273,7 @@ def random_block(spec, state, signed_blocks, scenario_state):
             block = build_random_block_from_state_for_next_slot(
                 spec, state, deposits=deposits_for_block
             )
-            _warn_if_empty_operations(block)
+            _warn_if_empty_operations(spec, block)
             return block
     raise AssertionError("could not find a block with an unslashed proposer, check ``state`` input")
 
@@ -372,6 +388,20 @@ def random_block_heze(spec, state, signed_blocks, scenario_state, rng=None):
     if rng is None:
         rng = Random(3456)
     block = random_block_gloas(spec, state, signed_blocks, scenario_state, rng=rng)
+
+    return block
+
+
+def random_block_pq(spec, state, signed_blocks, scenario_state, rng=None):
+    if rng is None:
+        rng = Random(3456)
+
+    # Sync aggregates, BLS to execution changes and payload attestations are
+    # removed, and validators exit through execution requests
+    block = random_block(spec, state, signed_blocks, scenario_state)
+
+    # Add signed_execution_payload_bid
+    block.body.signed_execution_payload_bid = _build_random_signed_bid(spec, state, block, rng)
 
     return block
 
@@ -505,11 +535,11 @@ def _build_random_signed_bid(spec, state, block, rng):
     )
 
     if use_real_builder:
-        signature = spec.get_execution_payload_bid_signature(
-            state, bid, builder_privkeys[builder_index]
+        signature = get_execution_payload_bid_signature(
+            spec, state, bid, builder_privkeys[builder_index]
         )
     else:
-        signature = spec.G2_POINT_AT_INFINITY
+        signature = get_placeholder_signature(spec)
 
     return spec.SignedExecutionPayloadBid(message=bid, signature=signature)
 

@@ -43,6 +43,7 @@ from eth_consensus_specs.test.helpers.constants import (
     GLOAS,
     HEZE,
     PHASE0,
+    PQ,
 )
 from eth_consensus_specs.test.utils.randomized_block_tests import (
     epoch_transition,
@@ -59,6 +60,7 @@ from eth_consensus_specs.test.utils.randomized_block_tests import (
     random_block_fulu,
     random_block_gloas,
     random_block_heze,
+    random_block_pq,
     random_slot_in_epoch,
     randomize_state,
     randomize_state_altair,
@@ -69,6 +71,7 @@ from eth_consensus_specs.test.utils.randomized_block_tests import (
     randomize_state_fulu,
     randomize_state_gloas,
     randomize_state_heze,
+    randomize_state_pq,
     slot_transition,
     transition_to_leaking,
     transition_with_random_block,
@@ -112,6 +115,8 @@ class ForkConfig:
     name: str
     state_randomizer: Callable[..., Any]
     block_randomizer: Callable[..., Any]
+    # XMSS signing is stubbed, so forks with XMSS run without real signatures
+    bls_decorator: str = "always_bls"
 
 
 class ScenarioGenerator:
@@ -222,7 +227,7 @@ from eth_consensus_specs.test.context import (
     only_generator,
 )
 from eth_consensus_specs.test.context import (
-    always_bls,
+    {bls_decorator},
     spec_test,
     with_custom_state,
     single_phase,
@@ -240,7 +245,7 @@ from eth_consensus_specs.test.utils.randomized_block_tests import (
 )
 @spec_test
 @single_phase
-@always_bls
+@{bls_decorator}
 def test_randomized_{index}(spec, state):
     # scenario as high-level, informal text:
 {name_as_comment}
@@ -251,16 +256,19 @@ def test_randomized_{index}(spec, state):
         scenario,
     )"""
 
-    def __init__(self, fork_name: str, state_randomizer_name: str) -> None:
+    def __init__(self, fork_name: str, state_randomizer_name: str, bls_decorator: str) -> None:
         self._fork_name = fork_name
         self._state_randomizer_name = state_randomizer_name
+        self._bls_decorator = bls_decorator
 
     def render(self, scenarios: list[ScenarioDict]) -> str:
         """Render all scenarios to a complete test file."""
         parts: list[str] = []
 
         # Add imports
-        imports = self.IMPORTS_TEMPLATE.format(phase=self._fork_name.upper())
+        imports = self.IMPORTS_TEMPLATE.format(
+            phase=self._fork_name.upper(), bls_decorator=self._bls_decorator
+        )
         parts.append(imports)
 
         # Add each test
@@ -285,6 +293,7 @@ def test_randomized_{index}(spec, state):
 
         return self.TEST_TEMPLATE.format(
             phase=self._fork_name.upper(),
+            bls_decorator=self._bls_decorator,
             index=index,
             name_as_comment=name_comment,
             scenario=scenario,
@@ -346,6 +355,12 @@ class RandomizedTestGenerator:
             state_randomizer=randomize_state_heze,
             block_randomizer=random_block_heze,
         ),
+        PQ: ForkConfig(
+            name=PQ,
+            state_randomizer=randomize_state_pq,
+            block_randomizer=random_block_pq,
+            bls_decorator="never_bls",
+        ),
     }
 
     def __init__(self, fork: str) -> None:
@@ -365,6 +380,7 @@ class RandomizedTestGenerator:
         renderer = ScenarioRenderer(
             fork_name=self._config.name,
             state_randomizer_name=self._config.state_randomizer.__name__,
+            bls_decorator=self._config.bls_decorator,
         )
 
         return renderer.render(scenarios)
