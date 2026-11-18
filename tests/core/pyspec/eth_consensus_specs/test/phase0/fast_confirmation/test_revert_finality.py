@@ -3,8 +3,13 @@ from eth_consensus_specs.test.context import (
     never_bls,
     only_generator,
     spec_state_test,
+    with_all_phases_from_except,
     with_altair_and_later,
     with_presets,
+)
+from eth_consensus_specs.test.helpers.constants import (
+    ALTAIR,
+    PQ,
 )
 from eth_consensus_specs.test.helpers.fast_confirmation import (
     Attesting,
@@ -386,7 +391,7 @@ def test_fcr_reverts_to_finalized_when_confirmed_not_canonical_mid_epoch(spec, s
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -576,7 +581,7 @@ def test_reset_to_finality_but_no_restart_to_gu_because_gu_too_old_epoch(spec, s
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls

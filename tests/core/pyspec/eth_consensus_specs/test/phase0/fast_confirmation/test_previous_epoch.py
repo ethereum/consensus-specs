@@ -5,8 +5,13 @@ from eth_consensus_specs.test.context import (
     never_bls,
     only_generator,
     spec_state_test,
+    with_all_phases_from_except,
     with_altair_and_later,
     with_presets,
+)
+from eth_consensus_specs.test.helpers.constants import (
+    ALTAIR,
+    PQ,
 )
 from eth_consensus_specs.test.helpers.fast_confirmation import (
     AdvanceSlot,
@@ -1126,7 +1131,7 @@ def test_fcr_previous_epoch_017(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -1145,7 +1150,7 @@ def test_fcr_previous_epoch_018(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -1164,7 +1169,7 @@ def test_fcr_previous_epoch_019(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -1297,7 +1302,7 @@ def test_fcr_previous_epoch_026(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -1316,7 +1321,7 @@ def test_fcr_previous_epoch_027(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -1335,7 +1340,7 @@ def test_fcr_previous_epoch_028(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -1506,7 +1511,7 @@ def test_fcr_previous_epoch_037(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -1525,7 +1530,7 @@ def test_fcr_previous_epoch_038(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -1544,7 +1549,7 @@ def test_fcr_previous_epoch_039(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -1715,7 +1720,7 @@ def test_fcr_previous_epoch_048(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -1734,7 +1739,7 @@ def test_fcr_previous_epoch_049(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -1753,7 +1758,7 @@ def test_fcr_previous_epoch_050(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -1848,7 +1853,7 @@ def test_fcr_previous_epoch_055(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -1867,7 +1872,7 @@ def test_fcr_previous_epoch_056(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -1886,7 +1891,7 @@ def test_fcr_previous_epoch_057(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -1981,7 +1986,7 @@ def test_fcr_previous_epoch_062(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -2000,7 +2005,7 @@ def test_fcr_previous_epoch_063(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -2019,7 +2024,7 @@ def test_fcr_previous_epoch_064(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -2114,7 +2119,7 @@ def test_fcr_previous_epoch_069(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -2133,7 +2138,7 @@ def test_fcr_previous_epoch_070(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -2152,7 +2157,7 @@ def test_fcr_previous_epoch_071(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -2247,7 +2252,7 @@ def test_fcr_previous_epoch_076(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -2266,7 +2271,7 @@ def test_fcr_previous_epoch_077(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
@@ -2285,7 +2290,7 @@ def test_fcr_previous_epoch_078(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls

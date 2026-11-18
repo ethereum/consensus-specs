@@ -8,10 +8,16 @@ from eth_consensus_specs.test.context import (
     single_phase,
     spec_state_test,
     spec_test,
+    with_all_phases_from_except,
     with_altair_and_later,
     with_custom_state,
     with_electra_and_later,
     with_presets,
+)
+from eth_consensus_specs.test.helpers.constants import (
+    ALTAIR,
+    ELECTRA,
+    PQ,
 )
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_deposit_request,
@@ -1125,7 +1131,7 @@ def test_is_one_confirmed_large_validator_voting_in_empty_slot(spec, state):
 
 
 @only_generator("too slow")
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=default_balances,
@@ -1284,7 +1290,7 @@ _consecutive_slots_val_idx = 35
 
 
 @only_generator("too slow")
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(
@@ -1352,7 +1358,7 @@ def test_is_one_confirmed_with_empty_slot_and_attester_in_two_consecutive_slots_
 
 
 @only_generator("too slow")
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(
@@ -1426,7 +1432,7 @@ def test_is_one_confirmed_with_empty_slot_and_attester_in_two_consecutive_slots_
 
 
 @only_generator("too slow")
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(
@@ -1516,7 +1522,7 @@ def test_is_one_confirmed_passes_with_precise_committee_weight(spec, state):
 
 
 @only_generator("too slow")
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=(
@@ -1912,7 +1918,7 @@ def test_compute_committee_weight_between_slots_matches_fork_choice_weight_withi
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=misc_balances,
@@ -1940,7 +1946,7 @@ def test_compute_committee_weight_between_slots_matches_fork_choice_weight_acros
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=misc_balances,
@@ -1960,7 +1966,7 @@ def test_compute_committee_weight_between_slots_matches_fork_choice_weight_full_
 
 
 @only_generator("too slow")
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @with_presets([MINIMAL], reason="too slow")
 @with_custom_state(
     balances_fn=default_balances,

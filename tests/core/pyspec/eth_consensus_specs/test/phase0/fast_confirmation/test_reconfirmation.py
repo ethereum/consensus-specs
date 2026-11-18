@@ -3,8 +3,13 @@ from eth_consensus_specs.test.context import (
     never_bls,
     only_generator,
     spec_state_test,
+    with_all_phases_from_except,
     with_altair_and_later,
     with_presets,
+)
+from eth_consensus_specs.test.helpers.constants import (
+    ALTAIR,
+    PQ,
 )
 from eth_consensus_specs.test.helpers.fast_confirmation import (
     Attesting,
@@ -111,7 +116,7 @@ def test_reconfirmation_passes_with_empty_slots_prior_first_block(spec, state):
 
 
 @only_generator("too slow")
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 @never_bls
