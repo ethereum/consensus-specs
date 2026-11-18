@@ -112,9 +112,17 @@ def test_process_validator_pq_registration_request__exited_validator(spec, state
     spec.initiate_validator_exit(state, 0)
     request = prepare_validator_pq_registration_request(spec, state, 0, b"\x22" * 64)
 
-    yield from run_validator_pq_registration_request_processing(spec, state, request)
+    yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
 
-    assert len(state.validator_pq_registrations) == 1
+
+@with_phases([EIP8483])
+@spec_state_test
+def test_process_validator_pq_registration_request__slashed_validator(spec, state):
+    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    spec.slash_validator(state, 0)
+    request = prepare_validator_pq_registration_request(spec, state, 0, b"\x22" * 64)
+
+    yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
 
 
 @with_phases([EIP8483])
