@@ -1,6 +1,5 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
-    with_all_phases_from_except,
     with_gloas_and_later,
     with_presets,
 )
@@ -11,8 +10,7 @@ from eth_consensus_specs.test.helpers.attestations import (
     sign_attestation,
 )
 from eth_consensus_specs.test.helpers.block import apply_empty_block
-from eth_consensus_specs.test.helpers.constants import GLOAS, MINIMAL, PQ
-from eth_consensus_specs.test.helpers.forks import is_post_pq
+from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     next_slots,
@@ -410,7 +408,7 @@ def test_same_slot_attestation_ignores_payload_availability(spec, state):
     assert spec.has_flag(final_participation, spec.TIMELY_HEAD_FLAG_INDEX)
 
 
-@with_all_phases_from_except(GLOAS, [PQ])
+@with_gloas_and_later
 @spec_state_test
 def test_matching_payload_gets_head_flag(spec, state):
     """
@@ -449,7 +447,7 @@ def test_matching_payload_gets_head_flag(spec, state):
     assert final_head_flag, "Should have head flag when data.index matches payload availability bit"
 
 
-@with_all_phases_from_except(GLOAS, [PQ])
+@with_gloas_and_later
 @spec_state_test
 def test_mismatched_payload_no_head_flag(spec, state):
     """
@@ -484,7 +482,7 @@ def test_mismatched_payload_no_head_flag(spec, state):
     assert not final_head_flag, "Should not get head flag when payload doesn't match"
 
 
-@with_all_phases_from_except(GLOAS, [PQ])
+@with_gloas_and_later
 @with_presets([MINIMAL], reason="too slow")
 @spec_state_test
 def test_old_attested_block_gets_head_flag(spec, state):
@@ -548,17 +546,12 @@ def test_builder_payment_weight_tracking_previous_epoch(spec, state):
     assert attestation.data.target.epoch == spec.get_previous_epoch(state)
 
     attester = spec.get_beacon_committee(state, attestation_slot, 0)[0]
-    if is_post_pq(spec):
-        expected_flag_indices = spec.get_attestation_participation_flag_indices(
-            state, attestation.data, state.slot - attestation.data.slot
-        )
-    else:
-        expected_flag_indices = spec.get_attestation_participation_flag_indices(
-            state,
-            attestation.data,
-            state.slot - attestation.data.slot,
-            state.latest_block_header.slot,
-        )
+    expected_flag_indices = spec.get_attestation_participation_flag_indices(
+        state,
+        attestation.data,
+        state.slot - attestation.data.slot,
+        state.latest_block_header.slot,
+    )
     pre_prev_flags = state.previous_epoch_participation[attester]
     pre_curr_flags = state.current_epoch_participation[attester]
 

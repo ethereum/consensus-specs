@@ -125,7 +125,7 @@ def get_parent_slot(state):
 
 
 def process_attestation(spec, state, attestation):
-    if is_post_gloas(spec) and not is_post_pq(spec):
+    if is_post_gloas(spec):
         spec.process_attestation(state, attestation, get_parent_slot(state))
     else:
         spec.process_attestation(state, attestation)

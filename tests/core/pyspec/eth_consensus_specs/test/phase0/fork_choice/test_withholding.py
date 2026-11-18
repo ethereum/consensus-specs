@@ -181,8 +181,9 @@ def test_withholding_attack_unviable_honest_chain(spec, state):
     next_epoch(spec, state)
     assert spec.compute_epoch_at_slot(state.slot) == 6
     assert state.current_justified_checkpoint.epoch == 3
-    # Create two blocks in the honest chain with full attestations, and add to the store
-    for _ in range(2):
+    # Create blocks in the honest chain with full attestations, until they include
+    # votes for the honest chain, and add them to the store
+    for _ in range(1 + get_min_attestation_inclusion_delay(spec)):
         signed_block = state_transition_with_full_block(
             spec, state, fill_cur_epoch=True, fill_prev_epoch=False
         )

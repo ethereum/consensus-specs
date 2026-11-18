@@ -69,7 +69,7 @@ def test_timely_attestation_for_grandparent_uses_its_payload_availability(spec, 
     yield "post", state
 
     assert block_4.slot - attestation_slot == spec.MIN_ATTESTATION_INCLUSION_DELAY_PQ
-    assert state.execution_payload_availability[attestation_slot % spec.SLOTS_PER_HISTORICAL_ROOT]
+    assert state.execution_payload_availability[block_1.slot % spec.SLOTS_PER_HISTORICAL_ROOT]
     assert not state.execution_payload_availability[block_3.slot % spec.SLOTS_PER_HISTORICAL_ROOT]
 
     matching_indices = spec.get_attesting_indices(state, matching_attestation)

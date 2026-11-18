@@ -94,6 +94,7 @@
     - [Modified `get_indexed_attestation`](#modified-get_indexed_attestation)
     - [New `get_aggregation_committee`](#new-get_aggregation_committee)
     - [New `get_attestation_statements`](#new-get_attestation_statements)
+    - [New `get_latest_block_slot`](#new-get_latest_block_slot)
     - [New `get_validator_preregistration_index`](#new-get_validator_preregistration_index)
     - [New `get_active_validator_preregistration`](#new-get_active_validator_preregistration)
     - [New `get_builder_preregistration_index`](#new-get_builder_preregistration_index)
@@ -1154,17 +1155,16 @@ def is_valid_indexed_attestation(
 #### Modified `get_attestation_participation_flag_indices`
 
 *Note*: With an inclusion delay of two slots, the block that a timely
-attestation votes for need not be the parent block. Its payload availability is
-instead looked up at `data.slot`, which `apply_parent_execution_payload` also
-sets for the slots skipped after a block.
+attestation votes for may be the grandparent of the block being processed. Its
+payload availability is looked up at its own slot, which `get_latest_block_slot`
+finds.
 
 ```python
 def get_attestation_participation_flag_indices(
     state: BeaconState,
     data: AttestationData,
     inclusion_delay: Uint64,
-    # [Modified in PQ]
-    # Removed `parent_slot`
+    parent_slot: Slot,
 ) -> Sequence[int]:
     """
     Return the flag indices that are satisfied by an attestation.
@@ -1186,7 +1186,8 @@ def get_attestation_participation_flag_indices(
         payload_matches = True
     else:
         # [Modified in PQ]
-        slot_index = data.slot % SLOTS_PER_HISTORICAL_ROOT
+        block_slot = get_latest_block_slot(state, data.slot, parent_slot)
+        slot_index = block_slot % SLOTS_PER_HISTORICAL_ROOT
         payload_index = state.execution_payload_availability[slot_index]
         payload_matches = Uint64(data.index) == Uint64(payload_index)
 
@@ -1352,6 +1353,29 @@ def get_attestation_statements(
         )
         committee_offset += len(committee)
     return statements
+```
+
+#### New `get_latest_block_slot`
+
+*Note*: Block roots are only kept for `SLOTS_PER_HISTORICAL_ROOT` slots, so the
+search stops at the oldest one kept.
+
+```python
+def get_latest_block_slot(state: BeaconState, slot: Slot, parent_slot: Slot) -> Slot:
+    """
+    Return the slot of the latest block at or before ``slot``, where
+    ``parent_slot`` is the slot of the parent of the block being processed.
+    """
+    if parent_slot <= slot:
+        return parent_slot
+    block_root = get_block_root_at_slot(state, slot)
+    while (
+        slot > 0
+        and slot + SLOTS_PER_HISTORICAL_ROOT > state.slot
+        and get_block_root_at_slot(state, Slot(slot - 1)) == block_root
+    ):
+        slot = Slot(slot - 1)
+    return slot
 ```
 
 #### New `get_validator_preregistration_index`
@@ -1676,14 +1700,14 @@ issued, which lowers issuance by `SYNC_REWARD_WEIGHT / WEIGHT_DENOMINATOR`.
 
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
+    parent_slot = state.latest_block_header.slot
     process_parent_execution_payload(state, block)
     process_block_header(state, block)
     process_withdrawals(state)
     process_execution_payload_bid(state, block.body.signed_execution_payload_bid)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    # [Modified in PQ]
-    process_operations(state, block.body)
+    process_operations(state, block.body, parent_slot)
     # [Modified in PQ]
     # Removed `process_sync_aggregate`
 ```
@@ -1853,12 +1877,7 @@ def process_execution_payload_bid(
 ##### Modified `process_operations`
 
 ```python
-def process_operations(
-    state: BeaconState,
-    body: BeaconBlockBody,
-    # [Modified in PQ]
-    # Removed `parent_slot`
-) -> None:
+def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: Slot) -> None:
     assert len(body.deposits) == 0
 
     def for_ops(operations: Sequence[Any], fn: Callable[..., None], *args: Any) -> None:
@@ -1878,8 +1897,7 @@ def process_operations(
 
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
-    # [Modified in PQ]
-    for_ops(body.attestations, process_attestation)
+    for_ops(body.attestations, process_attestation, parent_slot)
     # [New in PQ]
     process_stark(state, body)
     # [Modified in PQ]
@@ -1945,8 +1963,7 @@ verifies the signatures of all attestations in the block instead.
 def process_attestation(
     state: BeaconState,
     attestation: Attestation,
-    # [Modified in PQ]
-    # Removed `parent_slot`
+    parent_slot: Slot,
 ) -> None:
     data = attestation.data
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
@@ -1972,9 +1989,8 @@ def process_attestation(
     assert len(attestation.aggregation_bits) == committee_offset
 
     # Participation flag indices
-    # [Modified in PQ]
     participation_flag_indices = get_attestation_participation_flag_indices(
-        state, data, state.slot - data.slot
+        state, data, state.slot - data.slot, parent_slot
     )
 
     if data.target.epoch == get_current_epoch(state):
@@ -2531,9 +2547,7 @@ def process_voluntary_exit_request(state: BeaconState, request: VoluntaryExitReq
 *Note*: This function queues the builder payment, processes the parent's
 execution requests, updates payload availability, and updates the latest block
 hash. It is called by `process_parent_execution_payload` during block processing
-and by the validator during block production before computing withdrawals. The
-payload availability of the parent is also set for the slots skipped since the
-parent, whose block roots are the parent's.
+and by the validator during block production before computing withdrawals.
 
 ```python
 def apply_parent_execution_payload(
@@ -2603,9 +2617,7 @@ def apply_parent_execution_payload(
     # [New in PQ]
     for_ops(requests.voluntary_exits, process_voluntary_exit_request)
 
-    # [Modified in PQ]
     # Update parent payload availability and latest block hash
-    for slot in range(parent_slot, state.slot):
-        state.execution_payload_availability[slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
+    state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
     state.latest_block_hash = parent_bid.block_hash
 ```

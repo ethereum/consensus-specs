@@ -194,7 +194,7 @@ def process_and_sign_block_without_header_validations(spec, state, block):
     spec.process_randao(state, block.body)
     if not is_post_heze(spec):
         spec.process_eth1_data(state, block.body)
-    if is_post_gloas(spec) and not is_post_pq(spec):
+    if is_post_gloas(spec):
         spec.process_operations(state, block.body, parent_slot)
     else:
         spec.process_operations(state, block.body)

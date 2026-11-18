@@ -33,7 +33,6 @@ from eth_consensus_specs.test.helpers.constants import PQ
 from eth_consensus_specs.test.helpers.execution_requests import (
     get_non_empty_execution_requests,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_pq
 from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
 from eth_consensus_specs.test.helpers.multi_operations import (
     get_random_attestations,
@@ -983,11 +982,7 @@ def test_attestations_after_missed_slot_use_applied_parent_payload_availability(
     assert not spec.is_attestation_same_slot(state, matching_attestation.data)
     assert not spec.is_attestation_same_slot(state, mismatching_attestation.data)
     assert state.execution_payload_availability[parent_slot_index]
-    if is_post_pq(spec):
-        # The parent's availability is also set for the slots skipped since it
-        assert state.execution_payload_availability[attestation_slot_index]
-    else:
-        assert not state.execution_payload_availability[attestation_slot_index]
+    assert not state.execution_payload_availability[attestation_slot_index]
 
     for validator_index in matching_indices:
         assert spec.has_flag(

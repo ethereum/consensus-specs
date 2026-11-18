@@ -3,10 +3,7 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_phases,
 )
-from eth_consensus_specs.test.helpers.block import (
-    build_empty_block,
-    build_empty_block_for_next_slot,
-)
+from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.constants import PQ
 from eth_consensus_specs.test.helpers.deposits import prepare_deposit_request
 from eth_consensus_specs.test.helpers.keys import privkeys, pubkeys, xmss_builder_pubkeys
@@ -16,10 +13,7 @@ from eth_consensus_specs.test.helpers.preregistrations import (
     builder_preregistration_withdrawal_credentials,
     preregistration_withdrawal_credentials,
 )
-from eth_consensus_specs.test.helpers.withdrawals import (
-    set_parent_block_empty,
-    set_parent_block_full,
-)
+from eth_consensus_specs.test.helpers.withdrawals import set_parent_block_full
 
 FRESH_INDEX = len(privkeys) - 1
 
@@ -206,56 +200,3 @@ def test_invalid_too_many_voluntary_exit_requests(spec, state):
     )
 
     yield from run_parent_execution_payload_processing(spec, state, requests, valid=False)
-
-
-def run_parent_payload_after_skipped_slots(spec, state, skipped_slots):
-    """
-    Process the parent payload of a block ``skipped_slots`` slots after the
-    next slot, returning the slot of the parent block.
-    """
-    parent_slot = state.latest_block_header.slot
-    block = build_empty_block(spec, state, slot=state.slot + 1 + skipped_slots)
-    spec.process_slots(state, block.slot)
-
-    yield "pre", state
-    yield "block", block
-
-    spec.process_parent_execution_payload(state, block)
-
-    yield "post", state
-
-    return parent_slot
-
-
-@with_phases([PQ])
-@spec_state_test
-def test_full_parent_payload_availability_set_for_skipped_slots(spec, state):
-    """
-    Test that the payload availability of a full parent is also set for the
-    slots skipped since the parent.
-    """
-    set_parent_block_full(spec, state)
-    state.latest_execution_payload_bid.execution_requests_root = spec.hash_tree_root(
-        spec.ExecutionRequests()
-    )
-
-    parent_slot = yield from run_parent_payload_after_skipped_slots(spec, state, 2)
-
-    for slot in range(parent_slot, state.slot):
-        assert state.execution_payload_availability[slot % spec.SLOTS_PER_HISTORICAL_ROOT]
-    assert not state.execution_payload_availability[state.slot % spec.SLOTS_PER_HISTORICAL_ROOT]
-
-
-@with_phases([PQ])
-@spec_state_test
-def test_empty_parent_payload_availability_unset_for_skipped_slots(spec, state):
-    """
-    Test that the payload availability of an empty parent stays unset for the
-    slots skipped since the parent.
-    """
-    set_parent_block_empty(spec, state)
-
-    parent_slot = yield from run_parent_payload_after_skipped_slots(spec, state, 2)
-
-    for slot in range(parent_slot + 1, state.slot + 1):
-        assert not state.execution_payload_availability[slot % spec.SLOTS_PER_HISTORICAL_ROOT]
