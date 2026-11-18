@@ -207,7 +207,7 @@ def test_process_execution_payload_bid_inactive_builder_deposit_not_finalized(sp
     """
     Test inactive builder fails
     """
-    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+    _, builder_index = prepare_block_with_non_proposer_builder(spec, state)
 
     # Set the builder's deposit epoch as a non-finalized (future) epoch
     state.builders[builder_index].deposit_epoch = spec.get_current_epoch(state) + 1
@@ -218,6 +218,10 @@ def test_process_execution_payload_bid_inactive_builder_deposit_not_finalized(sp
     value = spec.Gwei(1000000)
     required_balance = value + spec.MIN_DEPOSIT_AMOUNT
     state.builders[builder_index].balance = required_balance
+
+    # Build the block after changing the builder, so its parent root sees the
+    # changed state and the parent root check passes.
+    block = build_empty_block_for_next_slot(spec, state)
 
     # Create bid with this non-proposer builder
     signed_bid = prepare_signed_execution_payload_bid(
@@ -240,7 +244,7 @@ def test_process_execution_payload_bid_inactive_builder_exiting(spec, state):
     """
     Test inactive builder fails
     """
-    block, builder_index = prepare_block_with_non_proposer_builder(spec, state)
+    _, builder_index = prepare_block_with_non_proposer_builder(spec, state)
 
     # Initiate builder exit by setting its withdrawable epoch
     state.builders[builder_index].withdrawable_epoch = spec.get_current_epoch(state)
@@ -250,6 +254,10 @@ def test_process_execution_payload_bid_inactive_builder_exiting(spec, state):
     value = spec.Gwei(1000000)
     required_balance = value + spec.MIN_DEPOSIT_AMOUNT
     state.builders[builder_index].balance = required_balance
+
+    # Build the block after changing the builder, so its parent root sees the
+    # changed state and the parent root check passes.
+    block = build_empty_block_for_next_slot(spec, state)
 
     # Create bid with this non-proposer builder
     signed_bid = prepare_signed_execution_payload_bid(
@@ -309,25 +317,10 @@ def test_process_execution_payload_bid_self_build_non_zero_value(spec, state):
     """
     Test self-builder with non-zero value fails (builder_index == BUILDER_INDEX_SELF_BUILD but value > 0)
     """
-    block = build_empty_block_for_next_slot(spec, state)
-    kzg_list = spec.BlobKZGCommitments()
-
-    bid = spec.ExecutionPayloadBid(
-        parent_block_hash=state.latest_block_hash,
-        parent_block_root=block.parent_root,
-        block_hash=spec.Hash32(),
-        fee_recipient=spec.ExecutionAddress(),
-        gas_limit=spec.Uint64(30000000),
-        builder_index=spec.BUILDER_INDEX_SELF_BUILD,
-        slot=block.slot,
-        value=spec.Gwei(1),
-        blob_kzg_commitments=spec.BlobKZGCommitments(data=kzg_list),
-        execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
-    )
-
-    # Sign the bid
-    signed_bid = spec.SignedExecutionPayloadBid(
-        message=bid, signature=spec.bls.G2_POINT_AT_INFINITY
+    # The helper advances the state to the bid's slot, so the value is the
+    # only thing wrong with the bid.
+    block, signed_bid = prepare_block_with_execution_payload_bid(
+        spec, state, value=spec.Gwei(1), valid_amount=False
     )
 
     block.body.signed_execution_payload_bid = signed_bid
