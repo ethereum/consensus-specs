@@ -433,11 +433,7 @@ def test_gossip_beacon_aggregate_and_proof__ignore_already_seen_aggregate(spec, 
         **kwargs,
     )
     assert result == "ignore"
-    if is_post_pq(spec):
-        # The aggregator rule runs before the attesting balance rule
-        assert reason == "already seen aggregate for this epoch and aggregator"
-    else:
-        assert reason == "already seen aggregate for this data"
+    assert reason == "already seen aggregate for this data"
     messages.append(
         {
             "current_time_ms": int(current_time_ms),
@@ -563,8 +559,7 @@ def test_gossip_beacon_aggregate_and_proof__valid_two_aggregators_same_data(spec
     """
     Test that two valid aggregates with the same data root but from different
     aggregators both pass validation (covering the case where aggregate_data_root
-    is already in seen.aggregate_data_roots). The second has more attesters but
-    is not a superset of the first, so it passes the dedup rule of every fork.
+    is already in seen.aggregate_data_roots).
     """
     anchor_state = state.copy()
     yield "topic", "meta", "beacon_aggregate_and_proof"
@@ -581,8 +576,8 @@ def test_gossip_beacon_aggregate_and_proof__valid_two_aggregators_same_data(spec
 
     next_slot(spec, state)
 
-    # Create two attestations whose aggregation bits are not supersets of each
-    # other, the second with more attesters
+    # Create two attestations with different single-participant aggregation bits
+    # so neither is a superset of the other
     att_1 = get_valid_attestation(
         spec,
         state,
@@ -595,9 +590,8 @@ def test_gossip_beacon_aggregate_and_proof__valid_two_aggregators_same_data(spec
         state,
         signed=True,
         beacon_block_root=anchor_root,
-        filter_participant_set=lambda participants: set(sorted(participants)[1:3]),
+        filter_participant_set=lambda participants: {sorted(participants)[1]},
     )
-    assert sum(bool(bit) for bit in att_2.aggregation_bits) == 2, "Need committee size > 2"
     committee = spec.get_beacon_committee(state, att_1.data.slot, att_1.data.index)
 
     # Find two different aggregators in the same committee
