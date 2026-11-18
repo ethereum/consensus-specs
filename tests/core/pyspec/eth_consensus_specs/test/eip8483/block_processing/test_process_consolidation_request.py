@@ -14,10 +14,7 @@ from eth_consensus_specs.test.electra.block_processing.test_process_consolidatio
     run_consolidation_processing,
 )
 from eth_consensus_specs.test.helpers.constants import EIP8483, MINIMAL
-from eth_consensus_specs.test.helpers.withdrawals import (
-    set_compounding_withdrawal_credential,
-    set_eth1_withdrawal_credential_with_balance,
-)
+from eth_consensus_specs.test.helpers.withdrawals import set_compounding_withdrawal_credential
 
 
 @with_phases([EIP8483])
@@ -35,7 +32,7 @@ def test_process_consolidation_request__removes_source_pq_registration(spec, sta
     source_index = spec.get_active_validator_indices(state, current_epoch)[0]
     target_index = spec.get_active_validator_indices(state, current_epoch)[1]
     source_address = b"\x22" * 20
-    set_eth1_withdrawal_credential_with_balance(spec, state, source_index, address=source_address)
+    set_compounding_withdrawal_credential(spec, state, source_index, address=source_address)
     set_compounding_withdrawal_credential(spec, state, target_index)
     spec.process_validator_pq_registration_request(
         state, prepare_validator_pq_registration_request(spec, state, source_index, b"\x33" * 64)

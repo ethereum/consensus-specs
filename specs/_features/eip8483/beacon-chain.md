@@ -436,8 +436,8 @@ def process_validator_pq_registration_request(
     if validator.exit_epoch != FAR_FUTURE_EPOCH:
         return
 
-    # Verify the validator has execution withdrawal credentials
-    if not has_execution_withdrawal_credential(validator):
+    # Verify the validator has compounding withdrawal credentials
+    if not has_compounding_withdrawal_credential(validator):
         return
 
     # Verify the request comes from the validator's withdrawal address
