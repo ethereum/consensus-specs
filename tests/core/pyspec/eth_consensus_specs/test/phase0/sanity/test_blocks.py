@@ -15,7 +15,10 @@ from eth_consensus_specs.test.context import (
     with_phases,
     with_presets,
 )
-from eth_consensus_specs.test.helpers.attestations import get_valid_attestation
+from eth_consensus_specs.test.helpers.attestations import (
+    get_min_attestation_inclusion_delay,
+    get_valid_attestation,
+)
 from eth_consensus_specs.test.helpers.attester_slashings import (
     get_indexed_attestation_participants,
     get_max_attester_slashings,
@@ -191,7 +194,7 @@ def process_and_sign_block_without_header_validations(spec, state, block):
     spec.process_randao(state, block.body)
     if not is_post_heze(spec):
         spec.process_eth1_data(state, block.body)
-    if is_post_gloas(spec):
+    if is_post_gloas(spec) and not is_post_pq(spec):
         spec.process_operations(state, block.body, parent_slot)
     else:
         spec.process_operations(state, block.body)
@@ -1003,7 +1006,7 @@ def test_attestation(spec, state):
     yield "pre", state
 
     attestation_block = build_empty_block(
-        spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
+        spec, state, state.slot + get_min_attestation_inclusion_delay(spec)
     )
 
     index = 0
@@ -1054,7 +1057,7 @@ def test_duplicate_attestation_same_block(spec, state):
     yield "pre", state
 
     attestation_block = build_empty_block(
-        spec, state, state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
+        spec, state, state.slot + get_min_attestation_inclusion_delay(spec)
     )
 
     index = 0

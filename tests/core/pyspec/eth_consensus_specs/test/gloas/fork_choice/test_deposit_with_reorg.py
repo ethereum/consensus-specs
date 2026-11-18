@@ -1,13 +1,15 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
-    with_gloas_and_later,
+    with_all_phases_from_except,
     with_presets,
 )
 from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth_consensus_specs.test.helpers.constants import (
+    GLOAS,
     MINIMAL,
+    PQ,
 )
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_deposit_request,
@@ -30,7 +32,7 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_new_validator_deposit_with_multiple_epoch_transitions(spec, state):

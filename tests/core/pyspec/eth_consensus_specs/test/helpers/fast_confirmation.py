@@ -6,6 +6,7 @@ from eth_utils import encode_hex
 
 from eth_consensus_specs.test.helpers.attestations import (
     get_max_attestations,
+    get_min_attestation_inclusion_delay,
     get_valid_attestations_for_block_at_slot,
 )
 from eth_consensus_specs.test.helpers.attester_slashings import (
@@ -283,7 +284,7 @@ class FCRTest:
                 block.body.attestations.append(att)
         elif include_atts:
             for att in self.attestation_pool:
-                if att.data.slot + self.spec.MIN_ATTESTATION_INCLUSION_DELAY > block.slot:
+                if att.data.slot + get_min_attestation_inclusion_delay(self.spec) > block.slot:
                     continue
 
                 if is_post_electra(self.spec):

@@ -5,6 +5,7 @@ from eth_utils import encode_hex
 from eth_consensus_specs.test.context import (
     MINIMAL,
     spec_state_test,
+    with_all_phases_from_except,
     with_altair_and_later,
     with_presets,
 )
@@ -17,6 +18,10 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
     sign_block,
     transition_unsigned_block,
+)
+from eth_consensus_specs.test.helpers.constants import (
+    ALTAIR,
+    PQ,
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_empty_execution_payload,
@@ -1518,7 +1523,7 @@ def test_not_pull_up_current_epoch_block(spec, state):
     yield "steps", test_steps
 
 
-@with_altair_and_later
+@with_all_phases_from_except(ALTAIR, [PQ])
 @spec_state_test
 @with_presets([MINIMAL], reason="too slow")
 def test_pull_up_on_tick(spec, state):

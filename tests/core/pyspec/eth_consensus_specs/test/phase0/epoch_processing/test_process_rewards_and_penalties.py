@@ -15,6 +15,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.attestations import (
     add_attestations_to_state,
     get_indexed_attestation,
+    get_min_attestation_inclusion_delay,
     get_valid_attestation,
     prepare_state_with_attestations,
     sign_attestation,
@@ -108,8 +109,8 @@ def test_genesis_epoch_full_attestations_no_rewards(spec, state):
             attestation = get_valid_attestation(spec, state, signed=True)
             attestations.append(attestation)
         # fill each created slot in state after inclusion delay
-        if slot >= spec.MIN_ATTESTATION_INCLUSION_DELAY:
-            include_att = attestations[slot - spec.MIN_ATTESTATION_INCLUSION_DELAY]
+        if slot >= get_min_attestation_inclusion_delay(spec):
+            include_att = attestations[slot - get_min_attestation_inclusion_delay(spec)]
             add_attestations_to_state(spec, state, [include_att], state.slot)
         next_slot(spec, state)
 
@@ -324,7 +325,7 @@ def test_duplicate_attestation(spec, state):
     single_state = state.copy()
     dup_state = state.copy()
 
-    inclusion_slot = state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
+    inclusion_slot = state.slot + get_min_attestation_inclusion_delay(spec)
     add_attestations_to_state(spec, single_state, [attestation], inclusion_slot)
     add_attestations_to_state(spec, dup_state, [attestation, attestation], inclusion_slot)
 
@@ -364,7 +365,7 @@ def test_duplicate_participants_different_attestation_1(spec, state):
     single_correct_state = state.copy()
     dup_state = state.copy()
 
-    inclusion_slot = state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
+    inclusion_slot = state.slot + get_min_attestation_inclusion_delay(spec)
     add_attestations_to_state(spec, single_correct_state, [correct_attestation], inclusion_slot)
     add_attestations_to_state(
         spec, dup_state, [correct_attestation, incorrect_attestation], inclusion_slot
@@ -408,7 +409,7 @@ def test_duplicate_participants_different_attestation_2(spec, state):
     single_correct_state = state.copy()
     dup_state = state.copy()
 
-    inclusion_slot = state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
+    inclusion_slot = state.slot + get_min_attestation_inclusion_delay(spec)
     add_attestations_to_state(spec, single_correct_state, [correct_attestation], inclusion_slot)
     add_attestations_to_state(
         spec, dup_state, [incorrect_attestation, correct_attestation], inclusion_slot
@@ -453,7 +454,7 @@ def test_duplicate_participants_different_attestation_3(spec, state):
     single_correct_state = state.copy()
     dup_state = state.copy()
 
-    inclusion_slot = state.slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
+    inclusion_slot = state.slot + get_min_attestation_inclusion_delay(spec)
     add_attestations_to_state(spec, single_correct_state, [correct_attestation], inclusion_slot)
     add_attestations_to_state(spec, dup_state, [incorrect_attestation], inclusion_slot)
     add_attestations_to_state(spec, dup_state, [correct_attestation], inclusion_slot + 1)

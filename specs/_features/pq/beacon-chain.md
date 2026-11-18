@@ -29,11 +29,12 @@
   - [Execution-layer triggered requests](#execution-layer-triggered-requests)
 - [Presets](#presets)
   - [Misc](#misc-1)
+  - [Time parameters](#time-parameters)
   - [XMSS](#xmss-1)
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
 - [Configs](#configs)
-  - [Time parameters](#time-parameters)
+  - [Time parameters](#time-parameters-1)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
     - [`Attestation`](#attestation)
@@ -86,6 +87,7 @@
     - [Modified `is_pending_validator`](#modified-is_pending_validator)
     - [Modified `is_valid_indexed_attestation`](#modified-is_valid_indexed_attestation)
   - [Beacon state accessors](#beacon-state-accessors)
+    - [Modified `get_attestation_participation_flag_indices`](#modified-get_attestation_participation_flag_indices)
     - [Modified `get_attesting_indices`](#modified-get_attesting_indices)
     - [Modified `get_beacon_committee`](#modified-get_beacon_committee)
     - [Modified `get_committee_count_per_slot`](#modified-get_committee_count_per_slot)
@@ -228,7 +230,9 @@ Attestations no longer carry a signature. A block instead carries one `proof` of
 the signatures of all its attestations, which replaces verifying each
 attestation's aggregate signature in turn. An aggregate on the wire carries a
 `proof` of its own in `AggregateAndProof`, and the proposer merges those into
-the block's `proof`.
+the block's `proof`. A block includes attestations from at least
+`MIN_ATTESTATION_INCLUSION_DELAY_PQ` slots before it, which gives the proposer
+an extra slot to receive aggregates and merge their proofs.
 
 *Note*: This specification is built upon [EIP-8483](../eip8483/beacon-chain.md),
 which is built upon [Gloas](../../gloas/beacon-chain.md).
@@ -432,6 +436,12 @@ class AggregationCommitteeWindow(Vector[AggregationCommittees]):
 | Name                         | Value                 |
 | ---------------------------- | --------------------- |
 | `MAX_COMMITTEES_PER_SLOT_PQ` | `Uint64(2**4)` (= 16) |
+
+### Time parameters
+
+| Name                                 | Value              |
+| ------------------------------------ | ------------------ |
+| `MIN_ATTESTATION_INCLUSION_DELAY_PQ` | `Slot(2**1)` (= 2) |
 
 ### XMSS
 
@@ -1141,6 +1151,64 @@ def is_valid_indexed_attestation(
 
 ### Beacon state accessors
 
+#### Modified `get_attestation_participation_flag_indices`
+
+*Note*: With an inclusion delay of two slots, the block that a timely
+attestation votes for need not be the parent block. Its payload availability is
+instead looked up at `data.slot`, which `apply_parent_execution_payload` also
+sets for the slots skipped after a block.
+
+```python
+def get_attestation_participation_flag_indices(
+    state: BeaconState,
+    data: AttestationData,
+    inclusion_delay: Uint64,
+    # [Modified in PQ]
+    # Removed `parent_slot`
+) -> Sequence[int]:
+    """
+    Return the flag indices that are satisfied by an attestation.
+    """
+    # Matching source
+    if data.target.epoch == get_current_epoch(state):
+        justified_checkpoint = state.current_justified_checkpoint
+    else:
+        justified_checkpoint = state.previous_justified_checkpoint
+    is_matching_source = data.source == justified_checkpoint
+
+    # Matching target
+    target_root = get_block_root(state, data.target.epoch)
+    target_root_matches = data.target.root == target_root
+    is_matching_target = is_matching_source and target_root_matches
+
+    if is_attestation_same_slot(state, data):
+        assert data.index == 0
+        payload_matches = True
+    else:
+        # [Modified in PQ]
+        slot_index = data.slot % SLOTS_PER_HISTORICAL_ROOT
+        payload_index = state.execution_payload_availability[slot_index]
+        payload_matches = Uint64(data.index) == Uint64(payload_index)
+
+    # Matching head
+    head_root = get_block_root_at_slot(state, data.slot)
+    head_root_matches = data.beacon_block_root == head_root
+    is_matching_head = is_matching_target and head_root_matches and payload_matches
+
+    assert is_matching_source
+
+    participation_flag_indices = []
+    if is_matching_source and inclusion_delay <= integer_squareroot(SLOTS_PER_EPOCH):
+        participation_flag_indices.append(TIMELY_SOURCE_FLAG_INDEX)
+    if is_matching_target:
+        participation_flag_indices.append(TIMELY_TARGET_FLAG_INDEX)
+    # [Modified in PQ]
+    if is_matching_head and inclusion_delay == MIN_ATTESTATION_INCLUSION_DELAY_PQ:
+        participation_flag_indices.append(TIMELY_HEAD_FLAG_INDEX)
+
+    return participation_flag_indices
+```
+
 #### Modified `get_attesting_indices`
 
 *Note*: The body is unchanged, but `committee_bits` now has
@@ -1608,14 +1676,14 @@ issued, which lowers issuance by `SYNC_REWARD_WEIGHT / WEIGHT_DENOMINATOR`.
 
 ```python
 def process_block(state: BeaconState, block: BeaconBlock) -> None:
-    parent_slot = state.latest_block_header.slot
     process_parent_execution_payload(state, block)
     process_block_header(state, block)
     process_withdrawals(state)
     process_execution_payload_bid(state, block.body.signed_execution_payload_bid)
     process_randao(state, block.body)
     process_eth1_data(state, block.body)
-    process_operations(state, block.body, parent_slot)
+    # [Modified in PQ]
+    process_operations(state, block.body)
     # [Modified in PQ]
     # Removed `process_sync_aggregate`
 ```
@@ -1785,7 +1853,12 @@ def process_execution_payload_bid(
 ##### Modified `process_operations`
 
 ```python
-def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: Slot) -> None:
+def process_operations(
+    state: BeaconState,
+    body: BeaconBlockBody,
+    # [Modified in PQ]
+    # Removed `parent_slot`
+) -> None:
     assert len(body.deposits) == 0
 
     def for_ops(operations: Sequence[Any], fn: Callable[..., None], *args: Any) -> None:
@@ -1805,7 +1878,8 @@ def process_operations(state: BeaconState, body: BeaconBlockBody, parent_slot: S
 
     for_ops(body.proposer_slashings, process_proposer_slashing)
     for_ops(body.attester_slashings, process_attester_slashing)
-    for_ops(body.attestations, process_attestation, parent_slot)
+    # [Modified in PQ]
+    for_ops(body.attestations, process_attestation)
     # [New in PQ]
     process_stark(state, body)
     # [Modified in PQ]
@@ -1871,12 +1945,14 @@ verifies the signatures of all attestations in the block instead.
 def process_attestation(
     state: BeaconState,
     attestation: Attestation,
-    parent_slot: Slot,
+    # [Modified in PQ]
+    # Removed `parent_slot`
 ) -> None:
     data = attestation.data
     assert data.target.epoch in (get_previous_epoch(state), get_current_epoch(state))
     assert data.target.epoch == compute_epoch_at_slot(data.slot)
-    assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY <= state.slot
+    # [Modified in PQ]
+    assert data.slot + MIN_ATTESTATION_INCLUSION_DELAY_PQ <= state.slot
 
     assert data.index < 2
     committee_indices = get_committee_indices(attestation.committee_bits)
@@ -1896,8 +1972,9 @@ def process_attestation(
     assert len(attestation.aggregation_bits) == committee_offset
 
     # Participation flag indices
+    # [Modified in PQ]
     participation_flag_indices = get_attestation_participation_flag_indices(
-        state, data, state.slot - data.slot, parent_slot
+        state, data, state.slot - data.slot
     )
 
     if data.target.epoch == get_current_epoch(state):
@@ -2454,7 +2531,9 @@ def process_voluntary_exit_request(state: BeaconState, request: VoluntaryExitReq
 *Note*: This function queues the builder payment, processes the parent's
 execution requests, updates payload availability, and updates the latest block
 hash. It is called by `process_parent_execution_payload` during block processing
-and by the validator during block production before computing withdrawals.
+and by the validator during block production before computing withdrawals. The
+payload availability of the parent is also set for the slots skipped since the
+parent, whose block roots are the parent's.
 
 ```python
 def apply_parent_execution_payload(
@@ -2524,7 +2603,9 @@ def apply_parent_execution_payload(
     # [New in PQ]
     for_ops(requests.voluntary_exits, process_voluntary_exit_request)
 
+    # [Modified in PQ]
     # Update parent payload availability and latest block hash
-    state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
+    for slot in range(parent_slot, state.slot):
+        state.execution_payload_availability[slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
     state.latest_block_hash = parent_bid.block_hash
 ```

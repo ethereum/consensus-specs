@@ -40,6 +40,7 @@ from eth_consensus_specs.utils.ssz.bytes import Bytes16
             "MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE",
             "MAX_VALIDATOR_PQ_REGISTRATION_REQUESTS_PER_PAYLOAD",
             "MAX_VOLUNTARY_EXITS",
+            "MIN_ATTESTATION_INCLUSION_DELAY",
             "MIN_SYNC_COMMITTEE_PARTICIPANTS",
             "SYNC_COMMITTEE_SIZE",
             "UPDATE_TIMEOUT",

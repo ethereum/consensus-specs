@@ -2,7 +2,10 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     with_all_phases,
 )
-from eth_consensus_specs.test.helpers.attestations import get_max_committees_per_slot
+from eth_consensus_specs.test.helpers.attestations import (
+    get_max_committees_per_slot,
+    get_min_attestation_inclusion_delay,
+)
 from eth_consensus_specs.test.helpers.constants import UINT64_MAX
 from eth_consensus_specs.test.helpers.forks import (
     is_post_altair,
@@ -77,7 +80,7 @@ def test_time(spec, state):
     assert spec.MIN_SEED_LOOKAHEAD < spec.MAX_SEED_LOOKAHEAD
     assert spec.SLOTS_PER_HISTORICAL_ROOT % spec.SLOTS_PER_EPOCH == 0
     check_bound(spec.SLOTS_PER_HISTORICAL_ROOT, spec.SLOTS_PER_EPOCH, UINT64_MAX)
-    check_bound(spec.MIN_ATTESTATION_INCLUSION_DELAY, 1, spec.SLOTS_PER_EPOCH)
+    check_bound(get_min_attestation_inclusion_delay(spec), 1, spec.SLOTS_PER_EPOCH)
     if is_post_gloas(spec):
         assert spec.config.ATTESTATION_DUE_BPS_GLOAS <= spec.BASIS_POINTS
         assert spec.config.AGGREGATE_DUE_BPS_GLOAS <= spec.BASIS_POINTS

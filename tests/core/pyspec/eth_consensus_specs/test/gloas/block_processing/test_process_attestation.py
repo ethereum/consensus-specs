@@ -1,15 +1,18 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
+    with_all_phases_from_except,
     with_gloas_and_later,
     with_presets,
 )
 from eth_consensus_specs.test.helpers.attestations import (
+    get_min_attestation_inclusion_delay,
     get_valid_attestation,
     run_attestation_processing,
     sign_attestation,
 )
 from eth_consensus_specs.test.helpers.block import apply_empty_block
-from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.constants import GLOAS, MINIMAL, PQ
+from eth_consensus_specs.test.helpers.forks import is_post_pq
 from eth_consensus_specs.test.helpers.registry import get_validators
 from eth_consensus_specs.test.helpers.state import (
     next_slots,
@@ -38,7 +41,7 @@ def _setup_previous_epoch_same_slot_scenario(spec, state):
         signed=True,
     )
 
-    spec.process_slots(state, spec.SLOTS_PER_EPOCH)
+    spec.process_slots(state, attestation_slot + get_min_attestation_inclusion_delay(spec))
     return attestation, attestation_slot
 
 
@@ -51,7 +54,8 @@ def _setup_missed_slot_scenario(spec, state):
     apply_empty_block(spec, state, 1)
     apply_empty_block(spec, state, 2)
     apply_empty_block(spec, state, 3)
-    next_slots(spec, state, 2)  # Advance to slot 5 without creating block at slot 4
+    # Advance until slot 4 can be included without creating block at slot 4
+    next_slots(spec, state, 1 + get_min_attestation_inclusion_delay(spec))
     return spec.get_block_root_at_slot(state, 4)
 
 
@@ -64,7 +68,7 @@ def _setup_same_slot_scenario(spec, state, target_slot):
     apply_empty_block(spec, state, 1)
     apply_empty_block(spec, state, 2)
     apply_empty_block(spec, state, 3)
-    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    next_slots(spec, state, get_min_attestation_inclusion_delay(spec))
     return spec.get_block_root_at_slot(state, target_slot)
 
 
@@ -75,7 +79,7 @@ def test_invalid_attestation_data_index_too_high(spec, state):
     Test that attestation with index >= 2 is invalid in Gloas.
     """
     attestation = get_valid_attestation(spec, state)
-    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    next_slots(spec, state, get_min_attestation_inclusion_delay(spec))
     attestation.data.index = 2
     sign_attestation(spec, state, attestation)
 
@@ -88,8 +92,8 @@ def test_valid_attestation_data_index_zero_previous_slot(spec, state):
     """
     Test that attestation with index = 0 is valid in Gloas for previous slot attestations.
     """
-    # Using basic scenario (advance to slot 5, only creates one block at slot 5)
-    transition_to_slot_via_block(spec, state, 5)
+    # Using basic scenario (advance until slot 4 can be included, only creates one block)
+    transition_to_slot_via_block(spec, state, 4 + get_min_attestation_inclusion_delay(spec))
     slot_3_block_root = spec.get_block_root_at_slot(state, 3)  # Will be genesis block root
     attestation = get_valid_attestation(spec, state, slot=4, beacon_block_root=slot_3_block_root)
     attestation.data.index = 0
@@ -131,7 +135,7 @@ def test_valid_attestation_data_index_one_previous_slot_current_blockroot(spec, 
     """
     Test that attestation with index = 1 is valid when is_matching_blockroot=False, is_current_blockroot=True.
     """
-    transition_to_slot_via_block(spec, state, 5)
+    transition_to_slot_via_block(spec, state, 4 + get_min_attestation_inclusion_delay(spec))
     # Custom block root different from any real block root
     custom_block_root = spec.Root(b"\x01" * 32)
     attestation = get_valid_attestation(spec, state, slot=4, beacon_block_root=custom_block_root)
@@ -223,7 +227,7 @@ def test_invalid_same_slot_attestation_index_one_head_not_matching(spec, state):
     zero-index requirement applies even with an unknown beacon block root.
     """
     attestation_slot = 0
-    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    next_slots(spec, state, get_min_attestation_inclusion_delay(spec))
     # A block root which does not match any block root in the state
     custom_block_root = spec.Root(b"\x03" * 32)
     attestation = get_valid_attestation(
@@ -377,7 +381,7 @@ def test_same_slot_attestation_ignores_payload_availability(spec, state):
     Test that a same-slot attestation receives the timely head flag even when
     execution_payload_availability for that slot disagrees with data.index.
     """
-    transition_to_slot_via_block(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    transition_to_slot_via_block(spec, state, get_min_attestation_inclusion_delay(spec))
     attestation_slot = spec.Slot(0)
 
     # Availability disagrees with data.index so a bad client comparison would fail payload_matches.
@@ -395,7 +399,7 @@ def test_same_slot_attestation_ignores_payload_availability(spec, state):
     )
 
     assert spec.is_attestation_same_slot(state, attestation.data) is True
-    assert state.slot - attestation.data.slot == spec.MIN_ATTESTATION_INCLUSION_DELAY
+    assert state.slot - attestation.data.slot == get_min_attestation_inclusion_delay(spec)
 
     attesting_indices = spec.get_attesting_indices(state, attestation)
     validator_index = next(iter(attesting_indices))
@@ -406,7 +410,7 @@ def test_same_slot_attestation_ignores_payload_availability(spec, state):
     assert spec.has_flag(final_participation, spec.TIMELY_HEAD_FLAG_INDEX)
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_matching_payload_gets_head_flag(spec, state):
     """
@@ -445,7 +449,7 @@ def test_matching_payload_gets_head_flag(spec, state):
     assert final_head_flag, "Should have head flag when data.index matches payload availability bit"
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 def test_mismatched_payload_no_head_flag(spec, state):
     """
@@ -480,7 +484,7 @@ def test_mismatched_payload_no_head_flag(spec, state):
     assert not final_head_flag, "Should not get head flag when payload doesn't match"
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @with_presets([MINIMAL], reason="too slow")
 @spec_state_test
 def test_old_attested_block_gets_head_flag(spec, state):
@@ -494,7 +498,7 @@ def test_old_attested_block_gets_head_flag(spec, state):
     # Skip every slot since genesis, so the attested block (genesis) is
     # SLOTS_PER_HISTORICAL_ROOT slots before the attestation slot
     attestation_slot = spec.Slot(spec.SLOTS_PER_HISTORICAL_ROOT)
-    next_slots(spec, state, attestation_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    next_slots(spec, state, attestation_slot + get_min_attestation_inclusion_delay(spec))
 
     attestation = get_valid_attestation(spec, state, slot=attestation_slot, signed=True)
 
@@ -544,12 +548,17 @@ def test_builder_payment_weight_tracking_previous_epoch(spec, state):
     assert attestation.data.target.epoch == spec.get_previous_epoch(state)
 
     attester = spec.get_beacon_committee(state, attestation_slot, 0)[0]
-    expected_flag_indices = spec.get_attestation_participation_flag_indices(
-        state,
-        attestation.data,
-        state.slot - attestation.data.slot,
-        state.latest_block_header.slot,
-    )
+    if is_post_pq(spec):
+        expected_flag_indices = spec.get_attestation_participation_flag_indices(
+            state, attestation.data, state.slot - attestation.data.slot
+        )
+    else:
+        expected_flag_indices = spec.get_attestation_participation_flag_indices(
+            state,
+            attestation.data,
+            state.slot - attestation.data.slot,
+            state.latest_block_header.slot,
+        )
     pre_prev_flags = state.previous_epoch_participation[attester]
     pre_curr_flags = state.current_epoch_participation[attester]
 

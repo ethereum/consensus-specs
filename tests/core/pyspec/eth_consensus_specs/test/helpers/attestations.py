@@ -31,6 +31,12 @@ def get_max_committees_per_slot(spec):
     return spec.MAX_COMMITTEES_PER_SLOT
 
 
+def get_min_attestation_inclusion_delay(spec):
+    if is_post_pq(spec):
+        return spec.MIN_ATTESTATION_INCLUSION_DELAY_PQ
+    return spec.MIN_ATTESTATION_INCLUSION_DELAY
+
+
 def is_aggregator(spec, state, slot, committee_index, validator_index):
     """
     Whether the validator at ``validator_index`` is selected to aggregate, which
@@ -119,7 +125,7 @@ def get_parent_slot(state):
 
 
 def process_attestation(spec, state, attestation):
-    if is_post_gloas(spec):
+    if is_post_gloas(spec) and not is_post_pq(spec):
         spec.process_attestation(state, attestation, get_parent_slot(state))
     else:
         spec.process_attestation(state, attestation)
@@ -517,8 +523,8 @@ def state_transition_with_full_block(
     """
     if block is None:
         block = build_empty_block_for_next_slot(spec, state)
-    if fill_cur_epoch and state.slot >= spec.MIN_ATTESTATION_INCLUSION_DELAY:
-        slot_to_attest = state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY + 1
+    if fill_cur_epoch and state.slot >= get_min_attestation_inclusion_delay(spec):
+        slot_to_attest = state.slot - get_min_attestation_inclusion_delay(spec) + 1
         if slot_to_attest >= spec.compute_start_slot_at_epoch(spec.get_current_epoch(state)):
             _add_valid_attestations(
                 spec, state, block, slot_to_attest, participation_fn=participation_fn
@@ -584,7 +590,7 @@ def prepare_state_with_attestations(spec, state, participation_fn=None):
     start_epoch = spec.get_current_epoch(state)
     next_epoch_start_slot = spec.compute_start_slot_at_epoch(start_epoch + 1)
     attestations = []
-    for _ in range(spec.SLOTS_PER_EPOCH + spec.MIN_ATTESTATION_INCLUSION_DELAY):
+    for _ in range(spec.SLOTS_PER_EPOCH + get_min_attestation_inclusion_delay(spec)):
         # create an attestation for each index in each slot in epoch
         if state.slot < next_epoch_start_slot:
             for committee_index in range(
@@ -607,13 +613,13 @@ def prepare_state_with_attestations(spec, state, participation_fn=None):
                 if any(attestation.aggregation_bits):  # Only if there is at least 1 participant.
                     attestations.append(attestation)
         # fill each created slot in state after inclusion delay
-        if state.slot >= start_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY:
-            inclusion_slot = state.slot - spec.MIN_ATTESTATION_INCLUSION_DELAY
+        if state.slot >= start_slot + get_min_attestation_inclusion_delay(spec):
+            inclusion_slot = state.slot - get_min_attestation_inclusion_delay(spec)
             include_attestations = [att for att in attestations if att.data.slot == inclusion_slot]
             add_attestations_to_state(spec, state, include_attestations, state.slot)
         next_slot(spec, state)
 
-    assert state.slot == next_epoch_start_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
+    assert state.slot == next_epoch_start_slot + get_min_attestation_inclusion_delay(spec)
     if not is_post_altair(spec):
         assert len(state.previous_epoch_attestations) == len(attestations)
 

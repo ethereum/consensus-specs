@@ -7,6 +7,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.attestations import (
     build_attestation_data,
     get_empty_eip7549_aggregation_bits,
+    get_min_attestation_inclusion_delay,
     get_valid_attestation,
     get_valid_attestation_at_slot,
     run_attestation_processing,
@@ -27,7 +28,7 @@ def test_invalid_attestation_data_index_not_zero(spec, state):
     """
     committee_index = 1
     attestation = get_valid_attestation(spec, state, index=committee_index)
-    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    next_slots(spec, state, get_min_attestation_inclusion_delay(spec))
 
     # flip the attestations index to make it non-zero and invalid
     assert committee_index == spec.get_committee_indices(attestation.committee_bits)[0]
@@ -47,7 +48,7 @@ def test_invalid_committee_index(spec, state):
     """
     committee_index = 0
     attestation = get_valid_attestation(spec, state, index=committee_index, signed=True)
-    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    next_slots(spec, state, get_min_attestation_inclusion_delay(spec))
 
     # flip the bits of the attestation to make it invalid
     assert attestation.committee_bits[committee_index]
@@ -65,7 +66,7 @@ def test_invalid_too_many_committee_bits(spec, state):
     """
     committee_index = 0
     attestation = get_valid_attestation(spec, state, index=committee_index, signed=True)
-    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    next_slots(spec, state, get_min_attestation_inclusion_delay(spec))
 
     attestation.committee_bits[committee_index + 1] = 1
 
@@ -80,7 +81,7 @@ def test_invalid_nonset_committee_bits(spec, state):
     """
     committee_index = 0
     attestation = get_valid_attestation(spec, state, index=committee_index, signed=True)
-    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    next_slots(spec, state, get_min_attestation_inclusion_delay(spec))
 
     attestation.committee_bits[committee_index] = 0
 
@@ -108,7 +109,7 @@ def test_invalid_nonset_multiple_committee_bits(spec, state):
         )
     )
 
-    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    next_slots(spec, state, get_min_attestation_inclusion_delay(spec))
 
     yield from run_attestation_processing(spec, state, attestation, valid=False)
 
@@ -132,7 +133,7 @@ def test_multiple_committees(spec, state):
     assert spec.get_attesting_indices(state, attestation) == attesting_indices
 
     # advance a slot
-    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    next_slots(spec, state, get_min_attestation_inclusion_delay(spec))
 
     yield from run_attestation_processing(spec, state, attestation)
 
@@ -146,7 +147,7 @@ def test_one_committee_with_gap(spec, state):
     EIP-7549 test
     """
     attestation = get_valid_attestation(spec, state, index=1, signed=True)
-    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    next_slots(spec, state, get_min_attestation_inclusion_delay(spec))
 
     yield from run_attestation_processing(spec, state, attestation)
 
@@ -182,6 +183,6 @@ def test_invalid_nonset_bits_for_one_committee(spec, state):
         state, attestation_1
     )
 
-    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    next_slots(spec, state, get_min_attestation_inclusion_delay(spec))
 
     yield from run_attestation_processing(spec, state, aggregate, valid=False)

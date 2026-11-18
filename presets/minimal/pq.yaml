@@ -5,6 +5,11 @@
 # [customized] 2**2 (= 4) committees
 MAX_COMMITTEES_PER_SLOT_PQ: 4
 
+# Time parameters
+# ---------------------------------------------------------------
+# 2**1 (= 2) slots
+MIN_ATTESTATION_INCLUSION_DELAY_PQ: 2
+
 # XMSS
 # ---------------------------------------------------------------
 # 2**20 (= 1,048,576)

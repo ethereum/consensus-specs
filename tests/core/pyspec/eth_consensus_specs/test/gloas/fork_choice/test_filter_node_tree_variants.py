@@ -1,5 +1,6 @@
 from eth_consensus_specs.test.context import (
     spec_state_test,
+    with_all_phases_from_except,
     with_gloas_and_later,
     with_presets,
 )
@@ -8,7 +9,11 @@ from eth_consensus_specs.test.helpers.attestations import (
     get_valid_attestation_at_slot,
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
-from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.constants import (
+    GLOAS,
+    MINIMAL,
+    PQ,
+)
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
 )
@@ -26,7 +31,7 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @with_presets([MINIMAL], reason="too slow")
 @spec_state_test
 def test_get_head_prunes_childless_unviable_full_variant(spec, state):
@@ -172,7 +177,7 @@ def test_get_head_prunes_childless_unviable_full_variant(spec, state):
     yield "steps", test_steps
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @with_presets([MINIMAL], reason="too slow")
 @spec_state_test
 def test_get_head_prunes_childless_unviable_empty_variant(spec, state):

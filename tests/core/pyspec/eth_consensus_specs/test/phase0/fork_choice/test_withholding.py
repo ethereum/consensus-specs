@@ -4,6 +4,7 @@ from eth_consensus_specs.test.context import (
     with_presets,
 )
 from eth_consensus_specs.test.helpers.attestations import (
+    get_min_attestation_inclusion_delay,
     state_transition_with_full_block,
 )
 from eth_consensus_specs.test.helpers.block import (
@@ -82,9 +83,10 @@ def test_withholding_attack(spec, state):
     next_epoch(spec, state)
     assert spec.compute_epoch_at_slot(state.slot) == 5
     assert state.current_justified_checkpoint.epoch == 3
-    # Create two blocks in the honest chain with full attestations, and add to the store
+    # Create blocks in the honest chain with full attestations, until they include
+    # votes for the honest chain, and add them to the store
     honest_state = state.copy()
-    for _ in range(2):
+    for _ in range(1 + get_min_attestation_inclusion_delay(spec)):
         signed_block = state_transition_with_full_block(
             spec, honest_state, fill_cur_epoch=True, fill_prev_epoch=False
         )

@@ -16,6 +16,7 @@ from eth_consensus_specs.test.gloas.block_processing.test_process_payload_attest
 )
 from eth_consensus_specs.test.helpers.attestations import (
     get_max_attestations,
+    get_min_attestation_inclusion_delay,
     get_valid_attestation,
     sign_attestation,
 )
@@ -32,6 +33,7 @@ from eth_consensus_specs.test.helpers.constants import PQ
 from eth_consensus_specs.test.helpers.execution_requests import (
     get_non_empty_execution_requests,
 )
+from eth_consensus_specs.test.helpers.forks import is_post_pq
 from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
 from eth_consensus_specs.test.helpers.multi_operations import (
     get_random_attestations,
@@ -968,7 +970,7 @@ def test_attestations_after_missed_slot_use_applied_parent_payload_availability(
         )
 
     # Block 2 confirms Block 1's payload before processing the attestation.
-    child_slot = attestation_slot + spec.MIN_ATTESTATION_INCLUSION_DELAY
+    child_slot = attestation_slot + get_min_attestation_inclusion_delay(spec)
     block_2 = build_empty_block(spec, state, slot=child_slot)
     block_2.body.signed_execution_payload_bid.message.parent_block_hash = parent_block_hash
     block_2.body.attestations = spec.Attestations.of(matching_attestation, mismatching_attestation)
@@ -981,7 +983,11 @@ def test_attestations_after_missed_slot_use_applied_parent_payload_availability(
     assert not spec.is_attestation_same_slot(state, matching_attestation.data)
     assert not spec.is_attestation_same_slot(state, mismatching_attestation.data)
     assert state.execution_payload_availability[parent_slot_index]
-    assert not state.execution_payload_availability[attestation_slot_index]
+    if is_post_pq(spec):
+        # The parent's availability is also set for the slots skipped since it
+        assert state.execution_payload_availability[attestation_slot_index]
+    else:
+        assert not state.execution_payload_availability[attestation_slot_index]
 
     for validator_index in matching_indices:
         assert spec.has_flag(
