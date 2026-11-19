@@ -126,6 +126,12 @@ SLOT_DURATION_MS_EIP8198: 10000
 # PQ
 # 2**14 (= 16,384) epochs
 UNREGISTERED_VALIDATOR_WITHDRAWABILITY_DELAY: 16384
+# 4000 basis points, 40% of SLOT_DURATION_MS
+AGGREGATION_CUTOFF_BPS: 4000
+# 6000 basis points, 60% of SLOT_DURATION_MS
+AGGREGATE_DUE_BPS_PQ: 6000
+# 500 basis points, 5% of SLOT_DURATION_MS
+AGGREGATOR_DELAY_BPS: 500
 
 # Validator cycle
 # ---------------------------------------------------------------

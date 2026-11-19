@@ -51,6 +51,7 @@ from eth_consensus_specs.utils.ssz.bytes import Bytes16
     @classmethod
     def deprecate_config_vars(cls) -> set[str]:
         return {
+            "AGGREGATE_DUE_BPS_GLOAS",
             "CONTRIBUTION_DUE_BPS_GLOAS",
             "SYNC_MESSAGE_DUE_BPS_GLOAS",
         }

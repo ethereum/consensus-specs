@@ -12,6 +12,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_bellatrix,
     is_post_electra,
     is_post_gloas,
+    is_post_pq,
 )
 
 
@@ -81,7 +82,12 @@ def test_time(spec, state):
     assert spec.SLOTS_PER_HISTORICAL_ROOT % spec.SLOTS_PER_EPOCH == 0
     check_bound(spec.SLOTS_PER_HISTORICAL_ROOT, spec.SLOTS_PER_EPOCH, UINT64_MAX)
     check_bound(get_min_attestation_inclusion_delay(spec), 1, spec.SLOTS_PER_EPOCH)
-    if is_post_gloas(spec):
+    if is_post_pq(spec):
+        assert spec.config.ATTESTATION_DUE_BPS_GLOAS <= spec.BASIS_POINTS
+        assert spec.config.AGGREGATION_CUTOFF_BPS < spec.config.AGGREGATE_DUE_BPS_PQ
+        last_delay_bps = (spec.AGGREGATORS_PER_COMMITTEE - 1) * spec.config.AGGREGATOR_DELAY_BPS
+        assert spec.config.AGGREGATE_DUE_BPS_PQ + last_delay_bps <= spec.BASIS_POINTS
+    elif is_post_gloas(spec):
         assert spec.config.ATTESTATION_DUE_BPS_GLOAS <= spec.BASIS_POINTS
         assert spec.config.AGGREGATE_DUE_BPS_GLOAS <= spec.BASIS_POINTS
     else:

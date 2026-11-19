@@ -5,6 +5,8 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Configs](#configs)
+  - [Time parameters](#time-parameters)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
     - [`AggregateAndProof`](#aggregateandproof)
@@ -65,6 +67,18 @@ attestation, which is signed at the leaf that
 `compute_xmss_attestation_leaf_index` assigns to its target epoch, and a message
 without a leaf of its own, such as a voluntary exit, which is signed at a
 reserved leaf, see [Protection best practices](#protection-best-practices).
+
+## Configs
+
+### Time parameters
+
+*[New in PQ]*
+
+| Name                     | Value          | Duration                  |
+| ------------------------ | -------------- | ------------------------- |
+| `AGGREGATION_CUTOFF_BPS` | `Uint64(4000)` | 40% of `SLOT_DURATION_MS` |
+| `AGGREGATE_DUE_BPS_PQ`   | `Uint64(6000)` | 60% of `SLOT_DURATION_MS` |
+| `AGGREGATOR_DELAY_BPS`   | `Uint64(500)`  | 5% of `SLOT_DURATION_MS`  |
 
 ## Containers
 
@@ -546,6 +560,27 @@ def is_aggregator(
 
 #### Construct aggregate
 
+The aggregators of a committee are staggered in the order of its aggregation
+committee, `get_aggregation_committee(state, slot, index)`. Let `position` be
+the aggregator's index in it. The aggregator collects attestations until
+`get_aggregation_cutoff_ms(position)` milliseconds into the slot, then
+constructs its aggregate from them.
+
+For example, with a `SLOT_DURATION_MS` of 12 seconds, attestations are due 3
+seconds into the slot. An aggregator has from then until its cutoff to receive
+attestations, and from its cutoff until it broadcasts to build its proof. A
+block includes attestations from at least `MIN_ATTESTATION_INCLUSION_DELAY_PQ`
+slots before it, so the earliest proposer that can include the aggregate has
+until the start of its slot, 24 seconds into the attestations' slot, to receive
+the aggregate and merge its proof:
+
+| Position | Cutoff at | Broadcasts at | Collects for | Proves for | Until proposal |
+| :------: | :-------: | :-----------: | :----------: | :--------: | :------------: |
+|    0     |   4.8s    |     7.2s      |     1.8s     |    2.4s    |     16.8s      |
+|    1     |   5.4s    |     7.8s      |     2.4s     |    2.4s    |     16.2s      |
+|    2     |   6.0s    |     8.4s      |     3.0s     |    2.4s    |     15.6s      |
+|    3     |   6.6s    |     9.0s      |     3.6s     |    2.4s    |     15.0s      |
+
 ##### Aggregate stark
 
 An attestation carries no signature, so the aggregator proves the signatures of
@@ -562,6 +597,48 @@ def get_aggregate_stark(
 ```
 
 #### Broadcast aggregate
+
+The aggregator broadcasts its aggregate `get_aggregate_due_ms(position)`
+milliseconds into the slot, but only if no aggregate with the same data and
+committee that it has received includes all of its attesters, that is, if
+`should_broadcast_aggregate(aggregate, received_aggregates)` returns `True`.
+Otherwise, gossip would ignore it, as it does any aggregate whose attesters are
+all in an aggregate already seen.
+
+```python
+def should_broadcast_aggregate(
+    aggregate: Attestation, received_aggregates: Sequence[Attestation]
+) -> bool:
+    """
+    Return whether no aggregate in ``received_aggregates`` with the same data
+    and committee as ``aggregate`` includes all of its attesters.
+    """
+    received_bits: set[tuple[bool, ...]] = set()
+    for received in received_aggregates:
+        if received.data != aggregate.data:
+            continue
+        if received.committee_bits != aggregate.committee_bits:
+            continue
+        received_bits.add(tuple(bool(bit) for bit in received.aggregation_bits))
+    aggregate_bits = tuple(bool(bit) for bit in aggregate.aggregation_bits)
+    return not is_non_strict_superset(received_bits, aggregate_bits)
+```
+
+Each received aggregate is compared on its own, not together with the others. A
+proposer can include only one aggregate per committee, so two aggregates that
+together cover the aggregator's attesters do not make its aggregate redundant.
+For example, here is whether an aggregator in a committee of four broadcasts an
+aggregate with attesters 0 and 1 (`1100`), given the aggregates with the same
+data and committee that it has received:
+
+| Received          | Broadcast | Why                                       |
+| :---------------- | :-------: | :---------------------------------------- |
+| Nothing           |    Yes    | There is nothing to compare against       |
+| `1000`            |    Yes    | It lacks attester 1                       |
+| `1110`            |    No     | It has attesters 0 and 1                  |
+| `1100`            |    No     | An identical aggregate counts as superset |
+| `1000` and `0100` |    Yes    | Neither has both attesters 0 and 1        |
+| `0011`            |    Yes    | It has neither attester 0 nor 1           |
 
 ```python
 def get_aggregate_and_proof(

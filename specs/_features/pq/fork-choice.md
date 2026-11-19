@@ -10,6 +10,8 @@
   - [Modified `on_attestation`](#modified-on_attestation)
   - [Modified `on_payload_attestation_message`](#modified-on_payload_attestation_message)
 - [Helpers](#helpers)
+  - [Modified `get_aggregate_due_ms`](#modified-get_aggregate_due_ms)
+  - [New `get_aggregation_cutoff_ms`](#new-get_aggregation_cutoff_ms)
 
 <!-- mdformat-toc end -->
 
@@ -174,3 +176,31 @@ def on_payload_attestation_message(
 ```
 
 ## Helpers
+
+### Modified `get_aggregate_due_ms`
+
+```python
+def get_aggregate_due_ms(
+    # [New in PQ]
+    position: Uint64,
+) -> Uint64:
+    """
+    Return how many milliseconds into the slot the aggregator at ``position``
+    in its aggregation committee broadcasts its aggregate.
+    """
+    # [Modified in PQ]
+    delay_ms = position * get_slot_component_duration_ms(AGGREGATOR_DELAY_BPS)
+    return get_slot_component_duration_ms(AGGREGATE_DUE_BPS_PQ) + delay_ms
+```
+
+### New `get_aggregation_cutoff_ms`
+
+```python
+def get_aggregation_cutoff_ms(position: Uint64) -> Uint64:
+    """
+    Return how many milliseconds into the slot the aggregator at ``position``
+    in its aggregation committee stops collecting attestations.
+    """
+    delay_ms = position * get_slot_component_duration_ms(AGGREGATOR_DELAY_BPS)
+    return get_slot_component_duration_ms(AGGREGATION_CUTOFF_BPS) + delay_ms
+```
