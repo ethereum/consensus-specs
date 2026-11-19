@@ -1,5 +1,6 @@
 from functools import cache
-from hashlib import sha256
+
+from eth_hash.auto import keccak
 
 from eth_consensus_specs.test.helpers.forks import is_post_pq
 from eth_consensus_specs.utils import bls, xmss
@@ -33,9 +34,9 @@ def get_vrf_tree_nodes(index):
     leaf up to its root. Every leaf of the tree is the same, so the node at each
     level is also the sibling of every node at that level.
     """
-    nodes = [sha256(b"vrf leaf" + index.to_bytes(8, "little")).digest()]
+    nodes = [keccak(b"vrf leaf" + index.to_bytes(8, "little"))]
     for _ in range(VRF_TREE_DEPTH):
-        nodes.append(sha256(nodes[-1] + nodes[-1]).digest())
+        nodes.append(keccak(nodes[-1] + nodes[-1]))
     return tuple(nodes)
 
 

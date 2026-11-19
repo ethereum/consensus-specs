@@ -67,6 +67,7 @@
     - [`XMSSAggregateStatement`](#xmssaggregatestatement)
 - [Helpers](#helpers)
   - [Crypto](#crypto)
+    - [New `keccak256`](#new-keccak256)
     - [XMSS signatures](#xmss-signatures)
     - [STARK proofs](#stark-proofs)
   - [Misc](#misc-2)
@@ -860,6 +861,16 @@ class XMSSAggregateStatement:
 
 ### Crypto
 
+#### New `keccak256`
+
+```python
+def keccak256(data: bytes) -> Bytes32:
+    """
+    Return the Keccak-256 hash of ``data``.
+    """
+    return Bytes32(keccak256_hash(data))
+```
+
 #### XMSS signatures
 
 [leanXMSS](https://github.com/ethereum/ethlib/tree/main/EthLib/Cryptography/Xmss)
@@ -1090,13 +1101,13 @@ def is_valid_vrf_proof(
     Check that ``proof`` opens the leaf at index ``slot`` of the tree under
     the VRF root of the validator at ``validator_index``.
     """
-    return is_valid_merkle_branch(
-        leaf=proof[0],
-        branch=proof[1:],
-        depth=VRF_TREE_DEPTH,
-        index=slot,
-        root=state.validators[validator_index].vrf_root,
-    )
+    value = proof[0]
+    for height in range(VRF_TREE_DEPTH):
+        if slot // (2**height) % 2:
+            value = keccak256(proof[height + 1] + value)
+        else:
+            value = keccak256(value + proof[height + 1])
+    return value == state.validators[validator_index].vrf_root
 ```
 
 #### Modified `is_pending_validator`

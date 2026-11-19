@@ -107,9 +107,9 @@ as it validates and take it along when it moves to another client. A tree
 derived from any other seed has a different root, so its proofs fail
 verification and the validator's blocks are invalid.
 
-The VRF tree is a Merkle tree of depth `VRF_TREE_DEPTH` with one leaf for each
-slot. A validator's VRF root is the root of its VRF tree,
-`compute_vrf_root(vrf_seed)`. Its VRF proof for a slot,
+The VRF tree is a Merkle tree of depth `VRF_TREE_DEPTH`, hashed with
+`keccak256`, with one leaf for each slot. A validator's VRF root is the root of
+its VRF tree, `compute_vrf_root(vrf_seed)`. Its VRF proof for a slot,
 `compute_vrf_proof(vrf_seed, slot)`, is the leaf at index `slot` followed by the
 leaf's Merkle branch. It reveals the proof as its RANDAO reveal when it
 proposes. The tree is fixed in advance, so a validator cannot grind its proofs,
@@ -122,7 +122,7 @@ def compute_vrf_leaf(vrf_seed: Bytes32, index: Uint64) -> Bytes32:
     """
     Return the leaf at ``index`` of the VRF tree derived from ``vrf_seed``.
     """
-    return sha256(vrf_seed + uint_to_bytes(index))
+    return keccak256(vrf_seed + uint_to_bytes(index))
 ```
 
 ##### New `compute_vrf_node`
@@ -137,7 +137,7 @@ def compute_vrf_node(vrf_seed: Bytes32, height: Uint64, index: Uint64) -> Bytes3
         return compute_vrf_leaf(vrf_seed, index)
     left = compute_vrf_node(vrf_seed, height - 1, 2 * index)
     right = compute_vrf_node(vrf_seed, height - 1, 2 * index + 1)
-    return sha256(left + right)
+    return keccak256(left + right)
 ```
 
 ##### New `compute_vrf_root`

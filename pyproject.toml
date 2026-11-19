@@ -13,6 +13,7 @@ requires-python = ">=3.12, <3.15"
 urls = { homepage = "https://github.com/ethereum/consensus-specs" }
 dependencies = [
   "blake3==1.0.11",
+  "eth-hash[pycryptodome]==0.8.0",
   "eth-ssz-specs==0.1.0",
   "eth-utils==6.0.0",
   "ethlib==0.3.0",
@@ -28,7 +29,6 @@ dependencies = [
 test = [
   "ckzg==2.1.8",
   "deepdiff==9.1.0",
-  "eth-hash[pycryptodome]==0.8.0",
   "minizinc==0.10.0",
   "psutil==7.2.2",
   "pytest-cov==7.1.0",

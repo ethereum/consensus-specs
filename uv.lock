@@ -496,6 +496,7 @@ version = "1.7.0b5"
 source = { editable = "." }
 dependencies = [
     { name = "blake3" },
+    { name = "eth-hash", extra = ["pycryptodome"] },
     { name = "eth-ssz-specs" },
     { name = "eth-utils" },
     { name = "ethlib" },
@@ -525,7 +526,6 @@ lint = [
 test = [
     { name = "ckzg" },
     { name = "deepdiff" },
-    { name = "eth-hash", extra = ["pycryptodome"] },
     { name = "minizinc" },
     { name = "psutil" },
     { name = "pytest" },
@@ -543,7 +543,7 @@ requires-dist = [
     { name = "ckzg", marker = "extra == 'test'", specifier = "==2.1.8" },
     { name = "codespell", marker = "extra == 'lint'", specifier = "==2.4.3" },
     { name = "deepdiff", marker = "extra == 'test'", specifier = "==9.1.0" },
-    { name = "eth-hash", extras = ["pycryptodome"], marker = "extra == 'test'", specifier = "==0.8.0" },
+    { name = "eth-hash", extras = ["pycryptodome"], specifier = "==0.8.0" },
     { name = "eth-ssz-specs", specifier = "==0.1.0" },
     { name = "eth-utils", specifier = "==6.0.0" },
     { name = "ethlib", specifier = "==0.3.0" },
