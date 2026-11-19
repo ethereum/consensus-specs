@@ -104,6 +104,10 @@ def compute_max_partial_data_column_sidecar_size() -> Uint64:
 
 #### Modified `data_column_sidecar_{subnet_id}` (partial messages)
 
+*Note*: The Partial Message Group ID is the SSZ encoded
+`PartialDataColumnGroupID` prefixed with the version byte `0x01`.
+Implementations MUST ignore unknown versions.
+
 *Note*: The KZG commitments needed to verify a partial sidecar are now carried
 by the bid at
 `block.body.signed_execution_payload_bid.message.blob_kzg_commitments`, where
