@@ -222,9 +222,9 @@ def is_payload_inclusion_list_satisfied(store: Store, root: Root) -> bool:
 
 ### Modified `get_payload_status_tiebreaker`
 
-*Note*: `get_payload_status_tiebreaker` is modified to prefer the *empty* node
-of a block from the current or previous slot if its payload does not satisfy the
-inclusion list constraints.
+*Note*: `get_payload_status_tiebreaker` is modified to not extend a payload from
+the current or previous slot if it does not satisfy the inclusion list
+constraints.
 
 ```python
 def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> Uint8:
