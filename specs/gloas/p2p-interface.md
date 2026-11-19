@@ -350,8 +350,8 @@ def get_builder_bid_limit(state: BeaconState, builder_index: BuilderIndex) -> Ui
     Return the number of bids the builder may submit for each slot and parent.
     """
     balance = state.builders[builder_index].balance
-    pending_balance = get_pending_balance_to_withdraw_for_builder(state, builder_index)
-    return Uint64(saturating_sub(balance, pending_balance) // ETH_TO_GWEI)
+    pending_withdrawals_amount = get_pending_balance_to_withdraw_for_builder(state, builder_index)
+    return Uint64(saturating_sub(balance, pending_withdrawals_amount) // ETH_TO_GWEI)
 ```
 
 ### New `is_current_or_next_slot`
