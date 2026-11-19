@@ -52,6 +52,12 @@ key, since builders do not contribute to RANDAO. This specification gives the
 material no meaning beyond requiring its first 32 bytes to be unique. A later
 fork that migrates to post-quantum signatures will define how it is used.
 
+The first 32 bytes of the PQ data are intended for a PQ public key. Before
+accepting a request, the predeploy contract checks a proof of possession over
+them. Because these bytes must be unique, this prevents someone from
+front-running a request by registering the same public key first, which would
+prevent that request from being accepted.
+
 The beacon state stores one `(validator_index, pq_data)` entry per validator and
 one `(builder_pubkey, pq_data)` entry per builder. Builder entries are keyed by
 public key rather than index, because a builder index is reused once its builder
