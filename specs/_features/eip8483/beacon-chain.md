@@ -49,7 +49,7 @@ EIP-8483, with which validators and builders register opaque post-quantum (PQ)
 material. A validator registers 64 bytes, enough for a new public key and a
 RANDAO commitment. A builder registers only 32 bytes, enough for a new public
 key, since builders do not contribute to RANDAO. This specification gives the
-material no meaning beyond requiring each 32-byte part to be unique. A later
+material no meaning beyond requiring its first 32 bytes to be unique. A later
 fork that migrates to post-quantum signatures will define how it is used.
 
 The beacon state stores one `(validator_index, pq_data)` entry per validator and
@@ -417,10 +417,9 @@ def process_consolidation_request(
 ##### New `process_validator_pq_registration_request`
 
 *Note*: Invalid requests are ignored. Pending and active validators can register
-PQ material, as long as the request comes from their withdrawal address and
-neither the first nor the last 32 bytes of its PQ data are already registered. A
-validator that registers again must change both, because each is checked against
-every registration, including its own. Exited validators cannot register.
+PQ material, as long as the request comes from their withdrawal address and the
+first 32 bytes of its PQ data are not already registered. Exited validators
+cannot register.
 
 ```python
 def process_validator_pq_registration_request(
@@ -444,11 +443,9 @@ def process_validator_pq_registration_request(
     if validator.withdrawal_credentials[12:] != request.source_address:
         return
 
-    # Verify the PQ data is not already registered
+    # Verify the first 32 bytes of the PQ data are not already registered
     for registration in state.validator_pq_registrations:
         if registration.pq_data[:32] == request.pq_data[:32]:
-            return
-        if registration.pq_data[32:] == request.pq_data[32:]:
             return
 
     # Overwrite an existing registration for this validator

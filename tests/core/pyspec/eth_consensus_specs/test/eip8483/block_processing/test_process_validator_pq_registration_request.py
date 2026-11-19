@@ -250,7 +250,15 @@ def test_process_validator_pq_registration_request__second_part_already_register
     # Different first part, same second part
     request = prepare_validator_pq_registration_request(spec, state, 1, b"\x33" * 32 + b"\x55" * 32)
 
-    yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
+    yield from run_validator_pq_registration_request_processing(spec, state, request)
+
+    assert [
+        (registration.validator_index, registration.pq_data)
+        for registration in state.validator_pq_registrations
+    ] == [
+        (0, b"\x22" * 32 + b"\x55" * 32),
+        (1, b"\x33" * 32 + b"\x55" * 32),
+    ]
 
 
 @with_phases([EIP8483])
