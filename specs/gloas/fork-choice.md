@@ -513,12 +513,15 @@ def should_extend_payload(store: Store, root: Root) -> bool:
 
 ```python
 def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> Uint8:
-    if is_previous_slot_payload_decision(store, node):
-        # To decide on a payload from the previous slot, choose
-        # between FULL and EMPTY based on `should_extend_payload`
+    is_current_slot = store.blocks[node.root].slot == get_current_slot(store)
+    is_previous_slot = store.blocks[node.root].slot + 1 == get_current_slot(store)
+    is_payload_decision = node.payload_status in [PAYLOAD_STATUS_EMPTY, PAYLOAD_STATUS_FULL]
+    if (is_current_slot or is_previous_slot) and is_payload_decision:
+        # To decide on a payload from the current or previous slot,
+        # choose between FULL and EMPTY
         if node.payload_status == PAYLOAD_STATUS_EMPTY:
             return Uint8(1)
-        if should_extend_payload(store, node.root):
+        if is_current_slot or should_extend_payload(store, node.root):
             return Uint8(2)
         return Uint8(0)
     else:

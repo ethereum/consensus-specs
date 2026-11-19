@@ -222,13 +222,11 @@ def is_payload_inclusion_list_satisfied(store: Store, root: Root) -> bool:
 
 ### Modified `get_payload_status_tiebreaker`
 
-*Note*: `get_payload_status_tiebreaker` is modified to not extend a payload from
-the current or previous slot if it does not satisfy the inclusion list
-constraints.
+*Note*: `get_payload_status_tiebreaker` is modified to not extend a payload if
+it does not satisfy the inclusion list constraints.
 
 ```python
 def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> Uint8:
-    # [Modified in Heze:EIP7805]
     is_current_slot = store.blocks[node.root].slot == get_current_slot(store)
     is_previous_slot = store.blocks[node.root].slot + 1 == get_current_slot(store)
     is_payload_decision = node.payload_status in [PAYLOAD_STATUS_EMPTY, PAYLOAD_STATUS_FULL]
@@ -240,7 +238,6 @@ def get_payload_status_tiebreaker(store: Store, node: ForkChoiceNode) -> Uint8:
         # [New in Heze:EIP7805]
         if not is_payload_inclusion_list_satisfied(store, node.root):
             return Uint8(0)
-        # [Modified in Heze:EIP7805]
         if is_current_slot or should_extend_payload(store, node.root):
             return Uint8(2)
         return Uint8(0)
