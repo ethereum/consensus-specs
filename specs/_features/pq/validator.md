@@ -12,6 +12,10 @@
 - [Becoming a validator](#becoming-a-validator)
   - [Initialization](#initialization)
     - [VRF tree](#vrf-tree)
+      - [New `compute_vrf_leaf`](#new-compute_vrf_leaf)
+      - [New `compute_vrf_node`](#new-compute_vrf_node)
+      - [New `compute_vrf_root`](#new-compute_vrf_root)
+      - [New `compute_vrf_proof`](#new-compute_vrf_proof)
     - [XMSS public key](#xmss-public-key)
   - [Preregister](#preregister)
   - [Submit deposit](#submit-deposit)
@@ -60,13 +64,7 @@ leaf that `compute_xmss_leaf_index` assigns to its slot and type, except an
 attestation, which is signed at the leaf that
 `compute_xmss_attestation_leaf_index` assigns to its target epoch, and a message
 without a leaf of its own, such as a voluntary exit, which is signed at a
-reserved leaf, see [Protection best practices](#protection-best-practices). At
-the upgrade, each validator that registered an XMSS public key with EIP-8483
-takes it in place of its BLS public key. A validator without a registration is
-exited at the upgrade and becomes withdrawable
-`UNREGISTERED_VALIDATOR_WITHDRAWABILITY_DELAY` epochs later. Its balance is then
-withdrawn, unless it has `0x00` withdrawal credentials, in which case its
-balance stays locked. See [the fork document](./fork.md) for details.
+reserved leaf, see [Protection best practices](#protection-best-practices).
 
 ## Containers
 
@@ -99,13 +97,73 @@ class SignedAggregateAndProof(Container):
 
 #### VRF tree
 
-A validator builds a Merkle tree of depth `VRF_TREE_DEPTH` whose leaves are
-secret random values, one for each slot, and registers the root of the tree as
-its VRF root with EIP-8483, as the last 32 bytes of the registration's
-`pq_data`. Its VRF proof for a slot is the leaf at index `slot`, followed by the
+A validator's VRF seed, `vrf_seed`, is a secret 32-byte value from which its VRF
+tree is derived. It must be securely generated and kept secret, since anyone who
+learns it can compute the validator's future RANDAO reveals.
+
+The VRF seed is independent of the validator's XMSS private key. A validator's
+VRF root cannot be changed, so the validator must keep its VRF seed for as long
+as it validates and take it along when it moves to another client. A tree
+derived from any other seed has a different root, so its proofs fail
+verification and the validator's blocks are invalid.
+
+The VRF tree is a Merkle tree of depth `VRF_TREE_DEPTH` with one leaf for each
+slot. A validator's VRF root is the root of its VRF tree,
+`compute_vrf_root(vrf_seed)`. Its VRF proof for a slot,
+`compute_vrf_proof(vrf_seed, slot)`, is the leaf at index `slot` followed by the
 leaf's Merkle branch. It reveals the proof as its RANDAO reveal when it
-proposes. The tree is fixed at registration, so a validator cannot grind its
-proofs, and nobody can predict them before they are revealed.
+proposes. The tree is fixed in advance, so a validator cannot grind its proofs,
+and nobody can predict them before they are revealed.
+
+##### New `compute_vrf_leaf`
+
+```python
+def compute_vrf_leaf(vrf_seed: Bytes32, index: Uint64) -> Bytes32:
+    """
+    Return the leaf at ``index`` of the VRF tree derived from ``vrf_seed``.
+    """
+    return sha256(vrf_seed + uint_to_bytes(index))
+```
+
+##### New `compute_vrf_node`
+
+```python
+def compute_vrf_node(vrf_seed: Bytes32, height: Uint64, index: Uint64) -> Bytes32:
+    """
+    Return the node at ``index`` among the nodes ``height`` levels above the
+    leaves of the VRF tree derived from ``vrf_seed``.
+    """
+    if height == 0:
+        return compute_vrf_leaf(vrf_seed, index)
+    left = compute_vrf_node(vrf_seed, height - 1, 2 * index)
+    right = compute_vrf_node(vrf_seed, height - 1, 2 * index + 1)
+    return sha256(left + right)
+```
+
+##### New `compute_vrf_root`
+
+```python
+def compute_vrf_root(vrf_seed: Bytes32) -> Root:
+    """
+    Return the root of the VRF tree derived from ``vrf_seed``.
+    """
+    return Root(compute_vrf_node(vrf_seed, VRF_TREE_DEPTH, Uint64(0)))
+```
+
+##### New `compute_vrf_proof`
+
+```python
+def compute_vrf_proof(vrf_seed: Bytes32, slot: Slot) -> VRFProof:
+    """
+    Return the leaf at index ``slot`` of the VRF tree derived from
+    ``vrf_seed``, followed by the leaf's Merkle branch.
+    """
+    branch = [
+        compute_vrf_node(vrf_seed, Uint64(height), Uint64((slot // 2**height) ^ 1))
+        for height in range(VRF_TREE_DEPTH)
+    ]
+    return VRFProof(data=[compute_vrf_leaf(vrf_seed, Uint64(slot))] + branch)
+```
 
 #### XMSS public key
 
@@ -113,13 +171,6 @@ A validator's XMSS private key, `privkey`, is a 32-byte seed from which its
 leanXMSS key is derived. It must be securely generated along with the resultant
 XMSS public key. This `privkey` must be "hot", that is, constantly available to
 sign data throughout the lifetime of the validator.
-
-The XMSS public key is registered with EIP-8483 before the upgrade, as the first
-32 bytes of the registration's `pq_data`. The remaining 32 bytes are the
-validator's VRF root.
-
-*Note*: A validator that joins after the upgrade provides its XMSS public key
-and VRF root in its deposit instead, see [Submit deposit](#submit-deposit).
 
 ### Preregister
 
@@ -235,9 +286,8 @@ def get_signed_proposer_preferences(
 
 ##### Randao reveal
 
-Set `block.body.randao_reveal` to the proposer's VRF proof for `block.slot`, the
-leaf at index `block.slot` of its VRF tree followed by the leaf's Merkle branch.
-`get_epoch_signature` is deprecated.
+Set `block.body.randao_reveal` to `compute_vrf_proof(vrf_seed, block.slot)`, the
+proposer's VRF proof for `block.slot`.
 
 ##### Attestations
 
