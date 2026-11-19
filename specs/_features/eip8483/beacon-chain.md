@@ -63,7 +63,9 @@ one `(builder_pubkey, pq_data)` entry per builder. Builder entries are keyed by
 public key rather than index, because a builder index is reused once its builder
 has withdrawn. A later request for the same validator or builder overwrites the
 earlier one. An entry is removed when its validator or builder initiates an
-exit, after which that validator or builder cannot register again.
+exit, after which that validator or builder cannot register again. These state
+fields are temporary and will be removed after the migration to post-quantum
+signatures.
 
 *Note*: This specification is built upon [Heze](../../heze/beacon-chain.md).
 
