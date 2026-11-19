@@ -40,6 +40,7 @@ PREVIOUS_FORK_OF = {
 ALL_FORKS = list(PREVIOUS_FORK_OF.keys())
 
 DEFAULT_ORDER = ("beacon-chain",)
+REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
 def is_post_fork(a, b) -> bool:
@@ -59,12 +60,12 @@ def is_post_fork(a, b) -> bool:
 
 
 def get_fork_directory(fork):
-    dir1 = f"specs/{fork}"
-    if Path(dir1).exists():
-        return dir1
-    dir2 = f"specs/_features/{fork}"
-    if Path(dir2).exists():
-        return dir2
+    dir1 = REPO_ROOT / "specs" / fork
+    if dir1.exists():
+        return str(dir1)
+    dir2 = REPO_ROOT / "specs" / "_features" / fork
+    if dir2.exists():
+        return str(dir2)
     raise FileNotFoundError(f"No directory found for fork: {fork}")
 
 
