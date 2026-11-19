@@ -269,7 +269,8 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     current_slot = get_current_slot(store)
 
     # The slot must be within the retention window
-    assert inclusion_list.slot <= current_slot
+    # (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance for the next slot, as in gossip)
+    assert not is_future_slot(store, inclusion_list.slot, store.time_ms)
     assert inclusion_list.slot + MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS >= current_slot
 
     # The transactions must be non-empty and not exceed the maximum size
@@ -303,9 +304,13 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     # Verify the signature
     assert is_valid_inclusion_list_signature(state, signed_inclusion_list)
 
-    # The inclusion list is timely if it arrives in its slot before the deadline
+    # The inclusion list is timely if it arrives in its slot before the deadline,
+    # or if it arrives early for the next slot within the clock disparity
+    is_early = inclusion_list.slot > current_slot
     is_current_slot = inclusion_list.slot == current_slot
-    is_timely = is_current_slot and get_time_into_slot_ms(store) < get_inclusion_list_due_ms()
+    is_timely = is_early or (
+        is_current_slot and get_time_into_slot_ms(store) < get_inclusion_list_due_ms()
+    )
 
     # Process the inclusion list
     process_inclusion_list(get_inclusion_list_store(), signed_inclusion_list, is_timely)
