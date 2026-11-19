@@ -5,6 +5,8 @@
 <!-- mdformat-toc start --slug=github --no-anchors --maxlevel=6 --minlevel=2 -->
 
 - [Introduction](#introduction)
+- [Constants](#constants)
+  - [Misc](#misc)
 - [Configs](#configs)
   - [Time parameters](#time-parameters)
 - [Containers](#containers)
@@ -14,7 +16,7 @@
 - [Becoming a validator](#becoming-a-validator)
   - [Initialization](#initialization)
     - [VRF tree](#vrf-tree)
-      - [New `compute_vrf_leaf`](#new-compute_vrf_leaf)
+      - [New `compute_vrf_secret`](#new-compute_vrf_secret)
       - [New `compute_vrf_node`](#new-compute_vrf_node)
       - [New `compute_vrf_root`](#new-compute_vrf_root)
       - [New `compute_vrf_proof`](#new-compute_vrf_proof)
@@ -67,6 +69,16 @@ attestation, which is signed at the leaf that
 `compute_xmss_attestation_leaf_index` assigns to its target epoch, and a message
 without a leaf of its own, such as a voluntary exit, which is signed at a
 reserved leaf, see [Protection best practices](#protection-best-practices).
+
+## Constants
+
+### Misc
+
+*[New in PQ]*
+
+| Name                | Value           |
+| ------------------- | --------------- |
+| `VRF_SECRET_DOMAIN` | `b"VRF_SECRET"` |
 
 ## Configs
 
@@ -122,21 +134,23 @@ derived from any other seed has a different root, so its proofs fail
 verification and the validator's blocks are invalid.
 
 The VRF tree is a Merkle tree of depth `VRF_TREE_DEPTH`, hashed with
-`keccak256`, with one leaf for each slot. A validator's VRF root is the root of
-its VRF tree, `compute_vrf_root(vrf_seed)`. Its VRF proof for a slot,
-`compute_vrf_proof(vrf_seed, slot)`, is the leaf at index `slot` followed by the
-leaf's Merkle branch. It reveals the proof as its RANDAO reveal when it
-proposes. The tree is fixed in advance, so a validator cannot grind its proofs,
-and nobody can predict them before they are revealed.
+`keccak256`, with one leaf for each slot. The leaf at index `slot` commits to
+the validator's secret for the slot, `compute_vrf_secret(vrf_seed, slot)`. A
+validator's VRF root is the root of its VRF tree, `compute_vrf_root(vrf_seed)`.
+Its VRF proof for a slot, `compute_vrf_proof(vrf_seed, slot)`, is the secret for
+the slot followed by the leaf's Merkle branch. It reveals the proof as its
+RANDAO reveal when it proposes. The branch holds only commitments, so it reveals
+no other secret. The tree is fixed in advance, so a validator cannot grind its
+proofs, and nobody can predict them before they are revealed.
 
-##### New `compute_vrf_leaf`
+##### New `compute_vrf_secret`
 
 ```python
-def compute_vrf_leaf(vrf_seed: Bytes32, index: Uint64) -> Bytes32:
+def compute_vrf_secret(vrf_seed: Bytes32, index: Uint64) -> Bytes32:
     """
-    Return the leaf at ``index`` of the VRF tree derived from ``vrf_seed``.
+    Return the secret for ``index`` of the VRF tree derived from ``vrf_seed``.
     """
-    return keccak256(vrf_seed + uint_to_bytes(index))
+    return keccak256(VRF_SECRET_DOMAIN + vrf_seed + uint_to_bytes(index))
 ```
 
 ##### New `compute_vrf_node`
@@ -148,7 +162,7 @@ def compute_vrf_node(vrf_seed: Bytes32, height: Uint64, index: Uint64) -> Bytes3
     leaves of the VRF tree derived from ``vrf_seed``.
     """
     if height == 0:
-        return compute_vrf_leaf(vrf_seed, index)
+        return compute_vrf_leaf(compute_vrf_secret(vrf_seed, index), index)
     left = compute_vrf_node(vrf_seed, height - 1, 2 * index)
     right = compute_vrf_node(vrf_seed, height - 1, 2 * index + 1)
     return keccak256(left + right)
@@ -169,14 +183,14 @@ def compute_vrf_root(vrf_seed: Bytes32) -> Root:
 ```python
 def compute_vrf_proof(vrf_seed: Bytes32, slot: Slot) -> VRFProof:
     """
-    Return the leaf at index ``slot`` of the VRF tree derived from
-    ``vrf_seed``, followed by the leaf's Merkle branch.
+    Return the secret for ``slot`` of the VRF tree derived from ``vrf_seed``,
+    followed by the Merkle branch of the leaf at index ``slot``.
     """
     branch = [
         compute_vrf_node(vrf_seed, Uint64(height), Uint64((slot // 2**height) ^ 1))
         for height in range(VRF_TREE_DEPTH)
     ]
-    return VRFProof(data=[compute_vrf_leaf(vrf_seed, Uint64(slot))] + branch)
+    return VRFProof(data=[compute_vrf_secret(vrf_seed, Uint64(slot))] + branch)
 ```
 
 #### XMSS public key

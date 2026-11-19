@@ -74,6 +74,7 @@
     - [New `compute_legacy_xmss_pubkey`](#new-compute_legacy_xmss_pubkey)
     - [New `compute_legacy_vrf_root`](#new-compute_legacy_vrf_root)
     - [New `compute_deposit_pubkey`](#new-compute_deposit_pubkey)
+    - [New `compute_vrf_leaf`](#new-compute_vrf_leaf)
     - [New `compute_deposit_vrf_root`](#new-compute_deposit_vrf_root)
     - [New `compute_xmss_attestation_leaf_index`](#new-compute_xmss_attestation_leaf_index)
     - [New `compute_xmss_leaf_index`](#new-compute_xmss_leaf_index)
@@ -179,10 +180,11 @@ XMSS has no native aggregation. A STARK instead proves many XMSS signatures at
 once, such as those of attestations in an `AttestationProof`.
 
 XMSS signatures are not unique, so a proposer could grind a signature-based
-RANDAO reveal. Each validator instead registers the root of a Merkle tree of
-secret random values, one for each slot, as its VRF root. Its RANDAO reveal is
-the leaf for the slot with the leaf's Merkle branch, a `VRFProof`, which the
-proposer committed to before the fork.
+RANDAO reveal. Each validator instead has a secret random value for each slot,
+and registers as its VRF root the root of a Merkle tree whose leaf for a slot
+commits to the slot's secret. Its RANDAO reveal is the secret for the slot with
+the leaf's Merkle branch, a `VRFProof`, which the proposer committed to before
+the fork. The branch holds only commitments, so it reveals no other secret.
 
 Aggregators no longer select themselves. Each beacon committee has an
 aggregation committee, sampled by effective balance and kept in
@@ -258,8 +260,8 @@ class CommitteeBits(BitVector):
 ```python
 class VRFProof(Vector[Bytes32]):
     """
-    A leaf of the tree under a validator's VRF root, followed by the leaf's
-    Merkle branch.
+    A secret committed to by a leaf of the tree under a validator's VRF root,
+    followed by the leaf's Merkle branch.
     """
 
     LENGTH = VRF_TREE_DEPTH + 1
@@ -396,9 +398,10 @@ class AggregationCommitteeWindow(Vector[AggregationCommittees]):
 
 ### VRF
 
-| Name             | Value        |
-| ---------------- | ------------ |
-| `VRF_TREE_DEPTH` | `Uint64(31)` |
+| Name              | Value         |
+| ----------------- | ------------- |
+| `VRF_TREE_DEPTH`  | `Uint64(31)`  |
+| `VRF_LEAF_DOMAIN` | `b"VRF_LEAF"` |
 
 ### XMSS leaf offsets
 
@@ -945,6 +948,20 @@ def compute_deposit_pubkey(pubkey: Bytes48) -> XMSSPubkey:
     return XMSSPubkey(pubkey[16:])
 ```
 
+#### New `compute_vrf_leaf`
+
+*Note*: A leaf commits to its index as well as its secret, so no two leaves of a
+tree are the same, even if its secrets repeat. A validator cannot save work by
+repeating a small subtree in place of computing the whole tree.
+
+```python
+def compute_vrf_leaf(secret: Bytes32, index: Uint64) -> Bytes32:
+    """
+    Return the leaf at ``index`` of a VRF tree, which commits to ``secret``.
+    """
+    return keccak256(VRF_LEAF_DOMAIN + secret + uint_to_bytes(index))
+```
+
 #### New `compute_deposit_vrf_root`
 
 ```python
@@ -1098,10 +1115,11 @@ def is_valid_vrf_proof(
     state: BeaconState, validator_index: ValidatorIndex, slot: Slot, proof: VRFProof
 ) -> bool:
     """
-    Check that ``proof`` opens the leaf at index ``slot`` of the tree under
-    the VRF root of the validator at ``validator_index``.
+    Check that ``proof`` reveals the secret that the leaf at index ``slot`` of
+    the tree under the VRF root of the validator at ``validator_index`` commits
+    to.
     """
-    value = proof[0]
+    value = compute_vrf_leaf(proof[0], Uint64(slot))
     for height in range(VRF_TREE_DEPTH):
         if slot // (2**height) % 2:
             value = keccak256(proof[height + 1] + value)
@@ -1725,9 +1743,10 @@ def process_block(state: BeaconState, block: BeaconBlock) -> None:
 
 #### Modified `process_randao`
 
-*Note*: The reveal is the proposer's VRF proof for the slot. The proposer
-committed to its leaves when it registered its VRF root, so it cannot grind the
-reveal and can only withhold its block, as with BLS.
+*Note*: The reveal is the proposer's VRF proof for the slot, and the secret it
+reveals is mixed in. The proposer committed to its secrets when it registered
+its VRF root, so it cannot grind the reveal and can only withhold its block, as
+with BLS.
 
 ```python
 def process_randao(state: BeaconState, body: BeaconBlockBody) -> None:

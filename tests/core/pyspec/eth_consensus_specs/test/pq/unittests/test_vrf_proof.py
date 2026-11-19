@@ -6,21 +6,27 @@ from eth_consensus_specs.test.helpers.keys import get_vrf_proof
 @with_phases([PQ])
 @spec_state_test
 def test_valid_vrf_proof(spec, state):
-    proof = spec.VRFProof(data=get_vrf_proof(0))
+    proof = spec.VRFProof(data=get_vrf_proof(0, state.slot))
     assert spec.is_valid_vrf_proof(state, 0, state.slot, proof)
-    assert spec.is_valid_vrf_proof(state, 0, state.slot + 1, proof)
 
 
 @with_phases([PQ])
 @spec_state_test
-def test_vrf_proof_wrong_leaf(spec, state):
-    proof = spec.VRFProof(data=get_vrf_proof(0))
+def test_vrf_proof_wrong_secret(spec, state):
+    proof = spec.VRFProof(data=get_vrf_proof(0, state.slot))
     proof[0] = spec.Bytes32(b"\x01" * 32)
     assert not spec.is_valid_vrf_proof(state, 0, state.slot, proof)
 
 
 @with_phases([PQ])
 @spec_state_test
+def test_vrf_proof_wrong_slot(spec, state):
+    proof = spec.VRFProof(data=get_vrf_proof(0, state.slot))
+    assert not spec.is_valid_vrf_proof(state, 0, state.slot + 1, proof)
+
+
+@with_phases([PQ])
+@spec_state_test
 def test_vrf_proof_of_other_validator(spec, state):
-    proof = spec.VRFProof(data=get_vrf_proof(1))
+    proof = spec.VRFProof(data=get_vrf_proof(1, state.slot))
     assert not spec.is_valid_vrf_proof(state, 0, state.slot, proof)

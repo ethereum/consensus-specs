@@ -39,7 +39,7 @@ def apply_randao_reveal(spec, state, block, proposer_index):
     assert state.slot <= block.slot
 
     if is_post_pq(spec):
-        block.body.randao_reveal = spec.VRFProof(data=get_vrf_proof(proposer_index))
+        block.body.randao_reveal = spec.VRFProof(data=get_vrf_proof(proposer_index, block.slot))
     elif is_post_eip8321(spec) and state.randao_commitments[proposer_index] != spec.Bytes32():
         # The proposer walks its hash chain instead of signing; the legacy reveal must be empty.
         block.body.randao_reveal = spec.G2_POINT_AT_INFINITY
