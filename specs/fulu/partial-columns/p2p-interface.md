@@ -35,8 +35,8 @@
 
 This document specifies how data columns are disseminated as partial columns in
 Fulu, using gossipsub's
-[Partial Message Extension](https://github.com/libp2p/specs/pull/685) to
-exchange individual cells and their proofs.
+[Partial Message Extension](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/partial-messages.md)
+to exchange individual cells and their proofs.
 
 The specification of these changes continues in the same format as the network
 specifications of previous upgrades, and assumes them as pre-requisite. In
@@ -366,10 +366,10 @@ def validate_partial_data_column_sidecar_gossip(
 ### Partial columns for Cell Dissemination
 
 Gossipsub's
-[Partial Message Extension](https://github.com/libp2p/specs/pull/685) enables
-exchanging selective parts of a message rather than the whole. The specification
-here describes how consensus-layer clients use Partial Messages to disseminate
-cells along with their proofs.
+[Partial Message Extension](https://github.com/libp2p/specs/blob/master/pubsub/gossipsub/partial-messages.md)
+enables exchanging selective parts of a message rather than the whole. The
+specification here describes how consensus-layer clients use Partial Messages to
+disseminate cells along with their proofs.
 
 #### Partial message group ID
 
