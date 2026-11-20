@@ -424,8 +424,8 @@ yet.
 
 ##### Requesting partial messages
 
-A peer requests partial messages for a topic by setting the `partial` field in
-gossipsub's `SubOpts` RPC message to `true`.
+A peer requests partial messages for a topic by setting the `requestsPartial`
+field in gossipsub's `SubOpts` RPC message to `true`.
 
 ##### Mesh
 
