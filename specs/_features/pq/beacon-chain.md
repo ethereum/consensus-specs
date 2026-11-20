@@ -917,7 +917,10 @@ def xmss_sign(privkey: Bytes32, leaf_index: Uint64, message: Bytes32) -> XMSSSig
 
 ```python
 def xmss_verify(
-    pubkey: XMSSPubkey, leaf_index: Uint64, message: Bytes32, signature: XMSSSignature
+    pubkey: XMSSPubkey,
+    leaf_index: Uint64,
+    message: Bytes32,
+    signature: XMSSSignature,
 ) -> bool:
     """
     Return ``True`` only if ``signature`` was produced at ``leaf_index``.
@@ -939,7 +942,8 @@ def xmss_get_leaf_index(signature: XMSSSignature) -> Uint64:
 
 ```python
 def stark_prove_aggregates(
-    statements: Sequence[XMSSAggregateStatement], signatures: Sequence[Sequence[XMSSSignature]]
+    statements: Sequence[XMSSAggregateStatement],
+    signatures: Sequence[Sequence[XMSSSignature]],
 ) -> AttestationProof:
     """
     Return a proof of ``signatures``, which holds the signatures for each of
@@ -964,7 +968,8 @@ def stark_merge_proofs(proofs: Sequence[AttestationProof]) -> AttestationProof:
 
 ```python
 def stark_verify_aggregates(
-    statements: Sequence[XMSSAggregateStatement], proof: AttestationProof
+    statements: Sequence[XMSSAggregateStatement],
+    proof: AttestationProof,
 ) -> bool:
     """
     Return ``True`` only if ``proof`` proves, for each of ``statements`` and
@@ -1070,7 +1075,9 @@ def compute_xmss_leaf_index(slot: Slot, leaf_offset: Uint64) -> Uint64:
 
 ```python
 def compute_aggregation_committee(
-    state: BeaconState, slot: Slot, index: CommitteeIndex
+    state: BeaconState,
+    slot: Slot,
+    index: CommitteeIndex,
 ) -> AggregationCommittee:
     """
     Return the aggregation committee of the beacon committee at ``slot`` for
@@ -1122,7 +1129,8 @@ processing.
 
 ```python
 def is_active_validator_preregistration(
-    state: BeaconState, preregistration: ValidatorPreregistration
+    state: BeaconState,
+    preregistration: ValidatorPreregistration,
 ) -> bool:
     """
     Check if ``preregistration`` has not expired.
@@ -1135,7 +1143,8 @@ def is_active_validator_preregistration(
 
 ```python
 def is_active_builder_preregistration(
-    state: BeaconState, preregistration: BuilderPreregistration
+    state: BeaconState,
+    preregistration: BuilderPreregistration,
 ) -> bool:
     """
     Check if ``preregistration`` has not expired.
@@ -1173,7 +1182,10 @@ def is_legacy_pubkey(pubkey: Bytes48) -> bool:
 
 ```python
 def is_valid_vrf_proof(
-    state: BeaconState, validator_index: ValidatorIndex, slot: Slot, proof: VRFProof
+    state: BeaconState,
+    validator_index: ValidatorIndex,
+    slot: Slot,
+    proof: VRFProof,
 ) -> bool:
     """
     Check that ``proof`` reveals the secret that the leaf at index ``slot`` of
@@ -1216,7 +1228,8 @@ public keys of its attesting indices in order.
 
 ```python
 def is_valid_indexed_attestation(
-    state: BeaconState, indexed_attestation: IndexedAttestation
+    state: BeaconState,
+    indexed_attestation: IndexedAttestation,
 ) -> bool:
     """
     Check if ``indexed_attestation`` is not empty, has sorted and unique indices and has a valid stark proof.
@@ -1335,7 +1348,9 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> set[V
 
 ```python
 def get_beacon_committee(
-    state: BeaconState, slot: Slot, index: CommitteeIndex
+    state: BeaconState,
+    slot: Slot,
+    index: CommitteeIndex,
 ) -> Sequence[ValidatorIndex]:
     """
     Return the beacon committee at ``slot`` for ``index``.
@@ -1396,7 +1411,9 @@ def get_indexed_attestation(
 
 ```python
 def get_aggregation_committee(
-    state: BeaconState, slot: Slot, index: CommitteeIndex
+    state: BeaconState,
+    slot: Slot,
+    index: CommitteeIndex,
 ) -> AggregationCommittee:
     """
     Return the aggregation committee of the beacon committee at ``slot`` for
@@ -1420,7 +1437,8 @@ proofs into the block's `proof`.
 
 ```python
 def get_attestation_statements(
-    state: BeaconState, attestation: Attestation
+    state: BeaconState,
+    attestation: Attestation,
 ) -> Sequence[XMSSAggregateStatement]:
     """
     Return, for each committee of ``attestation`` in order, the statement that the
@@ -1485,7 +1503,8 @@ def get_validator_preregistration_index(state: BeaconState, pubkey: XMSSPubkey) 
 
 ```python
 def get_active_validator_preregistration(
-    state: BeaconState, pubkey: XMSSPubkey
+    state: BeaconState,
+    pubkey: XMSSPubkey,
 ) -> ValidatorPreregistration | None:
     """
     Return the active validator preregistration of ``pubkey``, if any.
@@ -1516,7 +1535,8 @@ def get_builder_preregistration_index(state: BeaconState, pubkey: XMSSPubkey) ->
 
 ```python
 def get_active_builder_preregistration(
-    state: BeaconState, pubkey: XMSSPubkey
+    state: BeaconState,
+    pubkey: XMSSPubkey,
 ) -> BuilderPreregistration | None:
     """
     Return the active builder preregistration of ``pubkey``, if any.
@@ -1865,7 +1885,8 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
 
 ```python
 def verify_execution_payload_envelope_signature(
-    state: BeaconState, signed_envelope: SignedExecutionPayloadEnvelope
+    state: BeaconState,
+    signed_envelope: SignedExecutionPayloadEnvelope,
 ) -> bool:
     builder_index = signed_envelope.message.builder_index
     if builder_index == BUILDER_INDEX_SELF_BUILD:
@@ -1890,7 +1911,8 @@ def verify_execution_payload_envelope_signature(
 
 ```python
 def verify_execution_payload_bid_signature(
-    state: BeaconState, signed_bid: SignedExecutionPayloadBid
+    state: BeaconState,
+    signed_bid: SignedExecutionPayloadBid,
 ) -> bool:
     builder = state.builders[signed_bid.message.builder_index]
     signing_root = compute_signing_root(
@@ -1907,7 +1929,8 @@ def verify_execution_payload_bid_signature(
 
 ```python
 def process_execution_payload_bid(
-    state: BeaconState, signed_bid: SignedExecutionPayloadBid
+    state: BeaconState,
+    signed_bid: SignedExecutionPayloadBid,
 ) -> None:
     bid = signed_bid.message
     builder_index = bid.builder_index
@@ -2398,7 +2421,8 @@ def process_withdrawal_request(state: BeaconState, withdrawal_request: Withdrawa
 
 ```python
 def is_valid_switch_to_compounding_request(
-    state: BeaconState, consolidation_request: ConsolidationRequest
+    state: BeaconState,
+    consolidation_request: ConsolidationRequest,
 ) -> bool:
     # Switch to compounding requires source and target be equal
     if consolidation_request.source_pubkey != consolidation_request.target_pubkey:
@@ -2437,7 +2461,8 @@ def is_valid_switch_to_compounding_request(
 
 ```python
 def process_consolidation_request(
-    state: BeaconState, consolidation_request: ConsolidationRequest
+    state: BeaconState,
+    consolidation_request: ConsolidationRequest,
 ) -> None:
     # [New in PQ]
     # Ignore requests that name a BLS public key
@@ -2526,7 +2551,8 @@ def process_consolidation_request(
 
 ```python
 def process_validator_preregistration_request(
-    state: BeaconState, request: ValidatorPreregistrationRequest
+    state: BeaconState,
+    request: ValidatorPreregistrationRequest,
 ) -> None:
     pubkey = request.pubkey
 
@@ -2572,7 +2598,8 @@ def process_validator_preregistration_request(
 
 ```python
 def process_builder_preregistration_request(
-    state: BeaconState, request: BuilderPreregistrationRequest
+    state: BeaconState,
+    request: BuilderPreregistrationRequest,
 ) -> None:
     pubkey = request.pubkey
 

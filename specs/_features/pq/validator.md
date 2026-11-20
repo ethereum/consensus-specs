@@ -242,7 +242,9 @@ committee index may differ.
 
 ```python
 def get_committee_assignment(
-    state: BeaconState, epoch: Epoch, validator_index: ValidatorIndex
+    state: BeaconState,
+    epoch: Epoch,
+    validator_index: ValidatorIndex,
 ) -> tuple[Sequence[ValidatorIndex], CommitteeIndex, Slot] | None:
     """
     Return the committee assignment in the ``epoch`` for ``validator_index``.
@@ -539,7 +541,9 @@ def get_attestation_signature(
 
 ```python
 def compute_subnet_for_attestation(
-    committees_per_slot: Uint64, slot: Slot, committee_index: CommitteeIndex
+    committees_per_slot: Uint64,
+    slot: Slot,
+    committee_index: CommitteeIndex,
 ) -> SubnetID:
     """
     Compute the correct subnet for an attestation.
@@ -604,7 +608,9 @@ their committee:
 
 ```python
 def get_aggregate_stark(
-    state: BeaconState, aggregate: Attestation, signatures: Sequence[XMSSSignature]
+    state: BeaconState,
+    aggregate: Attestation,
+    signatures: Sequence[XMSSSignature],
 ) -> AttestationProof:
     statements = get_attestation_statements(state, aggregate)
     return stark_prove_aggregates(statements, [signatures])
@@ -621,7 +627,8 @@ all in an aggregate already seen.
 
 ```python
 def should_broadcast_aggregate(
-    aggregate: Attestation, received_aggregates: Sequence[Attestation]
+    aggregate: Attestation,
+    received_aggregates: Sequence[Attestation],
 ) -> bool:
     """
     Return whether no aggregate in ``received_aggregates`` with the same data
