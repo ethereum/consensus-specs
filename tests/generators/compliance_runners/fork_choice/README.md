@@ -37,7 +37,7 @@ From the root directory:
 
 ```
 make build  # Initialize virtual environment
-uv run pytest tests/generators/compliance_runners/fork_choice/runner/test_run.py --test-dir ${test_dir}
+uv run pytest tests/generators/compliance_runners/runner/test_run.py --kind=fork_choice --test-dir ${test_dir}
 ```
 
 Optional pytest filtering and distribution flags such as `-k ...` and
