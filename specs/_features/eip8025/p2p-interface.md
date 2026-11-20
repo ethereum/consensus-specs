@@ -15,12 +15,14 @@ Req/Resp protocol is defined.
 - [Table of contents](#table-of-contents)
 - [Constants](#constants)
   - [Type-specific SSZ bounds](#type-specific-ssz-bounds)
+  - [Gossip](#gossip)
 - [Helpers](#helpers)
   - [Modified `Seen`](#modified-seen)
+  - [New `compute_subnet_for_execution_proof`](#new-compute_subnet_for_execution_proof)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
-    - [Global topics](#global-topics)
-      - [New `execution_proof`](#new-execution_proof)
+    - [Execution proof subnets](#execution-proof-subnets)
+      - [New `execution_proof_{subnet_id}`](#new-execution_proof_subnet_id)
 - [The discovery domain: discv5](#the-discovery-domain-discv5)
   - [ENR structure](#enr-structure)
     - [Execution proof awareness](#execution-proof-awareness)
@@ -34,6 +36,12 @@ Req/Resp protocol is defined.
 | Name                                       | Value             |
 | ------------------------------------------ | ----------------- |
 | `MAX_SIGNED_EXECUTION_PROOF_ENVELOPE_SIZE` | `Uint64(4194449)` |
+
+### Gossip
+
+| Name                           | Value       | Description                                                      |
+| ------------------------------ | ----------- | ---------------------------------------------------------------- |
+| `EXECUTION_PROOF_SUBNET_COUNT` | `Uint64(8)` | Number of execution proof subnets used in the gossipsub protocol |
 
 ## Helpers
 
@@ -66,15 +74,23 @@ class Seen:
     execution_proof_provers: set[tuple[Root, ProofType, ValidatorIndex]]
 ```
 
+### New `compute_subnet_for_execution_proof`
+
+```python
+def compute_subnet_for_execution_proof(proof_type: ProofType) -> SubnetID:
+    return SubnetID(Uint64(proof_type) % EXECUTION_PROOF_SUBNET_COUNT)
+```
+
 ## The gossip domain: gossipsub
 
 ### Topics and messages
 
-#### Global topics
+#### Execution proof subnets
 
-##### New `execution_proof`
+##### New `execution_proof_{subnet_id}`
 
-This topic is used to propagate `SignedExecutionProofEnvelope` messages.
+The `execution_proof_{subnet_id}` topics, where each proof type maps to some
+`subnet_id`, are used to propagate `SignedExecutionProofEnvelope` messages.
 
 ```python
 def validate_execution_proof_gossip(
@@ -82,9 +98,10 @@ def validate_execution_proof_gossip(
     store: Store,
     signed_proof_envelope: SignedExecutionProofEnvelope,
     proof_engine: ProofEngine,
+    subnet_id: SubnetID,
 ) -> None:
     """
-    Validate a SignedExecutionProofEnvelope for gossip propagation.
+    Validate a SignedExecutionProofEnvelope for gossip propagation on a subnet.
     Raises GossipIgnore or GossipReject on validation failure.
     """
     proof_envelope = signed_proof_envelope.message
@@ -96,6 +113,10 @@ def validate_execution_proof_gossip(
     # [REJECT] The proof type is supported
     if proof_envelope.proof_type not in get_supported_proof_types():
         raise GossipReject("unexpected execution proof type")
+
+    # [REJECT] The proof is for the correct subnet
+    if compute_subnet_for_execution_proof(proof_envelope.proof_type) != subnet_id:
+        raise GossipReject("execution proof is for wrong subnet")
 
     beacon_block_root = proof_envelope.beacon_block_root
 
@@ -165,7 +186,7 @@ and peering between nodes that participate in execution-proof gossip.
 | `eproof` | Execution layer proof awareness, `Uint8` |
 
 A node is considered execution proof-aware if the `eproof` key is present and
-its value is not `0`. An execution proof-aware node subscribes to the
-`execution_proof` gossip topic and implements its validation rules. Clients MAY
-prefer execution proof-aware nodes when selecting peers for execution-proof
-gossip.
+its value is not `0`. An execution proof-aware node subscribes to all
+`EXECUTION_PROOF_SUBNET_COUNT` `execution_proof_{subnet_id}` gossip topics and
+implements their validation rules. Clients MAY prefer execution proof-aware
+nodes when selecting peers for execution-proof gossip.
