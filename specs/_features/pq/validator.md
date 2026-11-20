@@ -237,7 +237,7 @@ a legacy deposit, so the validator it creates is exited at once.
 ### Modified `get_committee_assignment`
 
 *Note*: The body is unchanged, but each slot now has at most
-`MAX_COMMITTEES_PER_SLOT_PQ` committees, so a validator's committee and
+`X_MAX_COMMITTEE_COUNT_PER_SLOT` committees, so a validator's committee and
 committee index may differ.
 
 ```python

@@ -164,6 +164,10 @@ CONSOLIDATION_CHURN_LIMIT_QUOTIENT: 65536
 # 2**8 * 10**9 (= 256,000,000,000) Gwei
 MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS: 256000000000
 
+# PQ
+# 2**4 (= 16) committees, temporary and only for testing
+X_MAX_COMMITTEE_COUNT_PER_SLOT: 16
+
 # Fork choice
 # ---------------------------------------------------------------
 # 40%

@@ -34,6 +34,7 @@
   - [Max operations per block](#max-operations-per-block)
   - [Execution](#execution)
 - [Configs](#configs)
+  - [Misc](#misc-2)
   - [Time parameters](#time-parameters-1)
 - [Containers](#containers)
   - [Modified containers](#modified-containers)
@@ -70,7 +71,7 @@
     - [New `keccak256`](#new-keccak256)
     - [XMSS signatures](#xmss-signatures)
     - [STARK proofs](#stark-proofs)
-  - [Misc](#misc-2)
+  - [Misc](#misc-3)
     - [New `compute_legacy_xmss_pubkey`](#new-compute_legacy_xmss_pubkey)
     - [New `compute_legacy_vrf_root`](#new-compute_legacy_vrf_root)
     - [New `compute_deposit_pubkey`](#new-compute_deposit_pubkey)
@@ -475,6 +476,30 @@ The reference concatenation fits at most
 | `MAX_VOLUNTARY_EXIT_REQUESTS_PER_PAYLOAD`            | `Uint64(2**4)` (= 16)       |
 
 ## Configs
+
+### Misc
+
+| Name                             | Value                 |
+| -------------------------------- | --------------------- |
+| `X_MAX_COMMITTEE_COUNT_PER_SLOT` | `Uint64(2**4)` (= 16) |
+
+*Note*: `X_MAX_COMMITTEE_COUNT_PER_SLOT` is temporary and only for testing. A
+devnet may lower it to put its validators into fewer, larger committees, to test
+aggregation with larger committees than its size would otherwise allow. It must
+not exceed `MAX_COMMITTEES_PER_SLOT_PQ`, the number of bits in `CommitteeBits`.
+
+For example, with the mainnet `SLOTS_PER_EPOCH` of 32 and
+`TARGET_COMMITTEE_SIZE` of 128, the committees of each slot are laid out as
+follows:
+
+| Active validators | `X_MAX_COMMITTEE_COUNT_PER_SLOT` | Committees per slot | Validators per committee |
+| :---------------: | :------------------------------: | :-----------------: | :----------------------: |
+|       4,096       |                16                |          1          |           128            |
+|      16,384       |                16                |          4          |           128            |
+|      16,384       |                1                 |          1          |           512            |
+|      65,536       |                16                |         16          |           128            |
+|      65,536       |                4                 |          4          |           512            |
+|      65,536       |                1                 |          1          |          2,048           |
 
 ### Time parameters
 
@@ -1270,7 +1295,7 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> set[V
 #### Modified `get_beacon_committee`
 
 *Note*: The body is unchanged, but each slot now has at most
-`MAX_COMMITTEES_PER_SLOT_PQ` committees, so committees are larger.
+`X_MAX_COMMITTEE_COUNT_PER_SLOT` committees, so committees are larger.
 
 ```python
 def get_beacon_committee(
@@ -1300,7 +1325,7 @@ def get_committee_count_per_slot(state: BeaconState, epoch: Epoch) -> Uint64:
         Uint64(1),
         min(
             # [Modified in PQ]
-            MAX_COMMITTEES_PER_SLOT_PQ,
+            X_MAX_COMMITTEE_COUNT_PER_SLOT,
             Uint64(len(get_active_validator_indices(state, epoch)))
             // Uint64(SLOTS_PER_EPOCH)
             // TARGET_COMMITTEE_SIZE,
