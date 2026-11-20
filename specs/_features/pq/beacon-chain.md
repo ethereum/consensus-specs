@@ -69,8 +69,12 @@
 - [Helpers](#helpers)
   - [Crypto](#crypto)
     - [New `keccak256`](#new-keccak256)
-    - [XMSS signatures](#xmss-signatures)
-    - [STARK proofs](#stark-proofs)
+    - [New `xmss_sign`](#new-xmss_sign)
+    - [New `xmss_verify`](#new-xmss_verify)
+    - [New `xmss_get_leaf_index`](#new-xmss_get_leaf_index)
+    - [New `stark_prove_aggregates`](#new-stark_prove_aggregates)
+    - [New `stark_merge_proofs`](#new-stark_merge_proofs)
+    - [New `stark_verify_aggregates`](#new-stark_verify_aggregates)
   - [Misc](#misc-3)
     - [New `compute_legacy_xmss_pubkey`](#new-compute_legacy_xmss_pubkey)
     - [New `compute_legacy_vrf_root`](#new-compute_legacy_vrf_root)
@@ -899,45 +903,77 @@ def keccak256(data: bytes) -> Bytes32:
     return Bytes32(keccak256_hash(data))
 ```
 
-#### XMSS signatures
+#### New `xmss_sign`
 
-[leanXMSS](https://github.com/ethereum/ethlib/tree/main/EthLib/Cryptography/Xmss)
-defines the following functions:
+```python
+def xmss_sign(privkey: Bytes32, leaf_index: Uint64, message: Bytes32) -> XMSSSignature:
+    """
+    Return the signature of ``message`` at ``leaf_index``.
+    """
+    return XMSSSignature(xmss.Sign(privkey, leaf_index, message))
+```
 
-- `def Sign(privkey: Bytes32, leaf_index: Uint64, message: Bytes32) -> XMSSSignature`
-- `def Verify(pubkey: XMSSPubkey, leaf_index: Uint64, message: Bytes32, signature: XMSSSignature) -> bool`
-- `def GetLeafIndex(signature: XMSSSignature) -> Uint64`
+#### New `xmss_verify`
 
-Where:
+```python
+def xmss_verify(
+    pubkey: XMSSPubkey, leaf_index: Uint64, message: Bytes32, signature: XMSSSignature
+) -> bool:
+    """
+    Return ``True`` only if ``signature`` was produced at ``leaf_index``.
+    """
+    return xmss.Verify(pubkey, leaf_index, message, signature)
+```
 
-- `Sign` returns the signature of `message` at `leaf_index`.
-- `Verify` returns `True` only if `signature` was produced at `leaf_index`.
-- `GetLeafIndex` returns the leaf index that `signature` carries.
+#### New `xmss_get_leaf_index`
 
-The above functions are accessed through the `xmss` module, e.g. `xmss.Verify`.
+```python
+def xmss_get_leaf_index(signature: XMSSSignature) -> Uint64:
+    """
+    Return the leaf index that ``signature`` carries.
+    """
+    return Uint64(xmss.GetLeafIndex(signature))
+```
 
-#### STARK proofs
+#### New `stark_prove_aggregates`
 
-This upgrade adds the following functions to prove many XMSS signatures at once:
+```python
+def stark_prove_aggregates(
+    statements: Sequence[XMSSAggregateStatement], signatures: Sequence[Sequence[XMSSSignature]]
+) -> AttestationProof:
+    """
+    Return a proof of ``signatures``, which holds the signatures for each of
+    ``statements`` in order, and within a statement in the order of its public
+    keys.
+    """
+    return AttestationProof(data=stark.ProveAggregates(statements, signatures))
+```
 
-- `def ProveAggregates(statements: Sequence[XMSSAggregateStatement], signatures: Sequence[Sequence[XMSSSignature]]) -> AttestationProof`
-- `def MergeProofs(proofs: Sequence[AttestationProof]) -> AttestationProof`
-- `def VerifyAggregates(statements: Sequence[XMSSAggregateStatement], proof: AttestationProof) -> bool`
+#### New `stark_merge_proofs`
 
-`VerifyAggregates` returns `True` only if `proof` proves, for each statement and
-each of its public keys, a signature that
-`xmss.Verify(pubkey, statement.leaf_index, statement.message, signature)`
-accepts. `ProveAggregates` takes those signatures for each statement in order,
-and within a statement in the order of its public keys. `MergeProofs` turns
-proofs of lists of statements into one proof of their concatenation, in order.
+```python
+def stark_merge_proofs(proofs: Sequence[AttestationProof]) -> AttestationProof:
+    """
+    Return one proof of the concatenation, in order, of the lists of statements
+    that ``proofs`` prove.
+    """
+    return AttestationProof(data=stark.MergeProofs(proofs))
+```
 
-The above functions are accessed through the `stark` module, e.g.
-`stark.VerifyAggregates`.
+#### New `stark_verify_aggregates`
 
-*Note*: The reference implementations of `ProveAggregates` and `MergeProofs`
-concatenate their inputs, and `VerifyAggregates` checks each signature in turn.
-They stand in for a recursive STARK, which would change the encoding of
-`AttestationProof` but not how these functions are used.
+```python
+def stark_verify_aggregates(
+    statements: Sequence[XMSSAggregateStatement], proof: AttestationProof
+) -> bool:
+    """
+    Return ``True`` only if ``proof`` proves, for each of ``statements`` and
+    each of its public keys, a signature that
+    ``xmss_verify(pubkey, statement.leaf_index, statement.message, signature)``
+    accepts.
+    """
+    return stark.VerifyAggregates(statements, proof)
+```
 
 ### Misc
 
@@ -1201,7 +1237,7 @@ def is_valid_indexed_attestation(
     signing_root = compute_signing_root(indexed_attestation.data, domain)
     leaf_index = compute_xmss_attestation_leaf_index(indexed_attestation.data.target.epoch)
     statement = XMSSAggregateStatement(pubkeys=pubkeys, leaf_index=leaf_index, message=signing_root)
-    return stark.VerifyAggregates([statement], indexed_attestation.proof)
+    return stark_verify_aggregates([statement], indexed_attestation.proof)
 ```
 
 ### Beacon state accessors
@@ -1567,7 +1603,7 @@ def verify_block_signature(state: BeaconState, signed_block: SignedBeaconBlock) 
     )
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(signed_block.message.slot, LEAF_OFFSET_BEACON_PROPOSER)
-    return xmss.Verify(proposer.pubkey, leaf_index, signing_root, signed_block.signature)
+    return xmss_verify(proposer.pubkey, leaf_index, signing_root, signed_block.signature)
 ```
 
 ### Epoch processing
@@ -1845,7 +1881,7 @@ def verify_execution_payload_envelope_signature(
     leaf_index = compute_xmss_leaf_index(
         state.latest_block_header.slot, LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE
     )
-    return xmss.Verify(pubkey, leaf_index, signing_root, signed_envelope.signature)
+    return xmss_verify(pubkey, leaf_index, signing_root, signed_envelope.signature)
 ```
 
 #### Execution payload bid
@@ -1861,10 +1897,10 @@ def verify_execution_payload_bid_signature(
         signed_bid.message, get_domain(state, DOMAIN_BEACON_BUILDER)
     )
     # [Modified in PQ]
-    leaf_index = xmss.GetLeafIndex(signed_bid.signature)
+    leaf_index = xmss_get_leaf_index(signed_bid.signature)
     if not is_builder_bid_leaf_index(leaf_index):
         return False
-    return xmss.Verify(builder.pubkey, leaf_index, signing_root, signed_bid.signature)
+    return xmss_verify(builder.pubkey, leaf_index, signing_root, signed_bid.signature)
 ```
 
 ##### Modified `process_execution_payload_bid`
@@ -1970,7 +2006,7 @@ def process_stark(state: BeaconState, body: BeaconBlockBody) -> None:
     statements = []
     for attestation in body.attestations:
         statements.extend(get_attestation_statements(state, attestation))
-    assert stark.VerifyAggregates(statements, body.proof)
+    assert stark_verify_aggregates(statements, body.proof)
 ```
 
 ##### Modified `process_proposer_slashing`
@@ -2002,7 +2038,7 @@ def process_proposer_slashing(state: BeaconState, proposer_slashing: ProposerSla
         leaf_index = compute_xmss_leaf_index(
             signed_header.message.slot, LEAF_OFFSET_BEACON_PROPOSER
         )
-        assert xmss.Verify(proposer.pubkey, leaf_index, signing_root, signed_header.signature)
+        assert xmss_verify(proposer.pubkey, leaf_index, signing_root, signed_header.signature)
 
     slash_validator(state, header_1.proposer_index)
 ```

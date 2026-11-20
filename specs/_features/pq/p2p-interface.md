@@ -298,7 +298,7 @@ def validate_beacon_block_gossip(
     signing_root = compute_signing_root(block, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(block.slot, LEAF_OFFSET_BEACON_PROPOSER)
-    if not xmss.Verify(proposer.pubkey, leaf_index, signing_root, signed_beacon_block.signature):
+    if not xmss_verify(proposer.pubkey, leaf_index, signing_root, signed_beacon_block.signature):
         raise GossipReject("invalid proposer signature")
 
     # [IGNORE] If the parent block is full, the parent payload is valid
@@ -443,13 +443,13 @@ def validate_beacon_aggregate_and_proof_gossip(
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(aggregate.data.slot, LEAF_OFFSET_AGGREGATE_AND_PROOF)
     pubkey = state.validators[aggregator_index].pubkey
-    if not xmss.Verify(pubkey, leaf_index, signing_root, signed_aggregate_and_proof.signature):
+    if not xmss_verify(pubkey, leaf_index, signing_root, signed_aggregate_and_proof.signature):
         raise GossipReject("invalid aggregator signature")
 
     # [Modified in PQ]
     # [REJECT] The aggregate stark is valid
     statements = get_attestation_statements(state, aggregate)
-    if not stark.VerifyAggregates(statements, aggregate_and_proof.proof):
+    if not stark_verify_aggregates(statements, aggregate_and_proof.proof):
         raise GossipReject("invalid aggregate stark")
 
     # [REJECT] The target block is an ancestor of the LMD vote block
@@ -531,7 +531,7 @@ def validate_proposer_slashing_gossip(
         leaf_index = compute_xmss_leaf_index(
             signed_header.message.slot, LEAF_OFFSET_BEACON_PROPOSER
         )
-        if not xmss.Verify(proposer.pubkey, leaf_index, signing_root, signed_header.signature):
+        if not xmss_verify(proposer.pubkey, leaf_index, signing_root, signed_header.signature):
             raise GossipReject("invalid proposer slashing signature")
 
     # Mark this proposer slashing as seen
@@ -600,7 +600,7 @@ def validate_payload_attestation_message_gossip(
     signing_root = compute_signing_root(data, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(data.slot, LEAF_OFFSET_PTC_ATTESTER)
-    if not xmss.Verify(
+    if not xmss_verify(
         validator.pubkey, leaf_index, signing_root, payload_attestation_message.signature
     ):
         raise GossipReject("invalid payload attestation signature")
@@ -821,7 +821,7 @@ def validate_proposer_preferences_gossip(
     leaf_index = compute_xmss_leaf_index(
         preferences.proposal_slot, LEAF_OFFSET_PROPOSER_PREFERENCES
     )
-    if not xmss.Verify(
+    if not xmss_verify(
         validator.pubkey, leaf_index, signing_root, signed_proposer_preferences.signature
     ):
         raise GossipReject("invalid proposer preferences signature")
@@ -915,7 +915,7 @@ def validate_beacon_attestation_gossip(
     signing_root = compute_signing_root(data, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_attestation_leaf_index(target_epoch)
-    if not xmss.Verify(attester.pubkey, leaf_index, signing_root, attestation.signature):
+    if not xmss_verify(attester.pubkey, leaf_index, signing_root, attestation.signature):
         raise GossipReject("invalid attestation signature")
 
     # [REJECT] The attestation's target block is an ancestor of the LMD vote block

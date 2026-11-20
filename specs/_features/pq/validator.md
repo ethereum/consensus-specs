@@ -306,7 +306,7 @@ def get_signed_proposer_preferences(
     signing_root = compute_signing_root(preferences, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(proposal_slot, LEAF_OFFSET_PROPOSER_PREFERENCES)
-    signature = xmss.Sign(privkey, leaf_index, signing_root)
+    signature = xmss_sign(privkey, leaf_index, signing_root)
     return SignedProposerPreferences(message=preferences, signature=signature)
 ```
 
@@ -352,7 +352,7 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
 
 ##### Proof
 
-The proposer sets `body.proof` to `stark.MergeProofs(proofs)`, where `proofs`
+The proposer sets `body.proof` to `stark_merge_proofs(proofs)`, where `proofs`
 holds the `proof` of each network aggregate behind `body.attestations`, ordered
 as the attestations are and, within each, by committee index. The merged proof
 then proves the statements that `process_stark` checks.
@@ -507,7 +507,7 @@ def get_block_signature(
     signing_root = compute_signing_root(block, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(block.slot, LEAF_OFFSET_BEACON_PROPOSER)
-    return xmss.Sign(privkey, leaf_index, signing_root)
+    return xmss_sign(privkey, leaf_index, signing_root)
 ```
 
 ### Attesting
@@ -530,7 +530,7 @@ def get_attestation_signature(
     signing_root = compute_signing_root(attestation_data, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_attestation_leaf_index(attestation_data.target.epoch)
-    return xmss.Sign(privkey, leaf_index, signing_root)
+    return xmss_sign(privkey, leaf_index, signing_root)
 ```
 
 #### Attestation subnet
@@ -607,7 +607,7 @@ def get_aggregate_stark(
     state: BeaconState, aggregate: Attestation, signatures: Sequence[XMSSSignature]
 ) -> AttestationProof:
     statements = get_attestation_statements(state, aggregate)
-    return AttestationProof(data=stark.ProveAggregates(statements, [signatures]))
+    return stark_prove_aggregates(statements, [signatures])
 ```
 
 #### Broadcast aggregate
@@ -689,7 +689,7 @@ def get_aggregate_and_proof_signature(
     signing_root = compute_signing_root(aggregate_and_proof, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(aggregate.data.slot, LEAF_OFFSET_AGGREGATE_AND_PROOF)
-    return xmss.Sign(privkey, leaf_index, signing_root)
+    return xmss_sign(privkey, leaf_index, signing_root)
 ```
 
 ### Sync committees
@@ -711,7 +711,7 @@ def get_payload_attestation_message_signature(
     signing_root = compute_signing_root(attestation.data, domain)
     # [Modified in PQ]
     leaf_index = compute_xmss_leaf_index(attestation.data.slot, LEAF_OFFSET_PTC_ATTESTER)
-    return xmss.Sign(privkey, leaf_index, signing_root)
+    return xmss_sign(privkey, leaf_index, signing_root)
 ```
 
 ## Protection best practices

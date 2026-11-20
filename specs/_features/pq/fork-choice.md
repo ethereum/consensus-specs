@@ -125,7 +125,7 @@ def on_attestation(store: Store, attestation: Attestation, is_from_block: bool =
 
 *Note*: A payload attestation message now always comes from the wire, so its
 slot and signature are always checked. The signature is checked with
-`xmss.Verify`, since `IndexedPayloadAttestation` is deprecated.
+`xmss_verify`, since `IndexedPayloadAttestation` is deprecated.
 
 ```python
 def on_payload_attestation_message(
@@ -165,7 +165,7 @@ def on_payload_attestation_message(
     signing_root = compute_signing_root(data, domain)
     leaf_index = compute_xmss_leaf_index(data.slot, LEAF_OFFSET_PTC_ATTESTER)
     pubkey = state.validators[ptc_message.validator_index].pubkey
-    assert xmss.Verify(pubkey, leaf_index, signing_root, ptc_message.signature)
+    assert xmss_verify(pubkey, leaf_index, signing_root, ptc_message.signature)
 
     # Update the votes for the block
     payload_timeliness_vote = store.payload_timeliness_vote[data.beacon_block_root]

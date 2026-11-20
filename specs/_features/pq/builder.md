@@ -97,7 +97,7 @@ def get_execution_payload_bid_signature(
     )
     signing_root = compute_signing_root(bid, domain)
     # [Modified in PQ]
-    return xmss.Sign(privkey, leaf_index, signing_root)
+    return xmss_sign(privkey, leaf_index, signing_root)
 ```
 
 ### Constructing the `SignedExecutionPayloadEnvelope`
@@ -120,5 +120,5 @@ def get_execution_payload_envelope_signature(
     leaf_index = compute_xmss_leaf_index(
         state.latest_block_header.slot, LEAF_OFFSET_EXECUTION_PAYLOAD_ENVELOPE
     )
-    return xmss.Sign(privkey, leaf_index, signing_root)
+    return xmss_sign(privkey, leaf_index, signing_root)
 ```
