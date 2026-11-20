@@ -425,10 +425,11 @@ def process_consolidation_request(
 
 ##### New `process_validator_pq_registration_request`
 
-*Note*: Invalid requests are ignored. Pending and active validators can register
-PQ material, as long as the request comes from their withdrawal address and the
-first 32 bytes of its PQ data are not already registered. Exited validators
-cannot register.
+*Note*: Invalid requests are ignored. Validators with `0x00` or `0x01`
+withdrawal credentials cannot register, and must switch to `0x02` credentials
+before registering. Pending and active validators can register PQ material, as
+long as the request comes from their withdrawal address and the first 32 bytes
+of its PQ data are not already registered. Exited validators cannot register.
 
 ```python
 def process_validator_pq_registration_request(
