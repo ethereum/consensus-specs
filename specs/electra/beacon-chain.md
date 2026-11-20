@@ -76,6 +76,7 @@
     - [New `queue_excess_active_balance`](#new-queue_excess_active_balance)
     - [New `compute_exit_epoch_and_update_churn`](#new-compute_exit_epoch_and_update_churn)
     - [New `compute_consolidation_epoch_and_update_churn`](#new-compute_consolidation_epoch_and_update_churn)
+    - [New `initiate_validator_consolidation`](#new-initiate_validator_consolidation)
     - [Modified `slash_validator`](#modified-slash_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Epoch processing](#epoch-processing)
@@ -972,6 +973,28 @@ def compute_consolidation_epoch_and_update_churn(
     state.earliest_consolidation_epoch = earliest_consolidation_epoch
 
     return state.earliest_consolidation_epoch
+```
+
+#### New `initiate_validator_consolidation`
+
+```python
+def initiate_validator_consolidation(
+    state: BeaconState, source_index: ValidatorIndex, target_index: ValidatorIndex
+) -> None:
+    """
+    Initiate the consolidation of the validator with index ``source_index`` into
+    the validator with index ``target_index``.
+    """
+    source_validator = state.validators[source_index]
+    source_validator.exit_epoch = compute_consolidation_epoch_and_update_churn(
+        state, source_validator.effective_balance
+    )
+    source_validator.withdrawable_epoch = (
+        source_validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+    )
+    state.pending_consolidations.append(
+        PendingConsolidation(source_index=source_index, target_index=target_index)
+    )
 ```
 
 #### Modified `slash_validator`
@@ -2060,14 +2083,5 @@ def process_consolidation_request(
     if get_pending_balance_to_withdraw(state, source_index) > 0:
         return
 
-    # Initiate source validator exit and append pending consolidation
-    source_validator.exit_epoch = compute_consolidation_epoch_and_update_churn(
-        state, source_validator.effective_balance
-    )
-    source_validator.withdrawable_epoch = (
-        source_validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-    )
-    state.pending_consolidations.append(
-        PendingConsolidation(source_index=source_index, target_index=target_index)
-    )
+    initiate_validator_consolidation(state, source_index, target_index)
 ```
