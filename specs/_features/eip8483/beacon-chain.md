@@ -39,6 +39,7 @@
       - [New `process_builder_pq_registration_request`](#new-process_builder_pq_registration_request)
     - [Parent execution payload](#parent-execution-payload)
       - [Modified `apply_parent_execution_payload`](#modified-apply_parent_execution_payload)
+      - [Modified `process_parent_execution_payload`](#modified-process_parent_execution_payload)
 
 <!-- mdformat-toc end -->
 
@@ -583,4 +584,45 @@ def apply_parent_execution_payload(
     # Update parent payload availability and latest block hash
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
     state.latest_block_hash = parent_bid.block_hash
+```
+
+##### Modified `process_parent_execution_payload`
+
+*Note*: The first block after the fork may build on a full parent from before
+the fork, whose bid commits to the Heze `ExecutionRequests` type. Its execution
+requests are verified against that type and cannot include PQ registration
+requests.
+
+```python
+def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> None:
+    bid = block.body.signed_execution_payload_bid.message
+    parent_bid = state.latest_execution_payload_bid
+    requests = block.body.parent_execution_requests
+
+    if bid.parent_block_hash != parent_bid.block_hash:
+        # Parent was EMPTY -- no execution requests expected
+        assert requests == ExecutionRequests.empty()
+        return
+
+    # [New in EIP8483]
+    if compute_epoch_at_slot(parent_bid.slot) < EIP8483_FORK_EPOCH:
+        # Parent was FULL before the fork -- its bid commits to the Heze type
+        assert len(requests.validator_pq_registrations) == 0
+        assert len(requests.builder_pq_registrations) == 0
+        requests_root = hash_tree_root(
+            heze.ExecutionRequests(
+                deposits=requests.deposits,
+                withdrawals=requests.withdrawals,
+                consolidations=requests.consolidations,
+                builder_deposits=requests.builder_deposits,
+                builder_exits=requests.builder_exits,
+            )
+        )
+    else:
+        requests_root = hash_tree_root(requests)
+
+    # [Modified in EIP8483]
+    # Parent was FULL -- verify the bid commitment and apply the payload
+    assert requests_root == parent_bid.execution_requests_root
+    apply_parent_execution_payload(state, requests)
 ```

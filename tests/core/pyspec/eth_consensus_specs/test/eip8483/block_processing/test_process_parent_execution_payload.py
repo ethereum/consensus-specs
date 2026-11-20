@@ -5,6 +5,7 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     spec_test,
     with_custom_state,
+    with_matching_spec_config,
     with_phases,
     with_presets,
 )
@@ -111,6 +112,7 @@ def test_process_parent_execution_payload__full_exit_and_pq_registration(spec, s
 )
 @spec_test
 @single_phase
+@with_matching_spec_config()
 def test_process_parent_execution_payload__consolidation_and_source_pq_registration(spec, state):
     """
     Test that a consolidation source cannot register PQ data in the same
