@@ -19,9 +19,11 @@ builder" to implement Heze.
 
 ### Constructing the `SignedExecutionPayloadBid`
 
-*Note*: The only change made to `SignedExecutionPayloadBid` is to set
-`bid.inclusion_list_bits` based on the builder's inclusion list view, which
-comprises all valid and non-equivocating inclusion lists they have observed.
+*Note*: `SignedExecutionPayloadBid` is modified to set `bid.inclusion_list_bits`
+based on the builder's inclusion list view, which comprises all valid and
+non-equivocating inclusion lists they have observed, and to be broadcast only
+after the inclusion list deadline of the previous slot, as bids received before
+it are ignored on gossip.
 
 1. Set `bid.inclusion_list_bits` to
    `get_inclusion_list_bits(get_inclusion_list_store(), inclusion_list_committee, slot, dependent_root, only_timely=False)`,
@@ -29,3 +31,5 @@ comprises all valid and non-equivocating inclusion lists they have observed.
    `get_inclusion_list_committee(state, slot)`, `dependent_root` is
    `get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(slot))`,
    `slot` is `bid.slot - 1`, and `store` is the fork choice store.
+2. Broadcast the bid no earlier than `get_inclusion_list_due_ms()` into slot
+   `bid.slot - 1`.
