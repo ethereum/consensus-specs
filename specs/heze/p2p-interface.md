@@ -23,6 +23,8 @@
   - [Messages](#messages)
     - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
     - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+    - [ExecutionPayloadEnvelopesByRange v1](#executionpayloadenvelopesbyrange-v1)
+    - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
     - [InclusionListsByIndices v1](#inclusionlistsbyindices-v1)
 
 <!-- mdformat-toc end -->
@@ -441,6 +443,35 @@ block type.
 | `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
 | `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
 | `HEZE_FORK_VERSION`      | `heze.SignedBeaconBlock`      |
+
+#### ExecutionPayloadEnvelopesByRange v1
+
+**Protocol ID:**
+`/eth2/beacon_chain/req/execution_payload_envelopes_by_range/1/`
+
+The Heze fork-digest is introduced to the `context` enum to specify Heze
+execution payload envelope type.
+
+<!-- eth_consensus_specs: skip -->
+
+| `fork_version`       | Chunk SSZ type                         |
+| -------------------- | -------------------------------------- |
+| `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
+| `HEZE_FORK_VERSION`  | `heze.SignedExecutionPayloadEnvelope`  |
+
+#### ExecutionPayloadEnvelopesByRoot v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/execution_payload_envelopes_by_root/1/`
+
+The Heze fork-digest is introduced to the `context` enum to specify Heze
+execution payload envelope type.
+
+<!-- eth_consensus_specs: skip -->
+
+| `fork_version`       | Chunk SSZ type                         |
+| -------------------- | -------------------------------------- |
+| `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
+| `HEZE_FORK_VERSION`  | `heze.SignedExecutionPayloadEnvelope`  |
 
 #### InclusionListsByIndices v1
 
