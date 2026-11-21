@@ -4,7 +4,7 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.execution_payload import (
-    build_signed_execution_payload_envelope,
+    build_execution_payload_envelope,
 )
 from eth_consensus_specs.test.helpers.gloas.bid import (
     activate_builders,
@@ -32,14 +32,13 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
-def _seed_bid_context(
-    spec, state, store, head_payload, messages, current_time_ms, seed_prefs=True, seed_envelope=True
-):
+def _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms, seed_prefs=True):
     """
     Yield and validate the proposer preferences and payload envelope messages
-    that seed ``seen`` for a fully valid bid, appending their entries to
-    ``messages``. ``head_payload`` is the head block's envelope, already
-    recorded in the store by ``record_head_payload``.
+    for a fully valid bid, appending their entries to ``messages``.
+    ``head_payload`` is the head block's envelope, already recorded in the
+    store by ``record_head_payload``, which is what makes it the verified parent
+    payload of the bid.
 
     Together with an advanced store and active builders, this satisfies every
     bid validation condition, so tests can flip exactly the one condition
@@ -84,24 +83,23 @@ def _seed_bid_context(
             }
         )
 
-    if seed_envelope:
-        current_time_ms += 10
-        assert head_payload.message.payload.block_hash == parent_block_hash
-        yield get_filename(head_payload), head_payload
-        result, reason = run_validate_gossip(
-            spec,
-            seen=seen,
-            store=store,
-            signed_execution_payload_envelope=head_payload,
-        )
-        assert result == "valid"
-        assert reason is None
-        messages.append(
-            {
-                "message": get_filename(head_payload),
-                "expected": result,
-            }
-        )
+    current_time_ms += 10
+    assert head_payload.payload.block_hash == parent_block_hash
+    yield get_filename(head_payload), head_payload
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        envelope=head_payload,
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append(
+        {
+            "message": get_filename(head_payload),
+            "expected": result,
+        }
+    )
 
     return seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, current_time_ms
 
@@ -192,17 +190,16 @@ def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(s
     parent_state.finalized_checkpoint = state.finalized_checkpoint
     store.block_states[parent_root].finalized_checkpoint = state.finalized_checkpoint
 
-    parent_payload = build_signed_execution_payload_envelope(
-        spec, parent_state, parent_root, parent_block
-    )
-    store.payloads[parent_root] = parent_payload.message
+    parent_payload = build_execution_payload_envelope(spec, parent_state, parent_root, parent_block)
+    store.payloads[parent_root] = parent_payload
+    store.payload_block_roots[parent_payload.payload.block_hash] = parent_root
 
     head_bid = signed_head_block.message.body.signed_execution_payload_bid.message
     parent_randao = spec.get_randao_mix(parent_state, spec.get_current_epoch(parent_state))
     head_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
     assert spec.get_head(store).root == head_root
     assert signed_head_block.message.parent_root == parent_root
-    assert head_bid.parent_block_hash == parent_payload.message.payload.block_hash
+    assert head_bid.parent_block_hash == parent_payload.payload.block_hash
     assert parent_randao != head_randao
 
     yield "state", anchor_state
@@ -519,9 +516,7 @@ def test_gossip_execution_payload_bid__valid_slot_at_lower_disparity(spec, state
     )
 
     yield get_filename(head_payload), head_payload
-    result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
-    )
+    result, reason = run_validate_gossip(spec, seen=seen, store=store, envelope=head_payload)
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -536,7 +531,7 @@ def test_gossip_execution_payload_bid__valid_slot_at_lower_disparity(spec, state
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_block_hash=head_payload.payload.block_hash,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -619,9 +614,7 @@ def test_gossip_execution_payload_bid__valid_slot_at_upper_disparity(spec, state
     )
 
     yield get_filename(head_payload), head_payload
-    result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
-    )
+    result, reason = run_validate_gossip(spec, seen=seen, store=store, envelope=head_payload)
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -636,7 +629,7 @@ def test_gossip_execution_payload_bid__valid_slot_at_upper_disparity(spec, state
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_block_hash=head_payload.payload.block_hash,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -2235,24 +2228,26 @@ def test_gossip_execution_payload_bid__reject_slot_not_higher_than_parent(spec, 
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_execution_payload_bid__ignore_parent_block_hash_unknown(spec, state):
-    """A bid whose parent_block_hash is not in seen.execution_payloads is ignored.
+def test_gossip_execution_payload_bid__ignore_parent_payload_not_verified(spec, state):
+    """A bid whose parent_block_hash is not the block hash of a verified payload is ignored.
 
-    No envelope is seeded, which is exactly the condition under test. The gas
-    limit compatibility check requires the parent payload, so it can only be
-    evaluated once the parent block hash is known.
+    The envelope of the parent payload passes gossip validation but the payload
+    is not verified in the fork choice, which is exactly the condition under
+    test. The gas limit compatibility check requires the parent payload, so it
+    can only be evaluated once the parent payload is verified.
     """
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
 
     store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
     finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
-    head_payload = record_head_payload(spec, state, store, blocks)
+    head_root = blocks[-1].message.hash_tree_root()
+    head_payload = build_execution_payload_envelope(spec, state, head_root, blocks[-1])
+    assert not spec.is_payload_verified(store, head_root)
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
-    yield get_filename(head_payload), head_payload
-    yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
+    yield "blocks", "meta", get_blocks_meta(blocks)
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
@@ -2264,11 +2259,7 @@ def test_gossip_execution_payload_bid__ignore_parent_block_hash_unknown(spec, st
         proposal_slot,
         parent_block_hash,
         current_time_ms,
-    ) = yield from (
-        _seed_bid_context(
-            spec, state, store, head_payload, messages, current_time_ms, seed_envelope=False
-        )
-    )
+    ) = yield from (_seed_bid_context(spec, state, store, head_payload, messages, current_time_ms))
 
     signed_bid = build_signed_bid(
         spec,
@@ -2292,7 +2283,7 @@ def test_gossip_execution_payload_bid__ignore_parent_block_hash_unknown(spec, st
         current_time_ms=current_time_ms,
     )
     assert result == "ignore"
-    assert reason == "bid's parent block hash is not a known execution payload"
+    assert reason == "bid's parent block hash is not a verified execution payload"
     messages.append(
         {
             "current_time_ms": int(current_time_ms),
@@ -2340,22 +2331,17 @@ def test_gossip_execution_payload_bid__ignore_parent_state_unavailable(spec, sta
     )
     messages = []
 
-    # Make the bid's parent block hash a known execution payload by validating
-    # a real envelope for the head block. The pending parent is an empty
-    # block, so the bid builds on the same payload.
+    # Validate a real envelope for the head block. The pending parent is an
+    # empty block, so the bid builds on the same payload.
     current_time_ms += 50
-    signed_envelope = build_signed_execution_payload_envelope(
-        spec, state, head_root, head_signed_block
-    )
-    yield get_filename(signed_envelope), signed_envelope
-    result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
-    )
+    envelope = build_execution_payload_envelope(spec, state, head_root, head_signed_block)
+    yield get_filename(envelope), envelope
+    result, reason = run_validate_gossip(spec, seen=seen, store=store, envelope=envelope)
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "message": get_filename(signed_envelope),
+            "message": get_filename(envelope),
             "expected": result,
         }
     )
@@ -2365,7 +2351,7 @@ def test_gossip_execution_payload_bid__ignore_parent_state_unavailable(spec, sta
         state,
         builder_index=spec.BuilderIndex(0),
         slot=spec.Slot(signed_parent.message.slot + 1),
-        parent_block_hash=signed_envelope.message.payload.block_hash,
+        parent_block_hash=envelope.payload.block_hash,
         parent_block_root=parent_root,
         value=spec.Gwei(1),
     )
@@ -2426,9 +2412,7 @@ def test_gossip_execution_payload_bid__ignore_slot_past_parent_lookahead(spec, s
     # envelope, so the bid passes the parent-known checks before the lookahead
     # check.
     yield get_filename(head_payload), head_payload
-    result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
-    )
+    result, reason = run_validate_gossip(spec, seen=seen, store=store, envelope=head_payload)
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -2448,7 +2432,7 @@ def test_gossip_execution_payload_bid__ignore_slot_past_parent_lookahead(spec, s
         state,
         builder_index=spec.BuilderIndex(0),
         slot=future_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_block_hash=head_payload.payload.block_hash,
         parent_block_root=parent_root,
         value=spec.Gwei(1),
     )
@@ -2500,14 +2484,11 @@ def test_gossip_execution_payload_bid__ignore_preferences_not_seen(spec, state):
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
 
-    # Make the bid's parent block hash a known execution payload by validating
-    # a real envelope for the parent block. Leave seen.proposer_preferences
-    # empty.
+    # Validate a real envelope for the parent block. Leave
+    # seen.proposer_preferences empty.
     current_time_ms += 50
     yield get_filename(head_payload), head_payload
-    result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
-    )
+    result, reason = run_validate_gossip(spec, seen=seen, store=store, envelope=head_payload)
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -2524,7 +2505,7 @@ def test_gossip_execution_payload_bid__ignore_preferences_not_seen(spec, state):
         state,
         builder_index=builder_index,
         slot=next_slot_value,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_block_hash=head_payload.payload.block_hash,
         parent_block_root=parent_root,
         value=spec.Gwei(1),
     )
@@ -2605,9 +2586,7 @@ def test_gossip_execution_payload_bid__ignore_fee_recipient_mismatch(spec, state
 
     current_time_ms += 10
     yield get_filename(head_payload), head_payload
-    result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
-    )
+    result, reason = run_validate_gossip(spec, seen=seen, store=store, envelope=head_payload)
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -2622,7 +2601,7 @@ def test_gossip_execution_payload_bid__ignore_fee_recipient_mismatch(spec, state
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_block_hash=head_payload.payload.block_hash,
         parent_block_root=parent_root,
         fee_recipient=bid_fee,
         gas_limit=parent_gas_limit,
@@ -2704,9 +2683,7 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state
 
     current_time_ms += 10
     yield get_filename(head_payload), head_payload
-    result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
-    )
+    result, reason = run_validate_gossip(spec, seen=seen, store=store, envelope=head_payload)
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -2723,7 +2700,7 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_block_hash=head_payload.payload.block_hash,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=incompatible_gas_limit,
@@ -2805,9 +2782,7 @@ def test_gossip_execution_payload_bid__reject_incorrect_prev_randao(spec, state)
 
     current_time_ms += 10
     yield get_filename(head_payload), head_payload
-    result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
-    )
+    result, reason = run_validate_gossip(spec, seen=seen, store=store, envelope=head_payload)
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -2827,7 +2802,7 @@ def test_gossip_execution_payload_bid__reject_incorrect_prev_randao(spec, state)
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_block_hash=head_payload.payload.block_hash,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -2910,9 +2885,7 @@ def test_gossip_execution_payload_bid__reject_block_hash_equals_parent_block_has
 
     current_time_ms += 10
     yield get_filename(head_payload), head_payload
-    result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
-    )
+    result, reason = run_validate_gossip(spec, seen=seen, store=store, envelope=head_payload)
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -2924,7 +2897,7 @@ def test_gossip_execution_payload_bid__reject_block_hash_equals_parent_block_has
 
     # All other checks pass and only block_hash is wrong: it equals the
     # parent_block_hash, which a real execution payload can never produce.
-    parent_block_hash = head_payload.message.payload.block_hash
+    parent_block_hash = head_payload.payload.block_hash
     signed_bid = build_signed_bid(
         spec,
         state,
@@ -3013,9 +2986,7 @@ def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
 
     current_time_ms += 10
     yield get_filename(head_payload), head_payload
-    result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
-    )
+    result, reason = run_validate_gossip(spec, seen=seen, store=store, envelope=head_payload)
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -3030,7 +3001,7 @@ def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_block_hash=head_payload.payload.block_hash,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
@@ -3080,8 +3051,7 @@ def _run_bid_gas_limit_scenario(
     yield "topic", "meta", "execution_payload_bid"
 
     # The head block's bid commits to parent_gas_limit, so the envelope's
-    # payload.gas_limit (which gets seeded into seen.execution_payloads)
-    # equals it.
+    # payload.gas_limit (which is recorded in the store) equals it.
     store, blocks, parent_root = setup_store_advanced_for_bid(
         spec, state, head_gas_limit=spec.Uint64(parent_gas_limit)
     )
@@ -3128,10 +3098,8 @@ def _run_bid_gas_limit_scenario(
 
     current_time_ms += 10
     yield get_filename(head_payload), head_payload
-    assert head_payload.message.payload.gas_limit == parent_gas_limit
-    result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
-    )
+    assert head_payload.payload.gas_limit == parent_gas_limit
+    result, reason = run_validate_gossip(spec, seen=seen, store=store, envelope=head_payload)
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -3146,7 +3114,7 @@ def _run_bid_gas_limit_scenario(
         state,
         builder_index=spec.BuilderIndex(0),
         slot=proposal_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_block_hash=head_payload.payload.block_hash,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=spec.Uint64(bid_gas_limit),
@@ -3196,10 +3164,11 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
     blocks.append(signed_payload_block)
 
     payload_state = state.copy()
-    signed_envelope = build_signed_execution_payload_envelope(
+    envelope = build_execution_payload_envelope(
         spec, payload_state, payload_root, signed_payload_block
     )
-    store.payloads[payload_root] = signed_envelope.message
+    store.payloads[payload_root] = envelope
+    store.payload_block_roots[envelope.payload.block_hash] = payload_root
 
     # Leave the next block's payload unreceived so it becomes the empty head.
     empty_parent_gas_limit = spec.Uint64(30_029_295)
@@ -3215,9 +3184,9 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
-    yield get_filename(signed_envelope), signed_envelope
+    yield get_filename(envelope), envelope
     blocks_meta = get_blocks_meta(blocks)
-    blocks_meta[-2]["payload"] = get_filename(signed_envelope)
+    blocks_meta[-2]["payload"] = get_filename(envelope)
     yield "blocks", "meta", blocks_meta
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
@@ -3259,13 +3228,13 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
         spec,
         seen=seen,
         store=store,
-        signed_execution_payload_envelope=signed_envelope,
+        envelope=envelope,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "message": get_filename(signed_envelope),
+            "message": get_filename(envelope),
             "expected": result,
         }
     )
@@ -3518,9 +3487,7 @@ def test_gossip_execution_payload_bid__valid_requires_state_advanced_across_epoc
 
     current_time_ms += 10
     yield get_filename(head_payload), head_payload
-    result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
-    )
+    result, reason = run_validate_gossip(spec, seen=seen, store=store, envelope=head_payload)
     assert result == "valid"
     assert reason is None
     messages.append(
@@ -3535,7 +3502,7 @@ def test_gossip_execution_payload_bid__valid_requires_state_advanced_across_epoc
         state,
         builder_index=builder_index,
         slot=proposal_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
+        parent_block_hash=head_payload.payload.block_hash,
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,

@@ -1,7 +1,7 @@
 import random
 
 from eth_consensus_specs.test.helpers.execution_payload import (
-    build_signed_execution_payload_envelope,
+    build_execution_payload_envelope,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
@@ -258,7 +258,7 @@ def _debug_run_sanity_checks(
     target_block_root,
 ):
     store = spec.get_forkchoice_store(anchor_state, anchor_block)
-    envelopes_by_block_root = {e.payload.message.beacon_block_root: e.payload for e in envelopes}
+    envelopes_by_block_root = {e.payload.beacon_block_root: e.payload for e in envelopes}
     payload_attestations_by_block_root = {}
     for ptc_message in payload_attestations:
         payload_attestations_by_block_root.setdefault(
@@ -392,7 +392,7 @@ def gen_block_cover_test_data(spec, state, model_params, debug, seed) -> (FCTest
             if envelope_mode == "valid":
                 envelopes.append(
                     ProtocolMessage(
-                        build_signed_execution_payload_envelope(
+                        build_execution_payload_envelope(
                             spec, target_post_state, target_block_root, target_signed_block
                         )
                     )

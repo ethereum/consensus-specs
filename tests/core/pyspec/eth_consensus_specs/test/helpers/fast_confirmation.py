@@ -14,7 +14,7 @@ from eth_consensus_specs.test.helpers.block import (
     build_block_and_payload,
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
-    compute_and_sign_execution_payload_envelope,
+    compute_execution_payload_envelope,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_attester_slashing,
@@ -331,12 +331,10 @@ class FCRTest:
 
         # Build and reveal execution payload post-Gloas
         if is_post_gloas(self.spec):
-            signed_envelope = compute_and_sign_execution_payload_envelope(
+            envelope = compute_execution_payload_envelope(
                 self.spec, parent_state, block_root, signed_block, payload, execution_requests
             )
-            for artefact in add_execution_payload(
-                self.spec, self.store, signed_envelope, self.test_steps
-            ):
+            for artefact in add_execution_payload(self.spec, self.store, envelope, self.test_steps):
                 self.blockchain_artefacts.append(artefact)
 
         return block_root

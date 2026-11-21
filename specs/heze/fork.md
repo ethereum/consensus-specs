@@ -44,6 +44,7 @@ def upgrade_to_heze(pre: gloas.BeaconState) -> BeaconState:
         parent_block_hash=pre.latest_execution_payload_bid.parent_block_hash,
         parent_block_root=pre.latest_execution_payload_bid.parent_block_root,
         block_hash=pre.latest_execution_payload_bid.block_hash,
+        payload_root=pre.latest_execution_payload_bid.payload_root,
         prev_randao=pre.latest_execution_payload_bid.prev_randao,
         fee_recipient=pre.latest_execution_payload_bid.fee_recipient,
         gas_limit=pre.latest_execution_payload_bid.gas_limit,

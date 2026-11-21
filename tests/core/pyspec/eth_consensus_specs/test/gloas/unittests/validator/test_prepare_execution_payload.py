@@ -9,7 +9,7 @@ from eth_consensus_specs.test.helpers.consolidations import (
     prepare_switch_to_compounding_request,
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
-    build_signed_execution_payload_envelope,
+    build_execution_payload_envelope,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
@@ -75,7 +75,7 @@ def _add_block_to_store(spec, state, execution_requests=None):
 def _setup_full_parent(spec, state):
     store, signed_block, block_root = _add_block_to_store(spec, state)
 
-    envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
+    envelope = build_execution_payload_envelope(spec, state, block_root, signed_block)
     run_on_execution_payload_envelope(spec, store, envelope)
 
     assert spec.is_payload_verified(store, block_root)
@@ -118,7 +118,7 @@ def test_prepare_execution_payload__extend_payload(spec, state):
     # post-block_1 balance. payload.withdrawals must hash-equal
     # store.block_states[block_root].payload_expected_withdrawals, which
     # block_1 computed with the unmodified balance.
-    envelope = build_signed_execution_payload_envelope(
+    envelope = build_execution_payload_envelope(
         spec, state, block_root, signed_block, execution_requests=execution_requests
     )
     run_on_execution_payload_envelope(spec, store, envelope)
@@ -160,7 +160,7 @@ def test_prepare_execution_payload__extend_payload(spec, state):
     assert engine.head_block_hash == parent_bid.block_hash
 
     expected_state = proposal_state.copy()
-    spec.apply_parent_execution_payload(expected_state, envelope.message.execution_requests)
+    spec.apply_parent_execution_payload(expected_state, envelope.execution_requests)
     expected_withdrawals = spec.get_expected_withdrawals(expected_state).withdrawals
     assert engine.payload_attributes.withdrawals == expected_withdrawals
 

@@ -185,7 +185,7 @@ _MESSAGE_INFO = {
         "file_prefix": "execution_payload_bid",
         "validation_fn": "validate_execution_payload_bid_gossip",
     },
-    "SignedExecutionPayloadEnvelope": {
+    "ExecutionPayloadEnvelope": {
         "file_prefix": "execution_payload_envelope",
         "validation_fn": "validate_execution_payload_envelope_gossip",
     },

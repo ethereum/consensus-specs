@@ -12,7 +12,7 @@
   - [Modified `DataColumn`](#modified-datacolumn)
   - [Modified `KZGProofs`](#modified-kzgproofs)
   - [New `ExecutionPayloadEnvelopeRoots`](#new-executionpayloadenveloperoots)
-  - [New `SignedExecutionPayloadEnvelopes`](#new-signedexecutionpayloadenvelopes)
+  - [New `ExecutionPayloadEnvelopes`](#new-executionpayloadenvelopes)
 - [Containers](#containers)
   - [Modified `DataColumnSidecar`](#modified-datacolumnsidecar)
   - [New `ProposerPreferences`](#new-proposerpreferences)
@@ -76,7 +76,7 @@ for the corresponding variable-size libp2p messages. The bound for
 | --------------------------------------- | ----------------------------- |
 | `MAX_SIGNED_AGGREGATE_AND_PROOF_SIZE`   | `Uint64(16829)` (= ~16 KiB)   |
 | `MAX_ATTESTER_SLASHING_SIZE`            | `Uint64(2097616)` (= ~2 MiB)  |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `Uint64(196932)` (= ~192 KiB) |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE` | `Uint64(196964)` (= ~192 KiB) |
 
 ## Configs
 
@@ -118,12 +118,12 @@ class ExecutionPayloadEnvelopeRoots(List[Root]):
     LIMIT = MAX_REQUEST_PAYLOADS
 ```
 
-### New `SignedExecutionPayloadEnvelopes`
+### New `ExecutionPayloadEnvelopes`
 
 ```python
-class SignedExecutionPayloadEnvelopes(List[SignedExecutionPayloadEnvelope]):
+class ExecutionPayloadEnvelopes(List[ExecutionPayloadEnvelope]):
     """
-    Signed execution payload envelopes returned in an
+    Execution payload envelopes returned in an
     ``ExecutionPayloadEnvelopesByRange`` or
     ``ExecutionPayloadEnvelopesByRoot`` response.
     """
@@ -207,9 +207,7 @@ class Seen:
     # [Modified in Gloas:EIP7732]
     # Removed `partial_data_column_headers`
     # [New in Gloas:EIP7732]
-    execution_payloads: dict[Hash32, ExecutionPayload]
-    # [New in Gloas:EIP7732]
-    execution_payload_envelopes: set[tuple[Root, BuilderIndex]]
+    execution_payload_envelopes: set[Root]
     # [New in Gloas:EIP7732]
     payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
     # [New in Gloas:EIP7732]
@@ -558,12 +556,12 @@ The `beacon_block` topic is updated to support the modified type
 The new topics along with the type of the `data` field of a gossipsub message
 are given in this table:
 
-| Name                          | Message Type                     |
-| ----------------------------- | -------------------------------- |
-| `execution_payload_bid`       | `SignedExecutionPayloadBid`      |
-| `execution_payload`           | `SignedExecutionPayloadEnvelope` |
-| `payload_attestation_message` | `PayloadAttestationMessage`      |
-| `proposer_preferences`        | `SignedProposerPreferences`      |
+| Name                          | Message Type                |
+| ----------------------------- | --------------------------- |
+| `execution_payload_bid`       | `SignedExecutionPayloadBid` |
+| `execution_payload`           | `ExecutionPayloadEnvelope`  |
+| `payload_attestation_message` | `PayloadAttestationMessage` |
+| `proposer_preferences`        | `SignedProposerPreferences` |
 
 #### Global topics
 
@@ -824,26 +822,34 @@ def validate_beacon_aggregate_and_proof_gossip(
 ##### New `execution_payload`
 
 This topic is used to propagate execution payload messages as
-`SignedExecutionPayloadEnvelope`.
+`ExecutionPayloadEnvelope`.
+
+*Note*: The envelope is not signed. The beacon block with root
+`envelope.beacon_block_root` commits to every other field of the envelope, to
+the payload and the execution requests through its execution payload bid and to
+the parent beacon block root directly, so there is at most one valid envelope
+for a block.
+
+*Note*: An envelope cannot be validated before its beacon block is known. A node
+which queues such envelopes SHOULD bound the queue, for example by the number
+and total size of the envelopes it holds per peer and per block root.
 
 ```python
 def validate_execution_payload_envelope_gossip(
     seen: Seen,
     store: Store,
-    signed_execution_payload_envelope: SignedExecutionPayloadEnvelope,
+    envelope: ExecutionPayloadEnvelope,
 ) -> None:
     """
-    Validate a SignedExecutionPayloadEnvelope for gossip propagation.
+    Validate an ExecutionPayloadEnvelope for gossip propagation.
     Raises GossipIgnore or GossipReject on validation failure.
     """
-    envelope = signed_execution_payload_envelope.message
     payload = envelope.payload
     block_root = envelope.beacon_block_root
 
-    # [IGNORE] The node has not seen another valid envelope for this block root from this builder
-    envelope_key = (block_root, envelope.builder_index)
-    if envelope_key in seen.execution_payload_envelopes:
-        raise GossipIgnore("already seen envelope for this block root from this builder")
+    # [IGNORE] The node has not seen another valid envelope for this block root
+    if block_root in seen.execution_payload_envelopes:
+        raise GossipIgnore("already seen envelope for this block root")
 
     # [IGNORE] The envelope's block root has been seen (via gossip or non-gossip sources)
     # (MAY be queued until block is retrieved)
@@ -871,10 +877,6 @@ def validate_execution_payload_envelope_gossip(
     # [REJECT] The envelope's parent beacon block root matches the block's parent root
     if envelope.parent_beacon_block_root != block.parent_root:
         raise GossipReject("envelope's parent beacon block root does not match the block's")
-
-    # [REJECT] The envelope is from the builder committed to by the bid
-    if envelope.builder_index != bid.builder_index:
-        raise GossipReject("envelope's builder index does not match the bid's builder index")
 
     # [REJECT] The payload's previous randao matches the bid's previous randao
     if payload.prev_randao != bid.prev_randao:
@@ -915,13 +917,12 @@ def validate_execution_payload_envelope_gossip(
     if hash_tree_root(payload.withdrawals) != hash_tree_root(state.payload_expected_withdrawals):
         raise GossipReject("payload's withdrawals do not match the expected withdrawals")
 
-    # [REJECT] The envelope signature is valid
-    if not verify_execution_payload_envelope_signature(state, signed_execution_payload_envelope):
-        raise GossipReject("invalid envelope signature")
+    # [REJECT] The payload's root matches the bid's payload root
+    if hash_tree_root(payload) != bid.payload_root:
+        raise GossipReject("payload's root does not match the bid's payload root")
 
-    # Mark this envelope as seen and store its payload
-    seen.execution_payload_envelopes.add(envelope_key)
-    seen.execution_payloads[payload.block_hash] = payload
+    # Mark this envelope as seen
+    seen.execution_payload_envelopes.add(block_root)
 ```
 
 ##### New `payload_attestation_message`
@@ -1071,12 +1072,14 @@ def validate_execution_payload_bid_gossip(
     if bid.fee_recipient != proposer_preferences.fee_recipient:
         raise GossipIgnore("bid's fee recipient does not match the proposer's preference")
 
-    # [IGNORE] The bid's parent block hash is the hash of a known execution payload
-    if bid.parent_block_hash not in seen.execution_payloads:
-        raise GossipIgnore("bid's parent block hash is not a known execution payload")
+    # [IGNORE] The bid's parent block hash is the hash of a verified execution payload
+    # (MAY be queued until the payload is verified)
+    if bid.parent_block_hash not in store.payload_block_roots:
+        raise GossipIgnore("bid's parent block hash is not a verified execution payload")
 
     # [IGNORE] The bid's gas limit is compatible with the proposer's target gas limit
-    parent_gas_limit = seen.execution_payloads[bid.parent_block_hash].gas_limit
+    parent_envelope = store.payloads[store.payload_block_roots[bid.parent_block_hash]]
+    parent_gas_limit = parent_envelope.payload.gas_limit
     if not is_gas_limit_target_compatible(
         parent_gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit
     ):
@@ -1462,13 +1465,20 @@ Response Content:
 
 ```
 (
-  SignedExecutionPayloadEnvelopes
+  ExecutionPayloadEnvelopes
 )
 ```
 
 Specifications of request/response methods are equivalent to
 [BeaconBlocksByRange v2](#beaconblocksbyrange-v2), with the only difference
 being the response content type.
+
+Before consuming the next response chunk, the response reader SHOULD verify the
+execution payload envelope is for a requested beacon block and is correct w.r.t.
+that block, that is, the hash tree roots of its `payload` and
+`execution_requests` match the `payload_root` and `execution_requests_root` of
+the block's execution payload bid, and its `parent_beacon_block_root` matches
+the block's `parent_root`.
 
 Clients MUST respond with execution payload envelopes from their view of the
 current fork choice -- that is, envelopes of payloads that are part of the
@@ -1483,16 +1493,15 @@ leads to the finalized block reported in the `Status` handshake.
 
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
-`beacon_block` referred to by
-`signed_execution_payload_envelope.message.beacon_block_root`.
+`beacon_block` referred to by `execution_payload_envelope.beacon_block_root`.
 
 Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth_consensus_specs: skip -->
 
-| `fork_version`       | Chunk SSZ type                         |
-| -------------------- | -------------------------------------- |
-| `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
+| `fork_version`       | Chunk SSZ type                   |
+| -------------------- | -------------------------------- |
+| `GLOAS_FORK_VERSION` | `gloas.ExecutionPayloadEnvelope` |
 
 #### ExecutionPayloadEnvelopesByRoot v1
 
@@ -1510,15 +1519,22 @@ Response Content:
 
 ```
 (
-  SignedExecutionPayloadEnvelopes
+  ExecutionPayloadEnvelopes
 )
 ```
 
 Requests execution payload envelopes by
-`signed_execution_payload_envelope.message.beacon_block_root`. The response is a
-list of `SignedExecutionPayloadEnvelope` whose length is less than or equal to
-the number of requested execution payload envelopes. It may be less in the case
-that the responding peer is missing payload envelopes.
+`execution_payload_envelope.beacon_block_root`. The response is a list of
+`ExecutionPayloadEnvelope` whose length is less than or equal to the number of
+requested execution payload envelopes. It may be less in the case that the
+responding peer is missing payload envelopes.
+
+Before consuming the next response chunk, the response reader SHOULD verify the
+execution payload envelope is for a requested beacon block and is correct w.r.t.
+that block, that is, the hash tree roots of its `payload` and
+`execution_requests` match the `payload_root` and `execution_requests_root` of
+the block's execution payload bid, and its `parent_beacon_block_root` matches
+the block's `parent_root`.
 
 No more than `MAX_REQUEST_PAYLOADS` may be requested at a time.
 
@@ -1529,7 +1545,7 @@ attestation with revealed status as true but never received a payload).
 The request MUST be encoded as an SSZ-field.
 
 The response MUST consist of zero or more `response_chunk`. Each successful
-`response_chunk` MUST contain a single `SignedExecutionPayloadEnvelope` payload.
+`response_chunk` MUST contain a single `ExecutionPayloadEnvelope` payload.
 
 Clients MUST support requesting payload envelopes on the epoch range
 `[max(GLOAS_FORK_EPOCH, current_epoch - compute_min_epochs_for_block_requests()), current_epoch]`.
@@ -1546,13 +1562,12 @@ Clients MAY limit the number of payload envelopes in the response.
 
 For each successful `response_chunk`, the `ForkDigest` context epoch is
 determined by `compute_epoch_at_slot(beacon_block.slot)` based on the
-`beacon_block` referred to by
-`signed_execution_payload_envelope.message.beacon_block_root`.
+`beacon_block` referred to by `execution_payload_envelope.beacon_block_root`.
 
 Per `fork_version = compute_fork_version(epoch)`:
 
 <!-- eth_consensus_specs: skip -->
 
-| `fork_version`       | Chunk SSZ type                         |
-| -------------------- | -------------------------------------- |
-| `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
+| `fork_version`       | Chunk SSZ type                   |
+| -------------------- | -------------------------------- |
+| `GLOAS_FORK_VERSION` | `gloas.ExecutionPayloadEnvelope` |

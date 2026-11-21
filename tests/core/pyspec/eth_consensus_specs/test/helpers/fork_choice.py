@@ -426,33 +426,33 @@ def add_block(
     return store.block_states[signed_block.message.hash_tree_root()]
 
 
-def run_on_execution_payload_envelope(spec, store, signed_envelope, valid=True):
+def run_on_execution_payload_envelope(spec, store, envelope, valid=True):
     """Process execution payload envelope through the fork choice store."""
     if not valid:
-        expect_assertion_error(lambda: spec.on_execution_payload_envelope(store, signed_envelope))
+        expect_assertion_error(lambda: spec.on_execution_payload_envelope(store, envelope))
         return
 
-    spec.on_execution_payload_envelope(store, signed_envelope)
+    spec.on_execution_payload_envelope(store, envelope)
 
     # Verify the envelope was processed, block should now have FULL state
-    envelope_root = signed_envelope.message.beacon_block_root
+    envelope_root = envelope.beacon_block_root
     assert envelope_root in store.payloads
 
 
-def get_execution_payload_envelope_file_name(signed_envelope):
-    return f"execution_payload_envelope_{encode_hex(signed_envelope.hash_tree_root())}"
+def get_execution_payload_envelope_file_name(envelope):
+    return f"execution_payload_envelope_{encode_hex(envelope.hash_tree_root())}"
 
 
-def add_execution_payload(spec, store, signed_envelope, test_steps, valid=True):
-    file_name = get_execution_payload_envelope_file_name(signed_envelope)
-    yield file_name, signed_envelope
+def add_execution_payload(spec, store, envelope, test_steps, valid=True):
+    file_name = get_execution_payload_envelope_file_name(envelope)
+    yield file_name, envelope
 
     if not valid:
-        run_on_execution_payload_envelope(spec, store, signed_envelope, valid=False)
+        run_on_execution_payload_envelope(spec, store, envelope, valid=False)
         test_steps.append({"execution_payload": file_name, "valid": False})
         return
 
-    run_on_execution_payload_envelope(spec, store, signed_envelope, valid=True)
+    run_on_execution_payload_envelope(spec, store, envelope, valid=True)
     test_steps.append({"execution_payload": file_name, "valid": True})
     output_store_checks(spec, store, test_steps)
 
@@ -711,21 +711,27 @@ def tick_store_to_slot(spec, store, slot, test_steps):
         on_tick_and_append_step(spec, store, slot_time_ms, test_steps)
 
 
-def add_signed_empty_block(spec, store, state, test_steps):
+def add_signed_empty_block(spec, store, state, test_steps, update_payload=None):
     """
-    Build, sign, and submit an empty block at ``state.slot + 1``.
+    Build, sign, and submit an empty block at ``state.slot + 1``. Post-Gloas,
+    the block's bid commits to the default payload after ``update_payload`` (if
+    given) changes it.
     """
     block = build_empty_block_for_next_slot(spec, state)
-    signed_block = state_transition_and_sign_block(spec, state, block)
+    signed_block = state_transition_and_sign_block(
+        spec, state, block, update_payload=update_payload
+    )
     yield from tick_and_add_block(spec, store, signed_block, test_steps)
 
     root = signed_block.message.hash_tree_root()
     return root, store.block_states[root], signed_block
 
 
-def setup_one_block_store(spec, state):
+def setup_one_block_store(spec, state, update_payload=None):
     """
     Bootstrap a fork choice store with the genesis anchor plus an empty block at slot 1.
+    Post-Gloas, the block's bid commits to the default payload after
+    ``update_payload`` (if given) changes it.
     """
     test_steps = []
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
@@ -735,7 +741,7 @@ def setup_one_block_store(spec, state):
 
     tick_store_to_slot(spec, store, state.slot, test_steps)
     block_root, block_state, signed_block = yield from add_signed_empty_block(
-        spec, store, state, test_steps
+        spec, store, state, test_steps, update_payload=update_payload
     )
     return store, block_root, block_state, signed_block, test_steps
 

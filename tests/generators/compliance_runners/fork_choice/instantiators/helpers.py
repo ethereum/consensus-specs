@@ -16,6 +16,9 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
     sign_block,
 )
+from eth_consensus_specs.test.helpers.execution_payload import (
+    commit_self_build_bid_to_payload,
+)
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_attestation,
     add_attester_slashing,
@@ -319,6 +322,9 @@ def produce_block(
     except AssertionError:
         valid = False
 
+    if valid and is_post_gloas(spec):
+        commit_self_build_bid_to_payload(spec, post_state, block)
+
     block.state_root = post_state.hash_tree_root()
     signed_block = sign_block(spec, post_state, block)
 
@@ -528,7 +534,7 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
         elif event_kind == "attester_slashing":
             return max(data.attestation_1.data.slot, data.attestation_2.data.slot) + 1
         elif event_kind == "execution_payload":
-            return data.message.payload.slot_number
+            return data.payload.slot_number
         elif event_kind == "payload_attestation":
             return data.data.slot
         else:
@@ -692,10 +698,10 @@ def yield_fork_choice_test_events(spec, test_data: FCTestData, test_events: list
             )
             output_store_checks(spec, store, test_steps)
         elif event_kind == "execution_payload":
-            _, signed_envelope, valid = event
+            _, envelope, valid = event
             if valid is None:
-                valid = try_add_message(run_on_execution_payload_envelope, signed_envelope)
-            yield from add_execution_payload(spec, store, signed_envelope, test_steps, valid=valid)
+                valid = try_add_message(run_on_execution_payload_envelope, envelope)
+            yield from add_execution_payload(spec, store, envelope, test_steps, valid=valid)
             output_store_checks(spec, store, test_steps)
         elif event_kind == "payload_attestation":
             _, ptc_message, valid = event

@@ -3,7 +3,8 @@ from eth_consensus_specs.test.helpers.attestations import (
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.execution_payload import (
-    build_signed_execution_payload_envelope,
+    build_execution_payload_envelope,
+    commit_builder_bid_to_payload,
 )
 from eth_consensus_specs.test.helpers.execution_payload_bid import (
     prepare_signed_execution_payload_bid,
@@ -59,16 +60,17 @@ def record_head_payload(spec, state, store, blocks, execution_requests=None):
     *full*. A bid for the next slot then builds on the head's payload, which is
     what ``is_bid_compatible_with_head`` requires.
 
-    Returns the signed envelope. The head block's blocks meta entry must
+    Returns the envelope. The head block's blocks meta entry must
     reference it via ``payload``, see ``get_blocks_meta``.
     """
     head_signed_block = blocks[-1]
     head_root = head_signed_block.message.hash_tree_root()
-    signed_envelope = build_signed_execution_payload_envelope(
+    envelope = build_execution_payload_envelope(
         spec, state, head_root, head_signed_block, execution_requests=execution_requests
     )
-    store.payloads[head_root] = signed_envelope.message
-    return signed_envelope
+    store.payloads[head_root] = envelope
+    store.payload_block_roots[envelope.payload.block_hash] = head_root
+    return envelope
 
 
 def get_blocks_meta(blocks, head_payload=None):
@@ -221,6 +223,7 @@ def append_head_with_requests(spec, state, store, blocks, execution_requests, si
     else:
         assert signed_bid.message.execution_requests_root == spec.hash_tree_root(execution_requests)
         block.body.signed_execution_payload_bid = signed_bid
+        commit_builder_bid_to_payload(spec, state, block)
     signed_block = state_transition_and_sign_block(spec, state, block)
     record_block_in_store(spec, store, signed_block, state.copy())
     blocks.append(signed_block)

@@ -12,7 +12,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_electra,
     is_post_gloas,
 )
-from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
+from eth_consensus_specs.test.helpers.keys import builder_privkeys
 from eth_consensus_specs.test.helpers.withdrawals import get_expected_withdrawals
 
 
@@ -62,6 +62,7 @@ def get_execution_payload_bid(spec, state, execution_payload):
         value=spec.Gwei(0),
         blob_kzg_commitments=spec.BlobKZGCommitments(data=kzg_list),
         execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
+        payload_root=spec.hash_tree_root(execution_payload),
     )
 
 
@@ -485,46 +486,69 @@ def build_state_with_execution_payload_bid(spec, state, execution_payload_bid):
     return pre_state
 
 
-def sign_execution_payload_envelope(spec, state, signed_block, envelope):
-    # Sign the envelope: self-builds use proposer key, external builds use builder key
-    if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
-        privkey = privkeys[signed_block.message.proposer_index]
-    else:
-        privkey = builder_privkeys[envelope.builder_index]
-    signature = spec.get_execution_payload_envelope_signature(state, envelope, privkey)
-
-    return spec.SignedExecutionPayloadEnvelope(
-        message=envelope,
-        signature=signature,
-    )
-
-
-def build_signed_execution_payload_envelope(
-    spec, state, block_root, signed_block, execution_requests=None
-):
-    # Get builder_index from the block's execution payload bid
-    builder_index = signed_block.message.body.signed_execution_payload_bid.message.builder_index
-
-    # Create execution payload with fields matching the bid's commitments
+def build_execution_payload_for_latest_bid(spec, state):
+    """
+    Build the execution payload which tests reveal by default for the bid of
+    the latest block in ``state``, the post-state of that block.
+    """
     payload = build_empty_execution_payload(spec, state)
     payload.block_hash = state.latest_execution_payload_bid.block_hash
     payload.gas_limit = state.latest_execution_payload_bid.gas_limit
     payload.parent_hash = state.latest_block_hash
     payload.withdrawals = state.payload_expected_withdrawals
+    return payload
+
+
+def commit_self_build_bid_to_payload(spec, state, block, update_payload=None):
+    """
+    Commit the self-build bid of ``block`` to the execution payload which tests
+    reveal by default, after ``update_payload`` (if given) changes the payload,
+    where ``state`` is the post-state of ``block``. The payload depends on that
+    post-state, and nothing in the state transition of ``block`` reads its
+    bid's payload root, so the commitment is set after the fact.
+    """
+    bid = block.body.signed_execution_payload_bid.message
+    if bid.builder_index != spec.BUILDER_INDEX_SELF_BUILD or bid.payload_root != spec.Root():
+        return
+    payload = build_execution_payload_for_latest_bid(spec, state)
+    if update_payload is not None:
+        update_payload(payload)
+    bid.payload_root = spec.hash_tree_root(payload)
+    state.latest_execution_payload_bid.payload_root = bid.payload_root
+    state.latest_block_header.body_root = spec.hash_tree_root(block.body)
+
+
+def commit_builder_bid_to_payload(spec, state, block):
+    """
+    Commit the builder's bid of ``block`` to the execution payload which tests
+    reveal by default and sign the bid again, where ``state`` is the pre-state
+    of ``block``. Call before the state transition.
+    """
+    post_state = state.copy()
+    if post_state.slot < block.slot:
+        spec.process_slots(post_state, block.slot)
+    spec.process_block(post_state, block)
+    bid = block.body.signed_execution_payload_bid.message
+    payload = build_execution_payload_for_latest_bid(spec, post_state)
+    bid.payload_root = spec.hash_tree_root(payload)
+    block.body.signed_execution_payload_bid = sign_execution_payload_bid(spec, post_state, bid)
+
+
+def build_execution_payload_envelope(
+    spec, state, block_root, signed_block, execution_requests=None
+):
+    # Create execution payload with fields matching the bid's commitments
+    payload = build_execution_payload_for_latest_bid(spec, state)
 
     if execution_requests is None:
         execution_requests = spec.ExecutionRequests()
 
-    # Create the execution payload envelope message
-    envelope_message = spec.ExecutionPayloadEnvelope(
+    return spec.ExecutionPayloadEnvelope(
         payload=payload,
         execution_requests=execution_requests,
-        builder_index=builder_index,
         beacon_block_root=block_root,
         parent_beacon_block_root=signed_block.message.parent_root,
     )
-
-    return sign_execution_payload_envelope(spec, state, signed_block, envelope_message)
 
 
 def compute_execution_payload_bid(spec, state, payload, execution_requests=None):
@@ -549,6 +573,7 @@ def compute_execution_payload_bid(spec, state, payload, execution_requests=None)
         value=spec.Gwei(0),
         blob_kzg_commitments=spec.BlobKZGCommitments(data=kzg_list),
         execution_requests_root=spec.hash_tree_root(execution_requests),
+        payload_root=spec.hash_tree_root(payload),
     )
 
 
@@ -558,25 +583,18 @@ def compute_and_sign_execution_payload_bid(spec, state, payload, execution_reque
     return sign_execution_payload_bid(spec, state, bid)
 
 
-def compute_and_sign_execution_payload_envelope(
+def compute_execution_payload_envelope(
     spec, state, block_root, signed_block, payload, execution_requests=None
 ):
-    # Get builder_index from the block's execution payload bid
-    builder_index = signed_block.message.body.signed_execution_payload_bid.message.builder_index
-
     if execution_requests is None:
         execution_requests = spec.ExecutionRequests()
 
-    # Create the execution payload envelope message
-    envelope = spec.ExecutionPayloadEnvelope(
+    return spec.ExecutionPayloadEnvelope(
         payload=payload,
         execution_requests=execution_requests,
-        builder_index=builder_index,
         beacon_block_root=block_root,
         parent_beacon_block_root=signed_block.message.parent_root,
     )
-
-    return sign_execution_payload_envelope(spec, state, signed_block, envelope)
 
 
 def get_random_tx(spec, rng):

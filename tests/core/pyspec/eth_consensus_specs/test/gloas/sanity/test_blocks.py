@@ -30,7 +30,7 @@ from eth_consensus_specs.test.helpers.bls_to_execution_changes import get_signed
 from eth_consensus_specs.test.helpers.execution_requests import (
     get_non_empty_execution_requests,
 )
-from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
+from eth_consensus_specs.test.helpers.keys import builder_privkeys
 from eth_consensus_specs.test.helpers.multi_operations import (
     get_random_attestations,
 )
@@ -122,6 +122,9 @@ def _attempt_payload_with_withdrawals(spec, state, withdrawals):
         withdrawals=spec.Withdrawals(data=withdrawals),
         slot_number=test_state.slot,
     )
+    # Commit the bid to this payload so that the withdrawals are the only check
+    # under test
+    committed_bid.payload_root = spec.hash_tree_root(payload)
 
     # Cache state root for beacon_block_root computation
     header = test_state.latest_block_header.copy()
@@ -130,26 +133,14 @@ def _attempt_payload_with_withdrawals(spec, state, withdrawals):
     envelope = spec.ExecutionPayloadEnvelope(
         payload=payload,
         execution_requests=spec.ExecutionRequests(),
-        builder_index=committed_bid.builder_index,
         beacon_block_root=header.hash_tree_root(),
         parent_beacon_block_root=test_state.latest_block_header.parent_root,
-    )
-
-    if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
-        privkey = privkeys[test_state.latest_block_header.proposer_index]
-    else:
-        privkey = builder_privkeys[envelope.builder_index]
-    signature = spec.get_execution_payload_envelope_signature(test_state, envelope, privkey)
-
-    signed_envelope = spec.SignedExecutionPayloadEnvelope(
-        message=envelope,
-        signature=signature,
     )
 
     engine = spec.NoopExecutionEngine()
 
     try:
-        spec.verify_execution_payload_envelope(test_state, signed_envelope, engine)
+        spec.verify_execution_payload_envelope(test_state, envelope, engine)
         return True
     except AssertionError:
         return False

@@ -60,7 +60,7 @@ def get_test_case(spec, td):
             for b in td_path.glob("attester_slashing_*.ssz_snappy")
         },
         {
-            get_prefix(e): spec.SignedExecutionPayloadEnvelope.decode_bytes(read_ssz_snappy(e))
+            get_prefix(e): spec.ExecutionPayloadEnvelope.decode_bytes(read_ssz_snappy(e))
             for e in td_path.glob("execution_payload_envelope_*.ssz_snappy")
         },
         {
@@ -134,12 +134,12 @@ def run_test(test_info):
         elif "execution_payload" in step:
             envelope_id = step["execution_payload"]
             valid = step.get("valid", True)
-            signed_envelope = envelopes[envelope_id]
+            envelope = envelopes[envelope_id]
             if valid:
-                spec.on_execution_payload_envelope(store, signed_envelope)
+                spec.on_execution_payload_envelope(store, envelope)
             else:
                 expect_assertion_error(
-                    lambda se=signed_envelope: spec.on_execution_payload_envelope(store, se)
+                    lambda se=envelope: spec.on_execution_payload_envelope(store, se)
                 )
         elif "payload_attestation_message" in step:
             ptc_message_id = step["payload_attestation_message"]

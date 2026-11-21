@@ -33,9 +33,8 @@ class QueueItem:
             self.dependencies = [block.parent_root]
             self.is_from_block = False
         elif kind == QueueItemKind.EXECUTION_PAYLOAD:
-            payload = message.message
-            self.effective_slot = payload.payload.slot_number
-            self.dependencies = [payload.beacon_block_root]
+            self.effective_slot = message.payload.slot_number
+            self.dependencies = [message.beacon_block_root]
             self.is_from_block = False
         else:
             assert kind == QueueItemKind.PAYLOAD_ATTESTATION
@@ -180,12 +179,12 @@ class MessageScheduler:
             self.process_block_messages(signed_block)
         return valid, applied_events
 
-    def process_payload(self, signed_payload) -> bool:
+    def process_payload(self, envelope) -> bool:
         try:
-            self.spec.on_execution_payload_envelope(self.store, signed_payload)
+            self.spec.on_execution_payload_envelope(self.store, envelope)
             return True
         except AssertionError:
-            item = QueueItem(signed_payload, QueueItemKind.EXECUTION_PAYLOAD)
+            item = QueueItem(envelope, QueueItemKind.EXECUTION_PAYLOAD)
             if self.is_early_message(item):
                 self.enqueue_message(item)
             return False

@@ -6,7 +6,7 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block_for_next_slot,
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
-    build_signed_execution_payload_envelope,
+    build_execution_payload_envelope,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_execution_payload,
@@ -57,7 +57,7 @@ def test_on_block_parent_full_accepts_verified_payload(spec, state):
     )
 
     # Deliver the parent's envelope so is_payload_verified returns True
-    envelope = build_signed_execution_payload_envelope(spec, block_state, block_root, signed_block)
+    envelope = build_execution_payload_envelope(spec, block_state, block_root, signed_block)
     yield from add_execution_payload(spec, store, envelope, test_steps)
 
     # Build the same FULL-claim child fixture as the rejection test

@@ -127,6 +127,7 @@ class Store:
     latest_messages: dict[ValidatorIndex, LatestMessage]
     unrealized_justifications: dict[Root, Checkpoint]
     payloads: dict[Root, ExecutionPayloadEnvelope]
+    payload_block_roots: dict[Hash32, Root]
     payload_timeliness_vote: dict[Root, list[Boolean | None]]
     payload_data_availability_vote: dict[Root, list[Boolean | None]]
     # [New in Heze:EIP7805]
@@ -159,6 +160,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         latest_messages={},
         unrealized_justifications={anchor_root: justified_checkpoint},
         payloads={},
+        payload_block_roots={},
         payload_timeliness_vote={anchor_root: [None] * PTC_SIZE},
         payload_data_availability_vote={anchor_root: [None] * PTC_SIZE},
         # [New in Heze:EIP7805]
@@ -315,14 +317,10 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
 ### Modified `on_execution_payload_envelope`
 
 ```python
-def on_execution_payload_envelope(
-    store: Store, signed_envelope: SignedExecutionPayloadEnvelope
-) -> None:
+def on_execution_payload_envelope(store: Store, envelope: ExecutionPayloadEnvelope) -> None:
     """
     Run ``on_execution_payload_envelope`` upon receiving a new execution payload envelope.
     """
-    envelope = signed_envelope.message
-
     # [New in Heze:EIP7805]
     # Return early if the payload is already known
     if is_payload_verified(store, envelope.beacon_block_root):
@@ -338,7 +336,7 @@ def on_execution_payload_envelope(
     state = store.block_states[envelope.beacon_block_root]
 
     # Verify the execution payload envelope
-    verify_execution_payload_envelope(state, signed_envelope, EXECUTION_ENGINE)
+    verify_execution_payload_envelope(state, envelope, EXECUTION_ENGINE)
 
     # [New in Heze:EIP7805]
     # Check if this payload satisfies the inclusion list constraints
@@ -349,4 +347,5 @@ def on_execution_payload_envelope(
 
     # Add execution payload envelope to the store
     store.payloads[envelope.beacon_block_root] = envelope
+    store.payload_block_roots[envelope.payload.block_hash] = envelope.beacon_block_root
 ```

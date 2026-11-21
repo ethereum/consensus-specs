@@ -8,7 +8,10 @@ from eth_consensus_specs.test.helpers.block import (
     sign_block,
     transition_unsigned_block,
 )
-from eth_consensus_specs.test.helpers.forks import is_post_altair
+from eth_consensus_specs.test.helpers.execution_payload import (
+    commit_self_build_bid_to_payload,
+)
+from eth_consensus_specs.test.helpers.forks import is_post_altair, is_post_gloas
 from eth_consensus_specs.test.helpers.voluntary_exits import get_unslashed_exited_validators
 from eth_consensus_specs.utils.ssz.bytes import Bytes32
 
@@ -93,15 +96,19 @@ def get_state_root(spec, state, slot) -> bytes:
     return state.state_roots[slot % spec.SLOTS_PER_HISTORICAL_ROOT]
 
 
-def state_transition_and_sign_block(spec, state, block, expect_fail=False):
+def state_transition_and_sign_block(spec, state, block, expect_fail=False, update_payload=None):
     """
     State transition via the provided ``block``
     then package the block with the correct state root and signature.
+    Post-Gloas, a self-build bid is committed to the payload which tests reveal
+    by default, after ``update_payload`` (if given) changes that payload.
     """
     if expect_fail:
         expect_assertion_error(lambda: transition_unsigned_block(spec, state, block))
     else:
         transition_unsigned_block(spec, state, block)
+        if is_post_gloas(spec):
+            commit_self_build_bid_to_payload(spec, state, block, update_payload)
     block.state_root = state.hash_tree_root()
     return sign_block(spec, state, block)
 

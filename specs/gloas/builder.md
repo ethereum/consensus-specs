@@ -16,7 +16,7 @@
   - [Constructing the `DataColumnSidecar`s](#constructing-the-datacolumnsidecars)
     - [Modified `get_data_column_sidecars`](#modified-get_data_column_sidecars)
     - [Modified `get_data_column_sidecars_from_block`](#modified-get_data_column_sidecars_from_block)
-  - [Constructing the `SignedExecutionPayloadEnvelope`](#constructing-the-signedexecutionpayloadenvelope)
+  - [Constructing the `ExecutionPayloadEnvelope`](#constructing-the-executionpayloadenvelope)
   - [Honest payload withheld messages](#honest-payload-withheld-messages)
 
 <!-- mdformat-toc end -->
@@ -70,7 +70,7 @@ existing builder's pubkey tops up its balance.
 
 When the deposit is processed on the beacon chain, the builder is assigned a
 unique `builder_index` within the builder registry. This index is used to
-identify the builder in execution payload bids and envelopes.
+identify the builder in execution payload bids.
 
 ### Activation
 
@@ -104,7 +104,7 @@ Builders can submit bids to produce execution payloads. They can broadcast these
 bids in the form of `SignedExecutionPayloadBid` objects. These objects encode a
 commitment to reveal an execution payload in exchange for a payment. When their
 bids are chosen by the corresponding proposer, builders are expected to
-broadcast an accompanying `SignedExecutionPayloadEnvelope` object honoring the
+broadcast an accompanying `ExecutionPayloadEnvelope` object honoring the
 commitment. If a proposer accepts a builder's bid, the builder will pay the
 proposer what it promised whether it submits the payload or not.
 
@@ -125,35 +125,37 @@ to include. They produce a `SignedExecutionPayloadBid` as follows.
     execution engine via a call to `engine_getPayloadV6`.
 04. Set `bid.block_hash` to be the block hash of the constructed payload, that
     is `payload.block_hash`.
-05. Set `bid.prev_randao` to be the previous RANDAO of the constructed payload,
+05. Set `bid.payload_root` to `hash_tree_root(payload)`, where `payload` is the
+    constructed payload.
+06. Set `bid.prev_randao` to be the previous RANDAO of the constructed payload,
     that is `payload.prev_randao`. This value **MUST** equal
     `get_randao_mix(parent_state, get_current_epoch(parent_state))`, where
     `parent_state` is the post-state of `bid.parent_block_root`.
-06. Set `bid.slot` to be the slot for which this bid is aimed. This slot
+07. Set `bid.slot` to be the slot for which this bid is aimed. This slot
     **MUST** be either the current slot or the next slot.
-07. Set `bid.fee_recipient` to be an execution address to receive the payment.
+08. Set `bid.fee_recipient` to be an execution address to receive the payment.
     The proposer's preferred fee recipient is obtained from the
     `SignedProposerPreferences` whose `message.proposal_slot` matches `bid.slot`
     and whose `message.dependent_root` matches
     `get_shuffling_dependent_root(store, bid.parent_block_root, compute_epoch_at_slot(bid.slot))`,
     where `store` is the fork choice store.
-08. Set `bid.gas_limit` to be the gas limit of the constructed payload, which
+09. Set `bid.gas_limit` to be the gas limit of the constructed payload, which
     **MUST** satisfy
     `is_gas_limit_target_compatible(parent_gas_limit, bid.gas_limit, target_gas_limit)`,
     where `parent_gas_limit` is the `gas_limit` of the parent execution payload
     and `target_gas_limit` is the `target_gas_limit` in the
-    `SignedProposerPreferences` referenced in step 7.
-09. Set `bid.builder_index` to be the index of the builder performing these
+    `SignedProposerPreferences` referenced in step 8.
+10. Set `bid.builder_index` to be the index of the builder performing these
     actions.
-10. Set `bid.value` to be the value (in gwei) that the builder will pay the
+11. Set `bid.value` to be the value (in gwei) that the builder will pay the
     proposer if the bid is accepted. The builder **MUST** have enough excess
     balance to fulfill this bid and all pending payments.
-11. Set `bid.execution_payment` to zero. A non-zero value indicates a trusted
+12. Set `bid.execution_payment` to zero. A non-zero value indicates a trusted
     execution-layer payment. Bids with non-zero `execution_payment` **MUST NOT**
     be broadcast to the `execution_payload_bid` gossip topic.
-12. Set `bid.blob_kzg_commitments` to be the `blobsbundle.commitments` field
+13. Set `bid.blob_kzg_commitments` to be the `blobsbundle.commitments` field
     returned by `engine_getPayloadV6`.
-13. Set `bid.execution_requests_root` to `hash_tree_root(execution_requests)`,
+14. Set `bid.execution_requests_root` to `hash_tree_root(execution_requests)`,
     where `execution_requests` is the `ExecutionRequests` field returned by
     `engine_getPayloadV6`.
 
@@ -249,12 +251,12 @@ def get_data_column_sidecars_from_block(
     )
 ```
 
-### Constructing the `SignedExecutionPayloadEnvelope`
+### Constructing the `ExecutionPayloadEnvelope`
 
 When the proposer publishes a valid `SignedBeaconBlock` containing a signed
 commitment by the builder, the builder is later expected to broadcast the
-corresponding `SignedExecutionPayloadEnvelope` that fulfills this commitment.
-See below for a special case of an *honestly withheld payload*.
+corresponding `ExecutionPayloadEnvelope` that fulfills this commitment. See
+below for a special case of an *honestly withheld payload*.
 
 To construct the `ExecutionPayloadEnvelope` the builder must perform the
 following steps. We alias `block` to be the corresponding `BeaconBlock` and
@@ -263,28 +265,14 @@ alias `bid` to be the committed `ExecutionPayloadBid` in
 
 1. Set `envelope.payload` to be the `ExecutionPayload` constructed when creating
    the corresponding bid. This payload **MUST** have the same block hash as
-   `bid.block_hash`.
+   `bid.block_hash` and the same hash tree root as `bid.payload_root`.
 2. Set `envelope.execution_requests` to be the `ExecutionRequests` associated
    with `payload`.
-3. Set `envelope.builder_index` to be the index of the builder performing these
-   steps. This field **MUST** be `bid.builder_index`.
-4. Set `envelope.beacon_block_root` to be `hash_tree_root(block)`.
-5. Set `envelope.parent_beacon_block_root` to be `block.parent_root`.
+3. Set `envelope.beacon_block_root` to be `hash_tree_root(block)`.
+4. Set `envelope.parent_beacon_block_root` to be `block.parent_root`.
 
-After preparing the `envelope` the builder signs it using:
-
-```python
-def get_execution_payload_envelope_signature(
-    state: BeaconState, envelope: ExecutionPayloadEnvelope, privkey: int
-) -> BLSSignature:
-    domain = get_domain(state, DOMAIN_BEACON_BUILDER, compute_epoch_at_slot(state.slot))
-    signing_root = compute_signing_root(envelope, domain)
-    return bls.Sign(privkey, signing_root)
-```
-
-Then the builder assembles
-`signed_execution_payload_envelope = SignedExecutionPayloadEnvelope(message=envelope, signature=signature)`
-and broadcasts it on the `execution_payload` global gossip topic.
+After preparing the `envelope` the builder broadcasts it on the
+`execution_payload` global gossip topic.
 
 ### Honest payload withheld messages
 

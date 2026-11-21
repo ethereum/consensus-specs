@@ -209,6 +209,7 @@ def upgrade_to_gloas(pre: fulu.BeaconState) -> BeaconState:
             parent_block_hash=pre.latest_execution_payload_header.parent_hash,
             parent_block_root=pre.latest_block_header.parent_root,
             block_hash=pre.latest_execution_payload_header.block_hash,
+            payload_root=Root(),
             prev_randao=pre.latest_execution_payload_header.prev_randao,
             fee_recipient=ExecutionAddress(),
             gas_limit=pre.latest_execution_payload_header.gas_limit,

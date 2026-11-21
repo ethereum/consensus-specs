@@ -46,6 +46,7 @@ class Store:
     latest_messages: dict[ValidatorIndex, LatestMessage]
     unrealized_justifications: dict[Root, Checkpoint]
     payloads: dict[Root, ExecutionPayloadEnvelope]
+    payload_block_roots: dict[Hash32, Root]
     payload_timeliness_vote: dict[Root, list[Boolean | None]]
     payload_data_availability_vote: dict[Root, list[Boolean | None]]
     # [New in EIP8025]
@@ -80,6 +81,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         latest_messages={},
         unrealized_justifications={anchor_root: justified_checkpoint},
         payloads={},
+        payload_block_roots={},
         payload_timeliness_vote={anchor_root: [None] * PTC_SIZE},
         payload_data_availability_vote={anchor_root: [None] * PTC_SIZE},
         # [New in EIP8025]

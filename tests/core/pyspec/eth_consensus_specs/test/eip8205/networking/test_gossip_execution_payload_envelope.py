@@ -4,7 +4,7 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.execution_payload import (
-    build_signed_execution_payload_envelope,
+    build_execution_payload_envelope,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
@@ -54,19 +54,17 @@ def _assert_envelope_preregistrations_gossip(spec, state, count, expected, reaso
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
 
     seen = get_seen(spec)
-    signed_envelope = build_signed_execution_payload_envelope(
+    envelope = build_execution_payload_envelope(
         spec, state, block_root, signed_block, execution_requests=execution_requests
     )
-    yield get_filename(signed_envelope), signed_envelope
+    yield get_filename(envelope), envelope
 
-    result, reason_out = run_validate_gossip(
-        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
-    )
+    result, reason_out = run_validate_gossip(spec, seen=seen, store=store, envelope=envelope)
     assert result == expected
     assert reason_out == reason
 
     message = {
-        "message": get_filename(signed_envelope),
+        "message": get_filename(envelope),
         "expected": result,
     }
     if reason is not None:

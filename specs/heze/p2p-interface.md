@@ -40,7 +40,7 @@ specifications of previous upgrades, and assumes them as pre-requisite.
 
 | Name                                         | Value                         |
 | -------------------------------------------- | ----------------------------- |
-| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `Uint64(196934)` (= ~192 KiB) |
+| `MAX_SIGNED_EXECUTION_PAYLOAD_BID_SIZE_HEZE` | `Uint64(196966)` (= ~192 KiB) |
 | `MAX_SIGNED_INCLUSION_LIST_SIZE`             | `Uint64(41112)` (= ~40 KiB)   |
 
 ## Configs
@@ -84,8 +84,7 @@ class Seen:
     sync_message_validator_slots: set[tuple[Slot, ValidatorIndex, Uint64]]
     bls_to_execution_change_indices: set[ValidatorIndex]
     data_column_sidecar_tuples: set[tuple[Root, ColumnIndex]]
-    execution_payloads: dict[Hash32, ExecutionPayload]
-    execution_payload_envelopes: set[tuple[Root, BuilderIndex]]
+    execution_payload_envelopes: set[Root]
     payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
     execution_payload_bid_counts: Counter[tuple[Slot, Hash32, Root, BuilderIndex]]
     best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
@@ -242,12 +241,14 @@ def validate_execution_payload_bid_gossip(
     if bid.fee_recipient != proposer_preferences.fee_recipient:
         raise GossipIgnore("bid's fee recipient does not match the proposer's preference")
 
-    # [IGNORE] The bid's parent block hash is the hash of a known execution payload
-    if bid.parent_block_hash not in seen.execution_payloads:
-        raise GossipIgnore("bid's parent block hash is not a known execution payload")
+    # [IGNORE] The bid's parent block hash is the hash of a verified execution payload
+    # (MAY be queued until the payload is verified)
+    if bid.parent_block_hash not in store.payload_block_roots:
+        raise GossipIgnore("bid's parent block hash is not a verified execution payload")
 
     # [IGNORE] The bid's gas limit is compatible with the proposer's target gas limit
-    parent_gas_limit = seen.execution_payloads[bid.parent_block_hash].gas_limit
+    parent_envelope = store.payloads[store.payload_block_roots[bid.parent_block_hash]]
+    parent_gas_limit = parent_envelope.payload.gas_limit
     if not is_gas_limit_target_compatible(
         parent_gas_limit, bid.gas_limit, proposer_preferences.target_gas_limit
     ):

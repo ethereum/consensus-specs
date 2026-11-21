@@ -4,7 +4,7 @@ from eth_consensus_specs.test.helpers.attester_slashings import (
     get_valid_attester_slashing_by_indices,
 )
 from eth_consensus_specs.test.helpers.execution_payload import (
-    build_signed_execution_payload_envelope,
+    build_execution_payload_envelope,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
@@ -471,8 +471,8 @@ def _spoil_payload_attestation_message(spec, rnd: random.Random, state, ptc_mess
     ptc_message.validator_index = (ptc_message.validator_index + 1) % len(state.validators)
 
 
-def _spoil_execution_payload_envelope(spec, rnd: random.Random, signed_envelope):
-    signed_envelope.message.payload.parent_hash = spec.Hash32(rnd.randbytes(32))
+def _spoil_execution_payload_envelope(spec, rnd: random.Random, envelope):
+    envelope.payload.parent_hash = spec.Hash32(rnd.randbytes(32))
 
 
 def _get_random_payload_attestation_messages(spec, state, rnd: random.Random):
@@ -522,13 +522,13 @@ class ProtocolState:
         self.out_of_block_attester_slashing_messages = []
         self.out_of_block_pa_messages = []
         self.signed_block_messages = []
-        self.signed_envelope_messages = []
+        self.envelope_messages = []
 
     def add_signed_block(self, signed_block, valid: bool):
         self.signed_block_messages.append(ProtocolMessage(signed_block, valid))
 
-    def add_signed_envelope(self, envelope, valid: bool):
-        self.signed_envelope_messages.append(ProtocolMessage(envelope, valid))
+    def add_envelope(self, envelope, valid: bool):
+        self.envelope_messages.append(ProtocolMessage(envelope, valid))
 
     def add_invalid_off_chain_attestation(self, attestation):
         self.out_of_block_attestation_messages.append(ProtocolMessage(attestation, valid=False))
@@ -898,9 +898,7 @@ def _generate_block_tree(
             return False
 
         block_root = signed_block.message.hash_tree_root()
-        envelope = build_signed_execution_payload_envelope(
-            spec, post_state, block_root, signed_block
-        )
+        envelope = build_execution_payload_envelope(spec, post_state, block_root, signed_block)
         if not _roll(rnd, EXECUTION_PAYLOAD_SEND_RATE):
             return False
 
@@ -911,7 +909,7 @@ def _generate_block_tree(
         if with_invalid_messages and _roll(rnd, INVALID_MESSAGES_RATE):
             _spoil_execution_payload_envelope(spec, rnd, envelope)
             valid = False
-        protocol.add_signed_envelope(envelope, valid)
+        protocol.add_envelope(envelope, valid)
         if valid:
             runtime.payload_known_block_indices.add(new_block_index)
         return valid
@@ -1040,9 +1038,7 @@ def _generate_block_tree(
             protocol.out_of_block_attester_slashing_messages,
             key=lambda a: a.payload.attestation_1.data.slot,
         ),
-        sorted(
-            protocol.signed_envelope_messages, key=lambda e: e.payload.message.payload.slot_number
-        ),
+        sorted(protocol.envelope_messages, key=lambda e: e.payload.payload.slot_number),
         sorted(protocol.out_of_block_pa_messages, key=lambda a: a.payload.data.slot),
     )
 
