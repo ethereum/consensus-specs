@@ -1593,10 +1593,10 @@ transitions that trigger an unhandled exception (e.g. a failed `assert` or an
 out-of-range list access) are considered invalid. State transitions that cause a
 `Uint64` overflow or underflow are also considered invalid.
 
-The validity of a signed execution payload envelope `signed_envelope` against a
-pre-state `state` is checked by
-`verify_execution_payload_envelope(state, signed_envelope, execution_engine)`.
-Payload processing is deferred to the next beacon block via
+The validity of an execution payload envelope `envelope` against a pre-state
+`state` is checked by
+`verify_execution_payload_envelope(state, envelope, execution_engine)`. Payload
+processing is deferred to the next beacon block via
 `process_parent_execution_payload`. Payloads that trigger an unhandled exception
 (e.g. a failed `assert` or an out-of-range list access) are considered invalid.
 Payloads that cause a `Uint64` overflow or underflow are also considered
