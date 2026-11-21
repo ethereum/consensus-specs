@@ -73,6 +73,60 @@ def test_gossip_beacon_block__valid_parent_empty(spec, state):
 
 @with_gloas_and_later
 @spec_state_test
+def test_gossip_beacon_block__valid_with_pre_fork_head_version(spec, state):
+    """
+    The first block of a fork is signed with the new fork version even while
+    the fork-choice head state still carries the previous fork version.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "beacon_block"
+
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    anchor_root = anchor_block.hash_tree_root()
+    yield "state", anchor_state
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    seen = get_seen(spec)
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.signed_execution_payload_bid.message.parent_block_hash = state.latest_block_hash
+    signed_block = sign_block(spec, state, block, proposer_index=block.proposer_index)
+    yield get_filename(signed_block), signed_block
+
+    # Model the fork boundary: the message is for Gloas, but the current head
+    # is still the last state of the previous fork.
+    head_state = store.block_states[anchor_root]
+    head_state.fork.current_version = spec.config.FULU_FORK_VERSION
+    message_epoch = spec.compute_epoch_at_slot(block.slot)
+    assert head_state.fork.current_version != spec.compute_fork_version(message_epoch)
+
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, block.slot) + 500
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_beacon_block=signed_block,
+        current_time_ms=current_time_ms,
+    )
+    assert result == "valid"
+    assert reason is None
+
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(signed_block),
+                "expected": result,
+            }
+        ],
+    )
+
+
+@with_gloas_and_later
+@spec_state_test
 def test_gossip_beacon_block__valid_parent_full(spec, state):
     """A block building on a full parent (with an execution payload)."""
     anchor_state = state.copy()

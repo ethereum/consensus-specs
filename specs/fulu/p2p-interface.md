@@ -362,7 +362,11 @@ def validate_beacon_block_gossip(
 
     # [REJECT] The proposer signature is valid
     proposer = state.validators[block.proposer_index]
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block.slot))
+    domain = compute_domain(
+        DOMAIN_BEACON_PROPOSER,
+        compute_fork_version(compute_epoch_at_slot(block.slot)),
+        state.genesis_validators_root,
+    )
     signing_root = compute_signing_root(block, domain)
     if not bls.Verify(proposer.pubkey, signing_root, signed_beacon_block.signature):
         raise GossipReject("invalid proposer signature")
@@ -467,7 +471,11 @@ def validate_data_column_sidecar_gossip(
 
     # [REJECT] The proposer signature of sidecar.signed_block_header is valid
     proposer = state.validators[block_header.proposer_index]
-    domain = get_domain(state, DOMAIN_BEACON_PROPOSER, compute_epoch_at_slot(block_header.slot))
+    domain = compute_domain(
+        DOMAIN_BEACON_PROPOSER,
+        compute_fork_version(compute_epoch_at_slot(block_header.slot)),
+        state.genesis_validators_root,
+    )
     signing_root = compute_signing_root(block_header, domain)
     if not bls.Verify(proposer.pubkey, signing_root, sidecar.signed_block_header.signature):
         raise GossipReject("invalid proposer signature on sidecar block header")
