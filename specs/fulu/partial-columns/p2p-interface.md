@@ -231,6 +231,7 @@ def validate_partial_data_column_sidecar_gossip(
     current_time_ms: Uint64,
     group_id: PartialDataColumnGroupID,
     column_index: ColumnIndex,
+    block_payload_statuses: dict[Root, PayloadValidationStatus],
 ) -> None:
     """
     Validate a PartialDataColumnSidecar for gossip propagation on a subnet.
@@ -290,9 +291,21 @@ def validate_partial_data_column_sidecar_gossip(
         if parent_root not in store.blocks:
             raise GossipIgnore("header's parent has not been seen")
 
-        # [REJECT] The header's block's parent passes validation
+        parent_payload_status = PAYLOAD_STATUS_NOT_VALIDATED
+        if parent_root in block_payload_statuses:
+            parent_payload_status = block_payload_statuses[parent_root]
+
         if parent_root not in store.block_states:
-            raise GossipReject("header's parent failed validation")
+            if parent_payload_status == PAYLOAD_STATUS_NOT_VALIDATED:
+                # [REJECT] The header's block's parent failed validation and its execution payload is optimistic
+                raise GossipReject("header's parent is invalid and its payload is optimistic")
+
+            # [IGNORE] The header's block's parent failed validation and its execution payload is processed
+            raise GossipIgnore("header's parent is invalid and its payload is processed")
+
+        # [IGNORE] The header's block's parent passed validation but its execution payload is invalid
+        if parent_payload_status == PAYLOAD_STATUS_INVALIDATED:
+            raise GossipIgnore("header's parent is valid and its payload is invalid")
 
         state = store.block_states[get_head(store).root]
 
