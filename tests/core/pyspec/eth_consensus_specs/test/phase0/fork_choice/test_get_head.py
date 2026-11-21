@@ -27,6 +27,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     apply_next_epoch_with_attestations,
     check_head_against_root,
     get_anchor_root,
+    get_fork_choice_node,
     get_formatted_head_output,
     get_genesis_forkchoice_store_and_block,
     on_tick_and_append_step,
@@ -868,3 +869,303 @@ def test_incorrect_finalized(spec, state):
 
     yield 'steps', test_steps
 """
+
+
+def _check_latest_message(spec, store, validator_index, root, epoch, slot):
+    latest_message = store.latest_messages[validator_index]
+    assert latest_message.root == root
+    if is_post_gloas(spec):
+        # [Modified in Gloas:EIP7732] latest messages are keyed by slot
+        assert latest_message.slot == slot
+    else:
+        assert latest_message.epoch == epoch
+
+
+def _setup_two_competing_blocks(spec, state, test_steps):
+    """
+    Build two competing blocks A and B at slot 1, both children of genesis,
+    and add them to the store after slot 1 so that proposer boost does not apply.
+    """
+    genesis_state = state.copy()
+
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    anchor_root = get_anchor_root(spec, state)
+    check_head_against_root(spec, store, anchor_root)
+    output_head_check(spec, store, test_steps)
+
+    state_a = genesis_state.copy()
+    block_a = build_empty_block_for_next_slot(spec, state_a)
+    signed_block_a = state_transition_and_sign_block(spec, state_a, block_a)
+
+    state_b = genesis_state.copy()
+    block_b = build_empty_block_for_next_slot(spec, state_b)
+    block_b.body.graffiti = b"\x42" * 32
+    signed_block_b = state_transition_and_sign_block(spec, state_b, block_b)
+
+    # Tick past slot 1 so proposer score boost does not apply
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, block_a.slot + 1)
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
+
+    return store, anchor_block, state_a, signed_block_a, state_b, signed_block_b
+
+
+@with_altair_and_later
+@spec_state_test
+def test_latest_message_replaced_by_next_epoch_vote(spec, state):
+    """
+    A set of validators votes for block A in epoch 0, then for the competing
+    block B in epoch 1. The later vote has a higher target epoch, so it replaces
+    the earlier one and the head moves from A to B.
+    """
+    test_steps = []
+    store, anchor_block, state_a, signed_block_a, state_b, signed_block_b = (
+        _setup_two_competing_blocks(spec, state, test_steps)
+    )
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
+    yield from add_block(spec, store, signed_block_a, test_steps)
+    yield from add_block(spec, store, signed_block_b, test_steps)
+    root_a = signed_block_a.message.hash_tree_root()
+    root_b = signed_block_b.message.hash_tree_root()
+
+    # Epoch 0: the slot 1 committee votes for A
+    attestation_a = get_valid_attestation(spec, state_a, slot=1, signed=True)
+    voters = set(spec.get_attesting_indices(state_a, attestation_a))
+    assert len(voters) > 0
+    yield from tick_and_run_on_attestation(spec, store, attestation_a, test_steps)
+
+    check_head_against_root(spec, store, root_a)
+    output_head_check(spec, store, test_steps)
+
+    # Epoch 1: the same validators vote for B at their epoch 1 committee slots
+    epoch_1_state = state_b.copy()
+    spec.process_slots(epoch_1_state, spec.compute_start_slot_at_epoch(1))
+    assignments = {}
+    for validator_index in voters:
+        _, committee_index, slot = spec.get_committee_assignment(
+            epoch_1_state, spec.Epoch(1), validator_index
+        )
+        assignments.setdefault((slot, committee_index), set()).add(validator_index)
+
+    vote_slots = {}
+    for slot, committee_index in sorted(assignments):
+        participants = assignments[(slot, committee_index)]
+        for validator_index in participants:
+            vote_slots[validator_index] = slot
+        attesting_state = epoch_1_state.copy()
+        if attesting_state.slot < slot:
+            spec.process_slots(attesting_state, slot)
+        attestation_b = get_valid_attestation(
+            spec,
+            attesting_state,
+            slot=slot,
+            index=committee_index,
+            beacon_block_root=root_b,
+            filter_participant_set=lambda committee, p=participants: committee & p,
+            signed=True,
+        )
+        yield from tick_and_run_on_attestation(spec, store, attestation_b, test_steps)
+
+    for validator_index in voters:
+        _check_latest_message(
+            spec, store, validator_index, root_b, epoch=1, slot=vote_slots[validator_index]
+        )
+
+    check_head_against_root(spec, store, root_b)
+    output_head_check(spec, store, test_steps)
+
+    yield "steps", test_steps
+
+
+@with_altair_and_later
+@spec_state_test
+def test_latest_message_not_replaced_by_same_epoch_vote(spec, state):
+    """
+    A set of validators votes for block A in epoch 0, then votes again for the
+    competing block B in the same epoch. The second vote does not have a higher
+    target epoch, so it is ignored by fork choice and the head stays on A.
+    """
+    test_steps = []
+    store, anchor_block, state_a, signed_block_a, state_b, signed_block_b = (
+        _setup_two_competing_blocks(spec, state, test_steps)
+    )
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
+    yield from add_block(spec, store, signed_block_a, test_steps)
+    yield from add_block(spec, store, signed_block_b, test_steps)
+    root_a = signed_block_a.message.hash_tree_root()
+    root_b = signed_block_b.message.hash_tree_root()
+
+    # Epoch 0: the slot 1 committee votes for A
+    attestation_a = get_valid_attestation(spec, state_a, slot=1, signed=True)
+    voters = set(spec.get_attesting_indices(state_a, attestation_a))
+    assert len(voters) > 0
+    yield from tick_and_run_on_attestation(spec, store, attestation_a, test_steps)
+
+    check_head_against_root(spec, store, root_a)
+    output_head_check(spec, store, test_steps)
+
+    # Still epoch 0: the same committee votes for B
+    attestation_b = get_valid_attestation(
+        spec, state_b, slot=1, beacon_block_root=root_b, signed=True
+    )
+    assert set(spec.get_attesting_indices(state_b, attestation_b)) == voters
+    yield from tick_and_run_on_attestation(spec, store, attestation_b, test_steps)
+
+    for validator_index in voters:
+        _check_latest_message(spec, store, validator_index, root_a, epoch=0, slot=1)
+
+    check_head_against_root(spec, store, root_a)
+    output_head_check(spec, store, test_steps)
+
+    yield "steps", test_steps
+
+
+def _run_balancing_attack(spec, state, adversary_above_proposer_boost, test_steps):
+    """
+    Balancing attack against LMD GHOST (Neu, Tas, Tse). Two sibling blocks L and R
+    at slot 1 are kept at exactly equal weight by splitting the slot 1 committee.
+    The slot 2 proposer builds a timely block X on the tie-break loser, so only
+    proposer boost can make X the head. The adversary then releases withheld slot 1
+    votes for the other branch, with weight either below or above the boost.
+    """
+    genesis_state = state.copy()
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    yield "anchor_state", state
+    yield "anchor_block", anchor_block
+    check_head_against_root(spec, store, get_anchor_root(spec, state))
+    output_head_check(spec, store, test_steps)
+
+    # Sibling blocks L and R at slot 1
+    state_l = genesis_state.copy()
+    signed_block_l = state_transition_and_sign_block(
+        spec, state_l, build_empty_block_for_next_slot(spec, state_l)
+    )
+    state_r = genesis_state.copy()
+    block_r = build_empty_block_for_next_slot(spec, state_r)
+    block_r.body.graffiti = b"\x42" * 32
+    signed_block_r = state_transition_and_sign_block(spec, state_r, block_r)
+
+    # Receive both at the start of slot 2, so neither gets proposer boost
+    time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(2))
+    on_tick_and_append_step(spec, store, time_ms, test_steps)
+    yield from add_block(spec, store, signed_block_l, test_steps)
+    yield from add_block(spec, store, signed_block_r, test_steps)
+
+    # P loses the root tie-break and O wins it
+    root_l = signed_block_l.message.hash_tree_root()
+    root_r = signed_block_r.message.hash_tree_root()
+    if root_l < root_r:
+        root_p, state_p, root_o, state_o = root_l, state_l, root_r, state_r
+    else:
+        root_p, state_p, root_o, state_o = root_r, state_r, root_l, state_l
+
+    # Split the slot 1 committees: k honest votes for each branch, the rest withheld
+    def _slot_committees(attesting_state, slot):
+        epoch = spec.compute_epoch_at_slot(slot)
+        committee_count = spec.get_committee_count_per_slot(attesting_state, epoch)
+        return [
+            (index, set(spec.get_beacon_committee(attesting_state, slot, index)))
+            for index in range(committee_count)
+        ]
+
+    def _attestations(attesting_state, slot, root, participants):
+        # One attestation per committee that has participants
+        attestations = []
+        for index, committee in _slot_committees(attesting_state, slot):
+            if committee & participants:
+                attestations.append(
+                    get_valid_attestation(
+                        spec,
+                        attesting_state,
+                        slot=slot,
+                        index=index,
+                        beacon_block_root=root,
+                        filter_participant_set=lambda c, p=participants: c & p,
+                        signed=True,
+                    )
+                )
+        return attestations
+
+    slot_1_validators = sorted(
+        v for _, committee in _slot_committees(state_o, spec.Slot(1)) for v in committee
+    )
+    balance = state.validators[slot_1_validators[0]].effective_balance
+    assert all(state.validators[i].effective_balance == balance for i in slot_1_validators)
+    proposer_score = spec.calculate_committee_fraction(state, spec.config.PROPOSER_SCORE_BOOST)
+    if adversary_above_proposer_boost:
+        adversary_count = proposer_score // balance + 1
+        assert adversary_count * balance > proposer_score
+    else:
+        adversary_count = (proposer_score - 1) // balance
+        assert 0 < adversary_count * balance < proposer_score
+    k = (len(slot_1_validators) - adversary_count) // 2
+    assert k > 0
+    honest_p = set(slot_1_validators[:k])
+    honest_o = set(slot_1_validators[k : 2 * k])
+    adversary = set(slot_1_validators[2 * k : 2 * k + adversary_count])
+    assert len(adversary) == adversary_count
+
+    for attestation in _attestations(state_p, spec.Slot(1), root_p, honest_p):
+        yield from add_attestation(spec, store, attestation, test_steps)
+    for attestation in _attestations(state_o, spec.Slot(1), root_o, honest_o):
+        yield from add_attestation(spec, store, attestation, test_steps)
+
+    # Balanced: equal weight, so the head is decided by the root tie-break
+    assert spec.get_weight(store, get_fork_choice_node(spec, root_p)) == spec.get_weight(
+        store, get_fork_choice_node(spec, root_o)
+    )
+    check_head_against_root(spec, store, root_o)
+    output_head_check(spec, store, test_steps)
+
+    # A timely block X on P at slot 2 receives proposer boost, which breaks the tie
+    state_x = state_p.copy()
+    signed_block_x = state_transition_and_sign_block(
+        spec, state_x, build_empty_block_for_next_slot(spec, state_x)
+    )
+    root_x = signed_block_x.message.hash_tree_root()
+    yield from add_block(spec, store, signed_block_x, test_steps)
+    assert store.proposer_boost_root == root_x
+    check_head_against_root(spec, store, root_x)
+    output_head_check(spec, store, test_steps)
+
+    # Still in slot 2, the adversary releases its withheld votes for O
+    for attestation in _attestations(state_o, spec.Slot(1), root_o, adversary):
+        yield from add_attestation(spec, store, attestation, test_steps)
+    if adversary_above_proposer_boost:
+        check_head_against_root(spec, store, root_o)
+        output_head_check(spec, store, test_steps)
+        return
+
+    check_head_against_root(spec, store, root_x)
+    output_head_check(spec, store, test_steps)
+
+    # The slot 2 committee saw X as head and votes for it. After the boost expires
+    # in slot 3, these votes keep X as head and the balance is broken.
+    slot_2_validators = set().union(*(c for _, c in _slot_committees(state_x, spec.Slot(2))))
+    for attestation in _attestations(state_x, spec.Slot(2), root_x, slot_2_validators):
+        yield from tick_and_run_on_attestation(spec, store, attestation, test_steps)
+    assert spec.get_current_slot(store) == 3
+    assert store.proposer_boost_root == spec.Root()
+    check_head_against_root(spec, store, root_x)
+    output_head_check(spec, store, test_steps)
+
+
+@with_altair_and_later
+@spec_state_test
+def test_balancing_attack_adversary_below_proposer_boost(spec, state):
+    test_steps = []
+    yield from _run_balancing_attack(
+        spec, state, adversary_above_proposer_boost=False, test_steps=test_steps
+    )
+    yield "steps", test_steps
+
+
+@with_altair_and_later
+@spec_state_test
+def test_balancing_attack_adversary_above_proposer_boost(spec, state):
+    test_steps = []
+    yield from _run_balancing_attack(
+        spec, state, adversary_above_proposer_boost=True, test_steps=test_steps
+    )
+    yield "steps", test_steps
