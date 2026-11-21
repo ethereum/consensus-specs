@@ -60,5 +60,9 @@ class Bytes48(BytesN):
     LENGTH = 48
 
 
+class Bytes64(BytesN):
+    LENGTH = 64
+
+
 class Bytes96(BytesN):
     LENGTH = 96
