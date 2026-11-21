@@ -989,7 +989,7 @@ def compute_legacy_xmss_pubkey(pubkey: Bytes48) -> XMSSPubkey:
     """
     Return the XMSS public key derived from the BLS public key ``pubkey``.
     """
-    return XMSSPubkey(sha256(pubkey + LEGACY_XMSS_PUBKEY_DOMAIN))
+    return XMSSPubkey(keccak256(pubkey + LEGACY_XMSS_PUBKEY_DOMAIN))
 ```
 
 #### New `compute_legacy_vrf_root`
@@ -999,7 +999,7 @@ def compute_legacy_vrf_root(pubkey: Bytes48) -> Root:
     """
     Return the VRF root derived from the BLS public key ``pubkey``.
     """
-    return Root(sha256(pubkey + LEGACY_VRF_ROOT_DOMAIN))
+    return Root(keccak256(pubkey + LEGACY_VRF_ROOT_DOMAIN))
 ```
 
 #### New `compute_deposit_pubkey`

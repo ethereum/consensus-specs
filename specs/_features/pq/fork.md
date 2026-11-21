@@ -32,11 +32,11 @@ XMSS public key in place of its BLS public key, and each validator its VRF root.
 Validators and builders keep their indices.
 
 A validator that did not register takes
-`sha256(pubkey + LEGACY_XMSS_PUBKEY_DOMAIN)` of its BLS public key as its XMSS
-public key, and `sha256(pubkey + LEGACY_VRF_ROOT_DOMAIN)` as its VRF root. No
-signature verifies against that key. The validator is exited at the fork and
-becomes withdrawable `UNREGISTERED_VALIDATOR_WITHDRAWABILITY_DELAY` epochs
-later, unless it was already due to become withdrawable sooner, and the
+`keccak256(pubkey + LEGACY_XMSS_PUBKEY_DOMAIN)` of its BLS public key as its
+XMSS public key, and `keccak256(pubkey + LEGACY_VRF_ROOT_DOMAIN)` as its VRF
+root. No signature verifies against that key. The validator is exited at the
+fork and becomes withdrawable `UNREGISTERED_VALIDATOR_WITHDRAWABILITY_DELAY`
+epochs later, unless it was already due to become withdrawable sooner, and the
 validator sweep then withdraws its balance. A slashed validator instead keeps
 its withdrawable epoch, so `process_slashings` still applies its slashing
 penalty before the sweep. A validator with `0x00` withdrawal credentials has no
@@ -44,19 +44,20 @@ withdrawal address, so its balance stays locked until a later upgrade adds a
 quantum-safe way to set one.
 
 A builder that did not register takes
-`sha256(pubkey + LEGACY_XMSS_PUBKEY_DOMAIN)` of its BLS public key as its XMSS
-public key, as a validator does, so a legacy deposit for it still tops it up. It
-becomes withdrawable at the fork. Builder withdrawals pay its settled builder
-payments to their fee recipients, and the builder sweep then withdraws the rest
-of its balance to its execution address. Its unsettled payments are settled at
-the fork if they have reached the payment quorum, and dropped otherwise.
+`keccak256(pubkey + LEGACY_XMSS_PUBKEY_DOMAIN)` of its BLS public key as its
+XMSS public key, as a validator does, so a legacy deposit for it still tops it
+up. It becomes withdrawable at the fork. Builder withdrawals pay its settled
+builder payments to their fee recipients, and the builder sweep then withdraws
+the rest of its balance to its execution address. Its unsettled payments are
+settled at the fork if they have reached the payment quorum, and dropped
+otherwise.
 
 A registration is ignored if its XMSS public key is
-`sha256(pubkey + LEGACY_XMSS_PUBKEY_DOMAIN)`, where `pubkey` is the BLS public
-key of a validator, or of a builder for a builder registration. This is the key
-a validator or builder takes when it does not register, and anyone can compute
-it. Otherwise, someone could register it for their own validator or builder, so
-that two would share the same XMSS public key.
+`keccak256(pubkey + LEGACY_XMSS_PUBKEY_DOMAIN)`, where `pubkey` is the BLS
+public key of a validator, or of a builder for a builder registration. This is
+the key a validator or builder takes when it does not register, and anyone can
+compute it. Otherwise, someone could register it for their own validator or
+builder, so that two would share the same XMSS public key.
 
 Pending deposits name their validator by BLS public key. The fork renames a
 pending deposit for an existing validator to 16 zero bytes followed by that
@@ -75,12 +76,12 @@ assign to validators that did not register are missed.
 
 *TODO*: Prevent registrations from stealing new deposits. A deposit for a new
 validator or builder that is applied after the fork looks for the XMSS public
-key `sha256(pubkey + LEGACY_XMSS_PUBKEY_DOMAIN)` of its BLS public key. Anyone
-who sees the deposit before the fork, whether pending or still on the execution
-layer, can register that key for their own validator or builder. The deposit
-then tops up theirs instead of creating the depositor's. One option is for the
-EIP-8483 system contracts to require a proof of possession of each registered
-XMSS public key.
+key `keccak256(pubkey + LEGACY_XMSS_PUBKEY_DOMAIN)` of its BLS public key.
+Anyone who sees the deposit before the fork, whether pending or still on the
+execution layer, can register that key for their own validator or builder. The
+deposit then tops up theirs instead of creating the depositor's. One option is
+for the EIP-8483 system contracts to require a proof of possession of each
+registered XMSS public key.
 
 ## Configs
 
