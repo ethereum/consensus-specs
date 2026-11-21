@@ -1,4 +1,5 @@
 from collections import defaultdict
+from contextlib import contextmanager
 from functools import lru_cache
 from random import randbytes
 
@@ -87,6 +88,36 @@ def get_sample_signed_inclusion_list(
     return signed_inclusion_list
 
 
+def get_dependent_root_state(spec, store, slot, dependent_root):
+    """
+    Return the state from which the inclusion list committee of ``slot`` under
+    ``dependent_root`` is computed: that block's state advanced to the shuffling
+    lookahead start slot of ``slot``'s epoch.
+    """
+    state = store.block_states[dependent_root].copy()
+    epoch = spec.compute_epoch_at_slot(slot)
+    lookahead_start_slot = spec.compute_start_slot_at_epoch(epoch - spec.MIN_SEED_LOOKAHEAD)
+    if state.slot < lookahead_start_slot:
+        spec.process_slots(state, lookahead_start_slot)
+    return state
+
+
+def get_sample_signed_inclusion_list_for_dependent_root(
+    spec, store, slot, dependent_root, validator_index=None
+):
+    """
+    Build a sample signed inclusion list for ``slot`` keyed by ``dependent_root``,
+    from ``validator_index``, or else the first member of the committee under
+    that dependent block's shuffling.
+    """
+    state = get_dependent_root_state(spec, store, slot, dependent_root)
+    inclusion_list = get_sample_inclusion_list(
+        spec, store, state, slot=slot, validator_index=validator_index
+    )
+    inclusion_list.dependent_root = dependent_root
+    return sign_inclusion_list(spec, state, inclusion_list)
+
+
 def get_sample_transactions(spec, max_transaction_size=200, max_transaction_count=10):
     """
     Build a list of sample transactions.
@@ -123,10 +154,11 @@ def sign_inclusion_list(spec, state, inclusion_list):
     return spec.SignedInclusionList(message=inclusion_list, signature=signature)
 
 
-def run_with_inclusion_list_store(spec, func):
+@contextmanager
+def cached_inclusion_list_store(spec):
     """
-    This helper runs the given ``func`` with monkeypatched ``cached_or_new_inclusion_list_store``
-    that returns cached inclusion list store, or a new one if none exists.
+    Monkeypatch ``cached_or_new_inclusion_list_store`` to return a cached
+    inclusion list store, or a new one if none exists.
     """
 
     @lru_cache(maxsize=1)
@@ -140,7 +172,15 @@ def run_with_inclusion_list_store(spec, func):
     spec.cached_or_new_inclusion_list_store = cached_or_new_inclusion_list_store
 
     try:
-        func()
+        yield
     finally:
         spec.cached_or_new_inclusion_list_store = cached_or_new_inclusion_list_store_backup
         cached_or_new_inclusion_list_store.cache_clear()
+
+
+def run_with_inclusion_list_store(spec, func):
+    """
+    This helper runs the given ``func`` with a cached inclusion list store.
+    """
+    with cached_inclusion_list_store(spec):
+        func()
