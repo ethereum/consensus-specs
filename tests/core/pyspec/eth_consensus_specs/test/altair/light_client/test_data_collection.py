@@ -349,3 +349,88 @@ def test_light_client_data_collection(spec, state):
 
     # Finish test
     yield from finish_lc_data_collection_test(test)
+
+
+@with_light_client
+@with_config_overrides(
+    {
+        "BLOB_SCHEDULE": sample_blob_schedule(initial_epoch=1, interval=1),
+    },
+)
+@spec_state_test_with_matching_config
+@with_presets([MINIMAL], reason="too slow")
+def test_light_client_data_collection_empty_epochs_after_genesis(spec, state):
+    # Start test
+    test = yield from setup_lc_data_collection_test(spec, state)
+    genesis_block = create_signed_genesis_block(spec, state)
+    genesis_bid = BlockID(slot=state.slot, root=genesis_block.message.hash_tree_root())
+
+    # Skip the start slot of epoch 2, so that the genesis block is its checkpoint
+    finalized_epoch = spec.GENESIS_EPOCH + 2
+    slot = spec.compute_start_slot_at_epoch(finalized_epoch) + 1
+    spec, state, bid = yield from add_new_block(
+        test, spec, state, slot=slot, num_sync_participants=1
+    )
+    yield from select_new_head(test, spec, bid)
+    period = spec.compute_sync_committee_period_at_slot(state.slot)
+
+    # Finalize epoch 2
+    while state.finalized_checkpoint.epoch == spec.GENESIS_EPOCH:
+        attested_bid = bid
+        spec, state, bid = yield from add_new_block(test, spec, state, num_sync_participants=1)
+        yield from select_new_head(test, spec, bid)
+        assert (
+            get_lc_update_attested_block_id(get_light_client_update_for_period(test, period).data)
+            == genesis_bid
+        )
+        assert (
+            get_lc_update_attested_block_id(get_light_client_finality_update(test).data)
+            == attested_bid
+        )
+        assert (
+            get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data)
+            == attested_bid
+        )
+    assert state.finalized_checkpoint.epoch == finalized_epoch
+    assert state.finalized_checkpoint.root == genesis_bid.root
+    assert test.latest_finalized_epoch == finalized_epoch
+    assert test.latest_finalized_bid == genesis_bid
+    attested_bid = bid
+
+    # Light client data uses the genesis block as `finalized_header`
+    spec, state, bid = yield from add_new_block(test, spec, state, num_sync_participants=2)
+    yield from select_new_head(test, spec, bid)
+    genesis_header = spec.block_to_light_client_header(genesis_block)
+    update = get_light_client_update_for_period(test, period).data
+    assert get_lc_update_attested_block_id(update) == attested_bid
+    assert update.finalized_header == genesis_header
+    finality_update = get_light_client_finality_update(test).data
+    assert get_lc_update_attested_block_id(finality_update) == attested_bid
+    assert finality_update.finalized_header == genesis_header
+
+    # Light client accepts the genesis block as `finalized_header`
+    bootstrap = get_light_client_bootstrap(test, genesis_bid.root).data
+    store = spec.initialize_light_client_store(genesis_bid.root, bootstrap)
+    spec.process_light_client_update(store, update, state.slot, state.genesis_validators_root)
+    assert store.best_valid_update == update
+
+    # Finalize the next epoch, which has a different checkpoint block
+    while state.finalized_checkpoint.epoch == finalized_epoch:
+        attested_bid = bid
+        spec, state, bid = yield from add_new_block(test, spec, state, num_sync_participants=2)
+        yield from select_new_head(test, spec, bid)
+        assert get_light_client_update_for_period(test, period).data == update
+        finality_update = get_light_client_finality_update(test).data
+        assert get_lc_update_attested_block_id(finality_update) == attested_bid
+        assert finality_update.finalized_header == genesis_header
+        assert (
+            get_lc_update_attested_block_id(get_light_client_optimistic_update(test).data)
+            == attested_bid
+        )
+    finalized_root = state.finalized_checkpoint.root
+    assert finalized_root != genesis_bid.root
+    bootstrap = get_light_client_bootstrap(test, finalized_root).data
+    spec.initialize_light_client_store(finalized_root, bootstrap)
+
+    # Finish test
+    yield from finish_lc_data_collection_test(test)
