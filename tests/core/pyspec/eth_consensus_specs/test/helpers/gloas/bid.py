@@ -4,6 +4,7 @@ from eth_consensus_specs.test.helpers.attestations import (
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
+    commit_bid_to_execution_payload,
 )
 from eth_consensus_specs.test.helpers.execution_payload_bid import (
     prepare_signed_execution_payload_bid,
@@ -124,6 +125,8 @@ def _build_store_advanced_to(spec, state, target_slot, head_gas_limit=None):
             # A self-build bid is signed with the infinity signature, so the
             # gas_limit can be set after the fact.
             block.body.signed_execution_payload_bid.message.gas_limit = head_gas_limit
+        if block.slot == target_slot:
+            commit_bid_to_execution_payload(spec, state, block)
         signed_block = state_transition_and_sign_block(spec, state, block)
         record_block_in_store(spec, store, signed_block, state.copy())
         blocks.append(signed_block)
@@ -189,11 +192,10 @@ def setup_store_finalized_with_pending_payment(spec, state):
         - 1
     )
     while state.slot < head_slot:
-        record(
-            state_transition_and_sign_block(
-                spec, state, build_empty_block_for_next_slot(spec, state)
-            )
-        )
+        block = build_empty_block_for_next_slot(spec, state)
+        if block.slot == head_slot:
+            commit_bid_to_execution_payload(spec, state, block)
+        record(state_transition_and_sign_block(spec, state, block))
     payment = state.builder_pending_payments[bid_block_slot % spec.SLOTS_PER_EPOCH]
     assert payment.withdrawal.amount == pending_value
 
@@ -221,6 +223,7 @@ def append_head_with_requests(spec, state, store, blocks, execution_requests, si
     else:
         assert signed_bid.message.execution_requests_root == spec.hash_tree_root(execution_requests)
         block.body.signed_execution_payload_bid = signed_bid
+    commit_bid_to_execution_payload(spec, state, block, execution_requests)
     signed_block = state_transition_and_sign_block(spec, state, block)
     record_block_in_store(spec, store, signed_block, state.copy())
     blocks.append(signed_block)
