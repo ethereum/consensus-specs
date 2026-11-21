@@ -303,9 +303,9 @@ def test_gossip_attester_slashing__reject_attesting_index_out_of_range_2(spec, s
 
 @with_all_phases
 @spec_state_test
-def test_gossip_attester_slashing__ignore_empty_attesting_indices_1(spec, state):
+def test_gossip_attester_slashing__reject_empty_attesting_indices_1(spec, state):
     """
-    Test that empty attesting indices in attestation_1 are ignored by early dedup check.
+    Test that empty attesting indices in attestation_1 are rejected before the dedup check.
     """
     yield "topic", "meta", "attester_slashing"
     yield "state", state
@@ -324,8 +324,8 @@ def test_gossip_attester_slashing__ignore_empty_attesting_indices_1(spec, state)
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, attester_slashing=attester_slashing
     )
-    assert result == "ignore"
-    assert reason == "all attester slashing indices already seen"
+    assert result == "reject"
+    assert reason == "empty attesting indices in attester slashing"
 
     yield (
         "messages",
@@ -333,7 +333,7 @@ def test_gossip_attester_slashing__ignore_empty_attesting_indices_1(spec, state)
         [
             {
                 "message": get_filename(attester_slashing),
-                "expected": "ignore",
+                "expected": "reject",
                 "reason": reason,
             }
         ],
@@ -342,9 +342,9 @@ def test_gossip_attester_slashing__ignore_empty_attesting_indices_1(spec, state)
 
 @with_all_phases
 @spec_state_test
-def test_gossip_attester_slashing__ignore_empty_attesting_indices_2(spec, state):
+def test_gossip_attester_slashing__reject_empty_attesting_indices_2(spec, state):
     """
-    Test that empty attesting indices in attestation_2 are ignored by early dedup check.
+    Test that empty attesting indices in attestation_2 are rejected before the dedup check.
     """
     yield "topic", "meta", "attester_slashing"
     yield "state", state
@@ -363,8 +363,8 @@ def test_gossip_attester_slashing__ignore_empty_attesting_indices_2(spec, state)
     result, reason = run_validate_gossip(
         spec, seen=seen, store=store, attester_slashing=attester_slashing
     )
-    assert result == "ignore"
-    assert reason == "all attester slashing indices already seen"
+    assert result == "reject"
+    assert reason == "empty attesting indices in attester slashing"
 
     yield (
         "messages",
@@ -372,7 +372,7 @@ def test_gossip_attester_slashing__ignore_empty_attesting_indices_2(spec, state)
         [
             {
                 "message": get_filename(attester_slashing),
-                "expected": "ignore",
+                "expected": "reject",
                 "reason": reason,
             }
         ],
