@@ -268,7 +268,8 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     inclusion_list = signed_inclusion_list.message
     current_slot = get_current_slot(store)
 
-    # The slot must be within the retention window
+    # The slot must be within the retention window. If inclusion lists are in the future,
+    # their consideration must be delayed until their slot starts.
     assert inclusion_list.slot <= current_slot
     assert inclusion_list.slot + MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS >= current_slot
 
