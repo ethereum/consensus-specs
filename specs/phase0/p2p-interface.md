@@ -1476,8 +1476,8 @@ of the following values:
 - 2: Irrelevant network.
 - 3: Fault/error.
 
-Clients MAY use reason codes of `128` or more to indicate alternative,
-erroneous request-specific responses.
+Clients MAY use reason codes of `128` or more to indicate alternative, erroneous
+request-specific responses.
 
 The range `[4, 127]` is RESERVED for future usage.
 
