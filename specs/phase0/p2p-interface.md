@@ -2156,9 +2156,9 @@ Some examples of where messages could be duplicated:
 - `mcache_gossip`: 3, recommended default. This can be increased to 5 or 6 (~4
   seconds) if gossip times are longer than expected and the current window does
   not provide enough responsiveness during adverse conditions.
-- `seen_ttl`: `SLOTS_PER_EPOCH * SLOT_DURATION_MS / 1000 / heartbeat_interval`.
-  Attestation gossip validity is bounded by an epoch, so this is the safe max
-  bound.
+- `seen_ttl`: `milliseconds_to_seconds(SLOT_DURATION_MS * SLOTS_PER_EPOCH * 2)`.
+  Since Deneb, attestation gossip validity is bounded by two epochs, so this is
+  the safe max bound.
 
 #### Why is there `MAXIMUM_GOSSIP_CLOCK_DISPARITY` when validating slot ranges of messages in gossip subnets?
 
