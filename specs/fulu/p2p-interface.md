@@ -978,10 +978,13 @@ a node to be connected to several of these by chance.
 
 ## Broadcasting retrieved blocks
 
-Extend the definitions of the *required* beacon block that has not been received
-with:
+The table that lists the relevant message topics and the fields that identify
+missing beacon blocks is extended with `data_column_sidecar_{subnet_id}` message
+topic.
 
-- `sidecar.signed_block_header.message.parent_root` for a data column sidecar
-  queued for processing.
-- `sidecar.header[0].signed_block_header.message.parent_root` for a partial data
-  column sidecar queued for processing when `len(sidecar.header) == 1`.
+| Message topic                     | Root of missing beacon block                                                                                     |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `beacon_block`                    | `signed_beacon_block.message.parent_root`                                                                        |
+| `beacon_aggregate_and_proof`      | `signed_aggregate_and_proof.message.aggregate.data.beacon_block_root`                                            |
+| `beacon_attestation_{subnet_id}`  | `attestation.data.beacon_block_root`                                                                             |
+| `data_column_sidecar_{subnet_id}` | `sidecar.signed_block_header.message.parent_root` or `sidecar.header[0].signed_block_header.message.parent_root` |

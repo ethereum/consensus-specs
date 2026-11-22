@@ -1856,13 +1856,15 @@ where `retrieved_beacon_block` is the retrieved signed beacon block and
 raising an exception, the node MUST publish the block on the `beacon_block`
 Gossipsub topic.
 
-The *required* beacon block that has not been received is identified by:
+The table lists the relevant message topics and the fields that identify missing
+beacon blocks that, once retrieved, MUST be processed as if they had been
+received via Gossipsub.
 
-- `signed_beacon_block.message.parent_root` for a beacon block queued for
-  processing.
-- `signed_aggregate_and_proof.message.aggregate.data.beacon_block_root` for an
-  aggregate queued for processing.
-- `attestation.data.beacon_block_root` for an attestation queued for processing.
+| Message topic                    | Root of missing beacon block                                          |
+| -------------------------------- | --------------------------------------------------------------------- |
+| `beacon_block`                   | `signed_beacon_block.message.parent_root`                             |
+| `beacon_aggregate_and_proof`     | `signed_aggregate_and_proof.message.aggregate.data.beacon_block_root` |
+| `beacon_attestation_{subnet_id}` | `attestation.data.beacon_block_root`                                  |
 
 ## Design decision rationale
 

@@ -1510,22 +1510,20 @@ Per `fork_version = compute_fork_version(epoch)`:
 
 ## Broadcasting retrieved blocks
 
-Extend the definitions of the *required* beacon block that has not been received
-with:
+The table that lists the relevant message topics and the fields that identify
+missing beacon blocks is extended with `execution_payload`,
+`payload_attestation_message` and `execution_payload_bid` message topics,
+`data_column_sidecar_{subnet_id}` topic is modified.
 
-- `signed_execution_payload_envelope.message.beacon_block_root` for an execution
-  payload envelope queued for processing.
-- `payload_attestation_message.data.beacon_block_root` for a payload attestation
-  queued for processing.
-- `signed_execution_payload_bid.message.parent_block_root` for an execution
-  payload bid queued for processing.
-
-Replace the definitions of the *required* beacon block for queued data column
-sidecars with:
-
-- `sidecar.beacon_block_root` for a data column sidecar queued for processing.
-- `group_id.beacon_block_root` for a partial data column sidecar queued for
-  processing.
+| Message topic                     | Root of missing beacon block                                          |
+| --------------------------------- | --------------------------------------------------------------------- |
+| `beacon_block`                    | `signed_beacon_block.message.parent_root`                             |
+| `beacon_aggregate_and_proof`      | `signed_aggregate_and_proof.message.aggregate.data.beacon_block_root` |
+| `beacon_attestation_{subnet_id}`  | `attestation.data.beacon_block_root`                                  |
+| `data_column_sidecar_{subnet_id}` | `sidecar.beacon_block_root` or `group_id.beacon_block_root`           |
+| `execution_payload`               | `signed_execution_payload_envelope.message.beacon_block_root`         |
+| `payload_attestation_message`     | `payload_attestation_message.data.beacon_block_root`                  |
+| `execution_payload_bid`           | `signed_execution_payload_bid.message.parent_block_root`              |
 
 ## Broadcasting retrieved payload envelopes
 
@@ -1538,14 +1536,11 @@ where `retrieved_execution_payload_envelope` is the retrieved signed execution
 payload envelope. If validation completes without raising an exception, the node
 MUST publish the envelope on the `execution_payload` Gossipsub topic.
 
-The beacon block corresponding to the required payload envelope that has not
-been received is identified by:
+The table lists the relevant message topics and the beacon block root
+corresponding to the missing payload envelope.
 
-- `aggregate.data.beacon_block_root` for an aggregate queued for processing when
-  `aggregate.data.index == 1`, where
-  `aggregate = signed_aggregate_and_proof.message.aggregate`.
-- `attestation.data.beacon_block_root` for an attestation queued for processing
-  when `attestation.data.index == 1`.
-- `signed_beacon_block.message.parent_root` for a beacon block queued for
-  processing when `is_parent_node_full(store, signed_beacon_block.message)`
-  returns `True`.
+| Message topic                    | Root of the corresponding beacon block                                | Condition                                                         |
+| -------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `beacon_block`                   | `signed_beacon_block.message.parent_root`                             | `is_parent_node_full(store, signed_beacon_block.message) == True` |
+| `beacon_aggregate_and_proof`     | `signed_aggregate_and_proof.message.aggregate.data.beacon_block_root` | `aggregate.data.index == 1`                                       |
+| `beacon_attestation_{subnet_id}` | `attestation.data.beacon_block_root`                                  | `attestation.data.index == 1`                                     |
