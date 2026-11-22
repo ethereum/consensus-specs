@@ -111,11 +111,11 @@ def is_current_slot(
 
 ```python
 def get_sync_subcommittee_pubkeys(
-    state: BeaconState, subcommittee_index: Uint64
+    state: BeaconState, slot: Slot, subcommittee_index: Uint64
 ) -> Sequence[BLSPubkey]:
-    # Committees assigned to `slot` sign for `slot - 1`
+    # The committee assigned to `slot + 1` signs for `slot`
     # This creates the exceptional logic below when transitioning between sync committee periods
-    next_slot_epoch = compute_epoch_at_slot(state.slot + 1)
+    next_slot_epoch = compute_epoch_at_slot(slot + 1)
     if compute_sync_committee_period(get_current_epoch(state)) == compute_sync_committee_period(
         next_slot_epoch
     ):
@@ -288,7 +288,9 @@ def validate_sync_committee_contribution_and_proof_gossip(
 
     # [REJECT] The aggregator is a member of the committee
     aggregator_pubkey = state.validators[contribution_and_proof.aggregator_index].pubkey
-    subcommittee_pubkeys = get_sync_subcommittee_pubkeys(state, contribution.subcommittee_index)
+    subcommittee_pubkeys = get_sync_subcommittee_pubkeys(
+        state, contribution.slot, contribution.subcommittee_index
+    )
     if aggregator_pubkey not in subcommittee_pubkeys:
         raise GossipReject("aggregator is not a member of the committee")
 
@@ -318,7 +320,9 @@ def validate_sync_committee_contribution_and_proof_gossip(
     # and aggregate pubkey derived from the participation info in aggregation_bits
     # for the subcommittee specified by the contribution.subcommittee_index
     participant_pubkeys = [
-        subcommittee_pubkeys[i] for i, bit in enumerate(contribution.aggregation_bits) if bit
+        subcommittee_pubkeys[index]
+        for index, bit in enumerate(contribution.aggregation_bits)
+        if bit
     ]
     domain = get_domain(state, DOMAIN_SYNC_COMMITTEE, compute_epoch_at_slot(contribution.slot))
     signing_root = compute_signing_root(contribution.beacon_block_root, domain)
@@ -377,7 +381,7 @@ def validate_sync_committee_message_gossip(
     # (this implies the validator is part of the broader current sync committee
     # along with the correct subcommittee)
     valid_subnets = compute_subnets_for_sync_committee(
-        state, sync_committee_message.validator_index
+        state, sync_committee_message.slot, sync_committee_message.validator_index
     )
     if subnet_id not in valid_subnets:
         raise GossipReject("subnet_id is not valid for the validator")

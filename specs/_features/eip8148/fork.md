@@ -32,6 +32,13 @@ change is made to upgrade to EIP-8148.
 The upgrade occurs after the completion of the inner loop of `process_slots`
 that sets `state.slot` equal to `EIP8148_FORK_EPOCH * SLOTS_PER_EPOCH`.
 
+*Note*: `latest_execution_payload_bid` is copied unchanged. Its
+`execution_requests_root` may commit to the pre-fork `ExecutionRequests` type,
+whose root differs from the extended type even for identical content; the
+upgrade cannot recompute it because the state stores only the commitment. The
+coordinated upgrade that activates this feature must define how the first
+post-fork block validates a full pre-fork parent.
+
 ```python
 def upgrade_to_eip8148(pre: heze.BeaconState) -> BeaconState:
     epoch = heze.get_current_epoch(pre)
@@ -49,9 +56,6 @@ def upgrade_to_eip8148(pre: heze.BeaconState) -> BeaconState:
         block_roots=pre.block_roots,
         state_roots=pre.state_roots,
         historical_roots=pre.historical_roots,
-        eth1_data=pre.eth1_data,
-        eth1_data_votes=pre.eth1_data_votes,
-        eth1_deposit_index=pre.eth1_deposit_index,
         validators=pre.validators,
         balances=pre.balances,
         randao_mixes=pre.randao_mixes,
@@ -69,7 +73,6 @@ def upgrade_to_eip8148(pre: heze.BeaconState) -> BeaconState:
         next_withdrawal_index=pre.next_withdrawal_index,
         next_withdrawal_validator_index=pre.next_withdrawal_validator_index,
         historical_summaries=pre.historical_summaries,
-        deposit_requests_start_index=pre.deposit_requests_start_index,
         deposit_balance_to_consume=pre.deposit_balance_to_consume,
         exit_balance_to_consume=pre.exit_balance_to_consume,
         earliest_exit_epoch=pre.earliest_exit_epoch,

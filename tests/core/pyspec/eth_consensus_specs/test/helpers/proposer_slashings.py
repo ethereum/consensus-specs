@@ -58,9 +58,8 @@ def check_proposer_slashing_effect(
         - slashings[epoch % EPOCHS_PER_SLASHINGS_VECTOR] incremented by effective_balance
         - balances[slashed_index] decreased by slash penalty
         - balances[proposer_index] increased by whistleblower reward
-        - [GLOAS+] builder_pending_payments entry cleared if the slashed validator is the
-          payment's proposer and the header slot is within the 2-epoch window; left intact
-          otherwise
+        - [GLOAS+] builder_pending_payments entries cleared if the slashed validator is the
+          payment's proposer, left intact otherwise
     """
     current_epoch = spec.get_current_epoch(state)
     pre_validator = pre_state.validators[slashed_index]
@@ -150,28 +149,11 @@ def check_proposer_slashing_effect(
 
     # GLOAS: Verify builder pending payments
     if is_post_gloas(spec) and proposer_slashing is not None:
-        header_slot = proposer_slashing.signed_header_1.message.slot
-        proposal_epoch = spec.compute_epoch_at_slot(header_slot)
-
-        if proposal_epoch == current_epoch:
-            payment_index = spec.SLOTS_PER_EPOCH + header_slot % spec.SLOTS_PER_EPOCH
-        elif proposal_epoch == spec.get_previous_epoch(state):
-            payment_index = header_slot % spec.SLOTS_PER_EPOCH
-        else:
-            payment_index = None
-
-        if payment_index is None:
-            # Slot is outside the 2-epoch window: payments are untouched
-            assert state.builder_pending_payments == pre_state.builder_pending_payments
-        elif pre_state.builder_pending_payments[payment_index].proposer_index == slashed_index:
-            # The slashed validator is this payment's proposer, so it is cleared
-            assert state.builder_pending_payments[payment_index] == spec.BuilderPendingPayment()
-        else:
-            # This payment has a different proposer, so it is left intact
-            assert (
-                state.builder_pending_payments[payment_index]
-                == pre_state.builder_pending_payments[payment_index]
-            )
+        for payment_index, pre_payment in enumerate(pre_state.builder_pending_payments):
+            if pre_payment.proposer_index == slashed_index:
+                assert state.builder_pending_payments[payment_index] == spec.BuilderPendingPayment()
+            else:
+                assert state.builder_pending_payments[payment_index] == pre_payment
 
 
 def get_valid_proposer_slashing(

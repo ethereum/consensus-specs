@@ -76,6 +76,7 @@
     - [New `queue_excess_active_balance`](#new-queue_excess_active_balance)
     - [New `compute_exit_epoch_and_update_churn`](#new-compute_exit_epoch_and_update_churn)
     - [New `compute_consolidation_epoch_and_update_churn`](#new-compute_consolidation_epoch_and_update_churn)
+    - [New `initiate_validator_consolidation`](#new-initiate_validator_consolidation)
     - [Modified `slash_validator`](#modified-slash_validator)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Epoch processing](#epoch-processing)
@@ -809,8 +810,8 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> set[V
         committee = get_beacon_committee(state, attestation.data.slot, committee_index)
         committee_attesters = {
             attester_index
-            for i, attester_index in enumerate(committee)
-            if attestation.aggregation_bits[committee_offset + i]
+            for index, attester_index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + index]
         }
         output = output.union(committee_attesters)
 
@@ -974,6 +975,28 @@ def compute_consolidation_epoch_and_update_churn(
     return state.earliest_consolidation_epoch
 ```
 
+#### New `initiate_validator_consolidation`
+
+```python
+def initiate_validator_consolidation(
+    state: BeaconState, source_index: ValidatorIndex, target_index: ValidatorIndex
+) -> None:
+    """
+    Initiate the consolidation of the validator with index ``source_index`` into
+    the validator with index ``target_index``.
+    """
+    source_validator = state.validators[source_index]
+    source_validator.exit_epoch = compute_consolidation_epoch_and_update_churn(
+        state, source_validator.effective_balance
+    )
+    source_validator.withdrawable_epoch = (
+        source_validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+    )
+    state.pending_consolidations.append(
+        PendingConsolidation(source_index=source_index, target_index=target_index)
+    )
+```
+
 #### Modified `slash_validator`
 
 *Note*: The function `slash_validator` is modified to change how the slashing
@@ -1109,7 +1132,7 @@ def apply_pending_deposit(state: BeaconState, deposit: PendingDeposit) -> None:
     """
     Applies ``deposit`` to the ``state``.
     """
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     if deposit.pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         if is_valid_deposit_signature(
@@ -1168,7 +1191,7 @@ def process_pending_deposits(state: BeaconState) -> None:
         # Read validator state
         is_validator_exited = False
         is_validator_withdrawn = False
-        validator_pubkeys = [v.pubkey for v in state.validators]
+        validator_pubkeys = [validator.pubkey for validator in state.validators]
         if deposit.pubkey in validator_pubkeys:
             validator = state.validators[ValidatorIndex(validator_pubkeys.index(deposit.pubkey))]
             is_validator_exited = validator.exit_epoch < FAR_FUTURE_EPOCH
@@ -1656,8 +1679,8 @@ def process_attestation(state: BeaconState, attestation: Attestation) -> None:
         committee = get_beacon_committee(state, data.slot, committee_index)
         committee_attesters = {
             attester_index
-            for i, attester_index in enumerate(committee)
-            if attestation.aggregation_bits[committee_offset + i]
+            for index, attester_index in enumerate(committee)
+            if attestation.aggregation_bits[committee_offset + index]
         }
         assert len(committee_attesters) > 0
         committee_offset += len(committee)
@@ -1758,7 +1781,7 @@ def apply_deposit(
     amount: Gwei,
     signature: BLSSignature,
 ) -> None:
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         if is_valid_deposit_signature(pubkey, withdrawal_credentials, amount, signature):
@@ -1875,7 +1898,7 @@ def process_withdrawal_request(state: BeaconState, withdrawal_request: Withdrawa
     ):
         return
 
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     # Verify pubkey exists
     request_pubkey = withdrawal_request.validator_pubkey
     if request_pubkey not in validator_pubkeys:
@@ -1968,7 +1991,7 @@ def is_valid_switch_to_compounding_request(
 
     # Verify pubkey exists
     source_pubkey = consolidation_request.source_pubkey
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     if source_pubkey not in validator_pubkeys:
         return False
 
@@ -2001,7 +2024,7 @@ def process_consolidation_request(
     state: BeaconState, consolidation_request: ConsolidationRequest
 ) -> None:
     if is_valid_switch_to_compounding_request(state, consolidation_request):
-        validator_pubkeys = [v.pubkey for v in state.validators]
+        validator_pubkeys = [validator.pubkey for validator in state.validators]
         request_source_pubkey = consolidation_request.source_pubkey
         source_index = ValidatorIndex(validator_pubkeys.index(request_source_pubkey))
         switch_to_compounding_validator(state, source_index)
@@ -2017,7 +2040,7 @@ def process_consolidation_request(
     if get_consolidation_churn_limit(state) <= MIN_ACTIVATION_BALANCE:
         return
 
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     # Verify pubkeys exists
     request_source_pubkey = consolidation_request.source_pubkey
     request_target_pubkey = consolidation_request.target_pubkey
@@ -2060,14 +2083,5 @@ def process_consolidation_request(
     if get_pending_balance_to_withdraw(state, source_index) > 0:
         return
 
-    # Initiate source validator exit and append pending consolidation
-    source_validator.exit_epoch = compute_consolidation_epoch_and_update_churn(
-        state, source_validator.effective_balance
-    )
-    source_validator.withdrawable_epoch = (
-        source_validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-    )
-    state.pending_consolidations.append(
-        PendingConsolidation(source_index=source_index, target_index=target_index)
-    )
+    initiate_validator_consolidation(state, source_index, target_index)
 ```

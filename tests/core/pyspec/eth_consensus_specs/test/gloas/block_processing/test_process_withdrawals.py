@@ -1606,3 +1606,55 @@ def test_builder_sweep_withdrawals_limit(spec, state):
 
     # assert_process_withdrawals does not check the sweep cursor
     assert state.next_withdrawal_builder_index == sweep_limit
+
+
+@with_gloas_and_later
+@spec_state_test
+def test_builder_sweep_after_pending_withdrawal(spec, state):
+    """
+    Test that the builder sweep withdraws the balance left after the builder's
+    pending withdrawal selected earlier in the same payload.
+
+    Input State Configured:
+        - builder_pending_withdrawals: 1 entry for builders[0] of 1 ETH
+        - builders[0].withdrawable_epoch: current_epoch (eligible for sweep)
+        - builders[0].balance: 5 ETH
+        - next_withdrawal_builder_index: 0
+
+    Output State Verified:
+        - withdrawal_count: 2 (pending withdrawal, then sweep)
+        - withdrawal amounts: 1 ETH, then the remaining 4 ETH
+        - builders[0].balance: 0
+    """
+    builder_index = 0
+    balance = spec.Gwei(5_000_000_000)
+    pending_amount = spec.Gwei(1_000_000_000)
+
+    prepare_process_withdrawals(
+        spec,
+        state,
+        builder_indices=[builder_index],
+        builder_sweep_indices=[builder_index],
+        builder_withdrawal_amounts={builder_index: pending_amount},
+        builder_balances={builder_index: balance},
+        next_withdrawal_builder_index=builder_index,
+    )
+
+    pre_state = state.copy()
+    yield from run_gloas_withdrawals_processing(spec, state)
+
+    validator_index = spec.convert_builder_index_to_validator_index(builder_index)
+    amounts = [
+        withdrawal.amount
+        for withdrawal in state.payload_expected_withdrawals
+        if withdrawal.validator_index == validator_index
+    ]
+    assert amounts == [pending_amount, balance - pending_amount]
+    assert_process_withdrawals(
+        spec,
+        state,
+        pre_state,
+        withdrawal_count=2,
+        builder_balances={builder_index: 0},
+        builder_pending_delta=-1,
+    )

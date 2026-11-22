@@ -15,7 +15,7 @@
 - [Checkpoint Sync (Weak Subjectivity Sync)](#checkpoint-sync-weak-subjectivity-sync)
 - [Validator assignments](#validator-assignments)
   - [Payload attestations](#payload-attestations)
-  - [Builder duties](#builder-duties)
+- [Builder duties](#builder-duties)
 - [Ethereum Beacon APIs](#ethereum-beacon-apis)
 
 <!-- mdformat-toc end -->
@@ -42,14 +42,15 @@ optimistically imported execution payloads which have only received a
 @dataclass
 class OptimisticStore:
     # [Modified in Gloas:EIP7732]
+    # Removed `optimistic_roots`
+    # [New in Gloas:EIP7732]
     optimistic_payloads: set[Hash32]
     head_block_root: Root
     blocks: dict[Root, BeaconBlock]
     block_states: dict[Root, BeaconState]
 ```
 
-At the Gloas fork, `optimistic_payloads` is initialized with
-`body.execution_payload.block_hash` of every block in `optimistic_roots`.
+Payloads of pre-Gloas blocks are tracked by `body.execution_payload.block_hash`.
 
 ### Modified `is_optimistic`
 
@@ -90,10 +91,9 @@ def latest_verified_ancestor(opt_store: OptimisticStore, node: ForkChoiceNode) -
             node = ForkChoiceNode(root=block.parent_root, payload_status=parent_status)
 ```
 
-Let a node be an *optimistic node* if
-`is_optimistic(opt_store, get_head(store))` is `True`. Invalidating payloads
-leaves every block's `empty` node viable, so the block tree cannot be left
-without viable branches.
+Let a beacon node be an *optimistic node* if
+`is_optimistic(opt_store, get_head(store))` is `True` or if `INVALIDATED`
+payloads leave the block tree without viable (with respect to FFG) branches.
 
 ## Mechanisms
 
@@ -123,8 +123,9 @@ payloads MUST also transition from `NOT_VALIDATED` -> `VALID`.
 When a payload transitions from `NOT_VALIDATED` -> `INVALIDATED`, all
 *descendant* payloads MUST also transition from `NOT_VALIDATED` ->
 `INVALIDATED`. The `full` node of each such payload and every node descending
-from it MUST be removed from fork choice. The block's `empty` node is not
-affected.
+from it MUST NOT be viable for head and its weight MUST NOT be applied to any
+ancestor. A block's `empty` node is not affected by the invalidation of its own
+payload.
 
 When a payload transitions from the `NOT_VALIDATED` state, it is removed from
 the set of `opt_store.optimistic_payloads`.
@@ -134,10 +135,13 @@ the set of `opt_store.optimistic_payloads`.
 The Bellatrix rules apply to the payload chain, linked by `parent_hash`, with
 "block" read as "payload": `invalidPayload` is the child of the payload with
 `block_hash == latestValidHash` in the chain containing the payload in question,
-the first payload of that chain if `latestValidHash` is `0x00..00` (all zeroes),
 or the payload in question itself if `latestValidHash` is `null` or unknown.
 `invalidPayload` and all its descendant payloads MUST be transitioned from
 `NOT_VALIDATED` to `INVALIDATED`.
+
+However, an `INVALIDATED` response with a `null` `latestValidHash` to an
+envelope being imported only rejects that envelope, as the verdict may stem from
+the versioned hashes or execution requests of its bid.
 
 ## Checkpoint Sync (Weak Subjectivity Sync)
 
@@ -147,17 +151,18 @@ providing that payload to an execution engine.
 
 ## Validator assignments
 
-Let only a builder on an optimistic node be an *optimistic builder*.
-
 ### Payload attestations
 
-An optimistic validator MUST NOT produce payload attestations (i.e., sign across
-the `DOMAIN_PTC_ATTESTER` domain).
+An optimistic validator SHOULD still produce payload attestations (i.e., sign
+across the `DOMAIN_PTC_ATTESTER` domain), as they attest to the timeliness and
+data availability of a payload and not its validity.
 
-### Builder duties
+## Builder duties
 
-An optimistic builder MUST NOT submit execution payload bids or envelopes (i.e.,
-sign across the `DOMAIN_BEACON_BUILDER` domain).
+Let only a builder on an optimistic node be an *optimistic builder*.
+
+An optimistic builder MUST NOT submit execution payload bids (i.e., sign an
+`ExecutionPayloadBid` across the `DOMAIN_BEACON_BUILDER` domain).
 
 ## Ethereum Beacon APIs
 

@@ -23,6 +23,7 @@
     - [Sidecar](#sidecar)
 - [Attesting](#attesting)
   - [Construct attestation](#construct-attestation)
+  - [Broadcast attestation](#broadcast-attestation)
 - [Attestation aggregation](#attestation-aggregation)
   - [Construct aggregate](#construct-aggregate)
 
@@ -129,9 +130,11 @@ def compute_on_chain_aggregate(network_aggregates: Sequence[Attestation]) -> Att
         for b in a.aggregation_bits:
             aggregation_bits.append(b)
 
-    signature = bls.Aggregate([a.signature for a in aggregates])
+    signature = bls.Aggregate([aggregate.signature for aggregate in aggregates])
 
-    committee_indices = [get_committee_indices(a.committee_bits)[0] for a in aggregates]
+    committee_indices = [
+        get_committee_indices(aggregate.committee_bits)[0] for aggregate in aggregates
+    ]
     committee_flags = [(index in committee_indices) for index in range(MAX_COMMITTEES_PER_SLOT)]
     committee_bits = CommitteeBits(data=committee_flags)
 
@@ -281,6 +284,16 @@ updated field assignments:
 - Set `attestation.committee_index` to the index associated with the validator's
   committee.
 - Set `attestation.attester_index` to the index of the validator.
+
+### Broadcast attestation
+
+The `subnet_id` for the `attestation` is now calculated with
+`attestation.committee_index` instead of `attestation.data.index`:
+
+- Let
+  `committees_per_slot = get_committee_count_per_slot(state, attestation.data.target.epoch)`.
+- Let
+  `subnet_id = compute_subnet_for_attestation(committees_per_slot, attestation.data.slot, attestation.committee_index)`.
 
 ## Attestation aggregation
 

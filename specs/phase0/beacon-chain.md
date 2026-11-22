@@ -1007,7 +1007,7 @@ def xor(bytes_1: Bytes32, bytes_2: Bytes32) -> Bytes32:
     """
     Return the exclusive-or of two 32-byte strings.
     """
-    return Bytes32(a ^ b for a, b in zip(bytes_1, bytes_2, strict=True))
+    return Bytes32(byte_1 ^ byte_2 for byte_1, byte_2 in zip(bytes_1, bytes_2, strict=True))
 ```
 
 #### `uint_to_bytes`
@@ -1165,7 +1165,7 @@ def is_valid_indexed_attestation(
     if len(indices) == 0 or list(indices) != sorted(set(indices)):
         return False
     # Verify aggregate signature
-    pubkeys = [state.validators[i].pubkey for i in indices]
+    pubkeys = [state.validators[index].pubkey for index in indices]
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
     signing_root = compute_signing_root(indexed_attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
@@ -1214,7 +1214,7 @@ def compute_shuffled_permutation(index_count: Uint64, seed: Bytes32) -> Sequence
     """
     # Swap or not (https://link.springer.com/content/pdf/10.1007%2F978-3-642-32009-5_1.pdf)
     # See the 'generalized domain' algorithm on page 3
-    indices = [Uint64(i) for i in range(index_count)]
+    indices = [Uint64(index) for index in range(index_count)]
     for current_round in range(SHUFFLE_ROUND_COUNT):
         round_bytes = uint_to_bytes(Uint8(current_round))
         pivot = bytes_to_uint64(sha256(seed + round_bytes)[0:8]) % index_count
@@ -1279,8 +1279,8 @@ def compute_committee(
     start = (len(indices) * index) // count
     end = (len(indices) * Uint64(index + 1)) // count
     return [
-        indices[compute_shuffled_index(Uint64(i), Uint64(len(indices)), seed)]
-        for i in range(start, end)
+        indices[compute_shuffled_index(Uint64(index), Uint64(len(indices)), seed)]
+        for index in range(start, end)
     ]
 ```
 
@@ -1471,7 +1471,9 @@ def get_active_validator_indices(state: BeaconState, epoch: Epoch) -> Sequence[V
     Return the sequence of active validator indices at ``epoch``.
     """
     return [
-        ValidatorIndex(i) for i, v in enumerate(state.validators) if is_active_validator(v, epoch)
+        ValidatorIndex(index)
+        for index, validator in enumerate(state.validators)
+        if is_active_validator(validator, epoch)
     ]
 ```
 
@@ -1619,7 +1621,11 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> set[V
     Return the set of attesting indices corresponding to ``data`` and ``bits``.
     """
     committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    return {index for i, index in enumerate(committee) if attestation.aggregation_bits[i]}
+    return {
+        validator_index
+        for index, validator_index in enumerate(committee)
+        if attestation.aggregation_bits[index]
+    }
 ```
 
 #### `get_pending_attesting_indices`
@@ -1632,7 +1638,11 @@ def get_pending_attesting_indices(
     Return the set of attesting indices for a ``PendingAttestation``.
     """
     committee = get_beacon_committee(state, attestation.data.slot, attestation.data.index)
-    return {index for i, index in enumerate(committee) if attestation.aggregation_bits[i]}
+    return {
+        validator_index
+        for index, validator_index in enumerate(committee)
+        if attestation.aggregation_bits[index]
+    }
 ```
 
 ### Beacon state mutators
@@ -1670,9 +1680,15 @@ def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
         return
 
     # Compute exit queue epoch
-    exit_epochs = [v.exit_epoch for v in state.validators if v.exit_epoch != FAR_FUTURE_EPOCH]
+    exit_epochs = [
+        validator.exit_epoch
+        for validator in state.validators
+        if validator.exit_epoch != FAR_FUTURE_EPOCH
+    ]
     exit_queue_epoch = max(exit_epochs + [compute_activation_exit_epoch(get_current_epoch(state))])
-    exit_queue_churn = len([v for v in state.validators if v.exit_epoch == exit_queue_epoch])
+    exit_queue_churn = len([
+        validator for validator in state.validators if validator.exit_epoch == exit_queue_epoch
+    ])
     if exit_queue_churn >= get_validator_churn_limit(state):
         exit_queue_epoch += 1
 
@@ -1888,9 +1904,9 @@ def get_matching_target_attestations(
     state: BeaconState, epoch: Epoch
 ) -> Sequence[PendingAttestation]:
     return [
-        a
-        for a in get_matching_source_attestations(state, epoch)
-        if a.data.target.root == get_block_root(state, epoch)
+        attestation
+        for attestation in get_matching_source_attestations(state, epoch)
+        if attestation.data.target.root == get_block_root(state, epoch)
     ]
 ```
 
@@ -1899,9 +1915,10 @@ def get_matching_head_attestations(
     state: BeaconState, epoch: Epoch
 ) -> Sequence[PendingAttestation]:
     return [
-        a
-        for a in get_matching_target_attestations(state, epoch)
-        if a.data.beacon_block_root == get_block_root_at_slot(state, a.data.slot)
+        attestation
+        for attestation in get_matching_target_attestations(state, epoch)
+        if attestation.data.beacon_block_root
+        == get_block_root_at_slot(state, attestation.data.slot)
     ]
 ```
 
@@ -2021,9 +2038,9 @@ def get_eligible_validator_indices(state: BeaconState) -> Sequence[ValidatorInde
     previous_epoch = get_previous_epoch(state)
     return [
         ValidatorIndex(index)
-        for index, v in enumerate(state.validators)
-        if is_active_validator(v, previous_epoch)
-        or (v.slashed and previous_epoch + 1 < v.withdrawable_epoch)
+        for index, validator in enumerate(state.validators)
+        if is_active_validator(validator, previous_epoch)
+        or (validator.slashed and previous_epoch + 1 < validator.withdrawable_epoch)
     ]
 ```
 
@@ -2099,9 +2116,9 @@ def get_inclusion_delay_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequ
     for index in get_unslashed_attesting_indices(state, matching_source_attestations):
         attestation = min(
             [
-                a
-                for a in matching_source_attestations
-                if index in get_pending_attesting_indices(state, a)
+                attestation
+                for attestation in matching_source_attestations
+                if index in get_pending_attesting_indices(state, attestation)
             ],
             key=lambda a: a.inclusion_delay,
         )
@@ -2160,13 +2177,19 @@ def get_attestation_deltas(state: BeaconState) -> tuple[Sequence[Gwei], Sequence
     _, inactivity_penalties = get_inactivity_penalty_deltas(state)
 
     rewards = [
-        source_rewards[i] + target_rewards[i] + head_rewards[i] + inclusion_delay_rewards[i]
-        for i in range(len(state.validators))
+        source_rewards[index]
+        + target_rewards[index]
+        + head_rewards[index]
+        + inclusion_delay_rewards[index]
+        for index in range(len(state.validators))
     ]
 
     penalties = [
-        source_penalties[i] + target_penalties[i] + head_penalties[i] + inactivity_penalties[i]
-        for i in range(len(state.validators))
+        source_penalties[index]
+        + target_penalties[index]
+        + head_penalties[index]
+        + inactivity_penalties[index]
+        for index in range(len(state.validators))
     ]
 
     return rewards, penalties
@@ -2506,7 +2529,7 @@ def apply_deposit(
     amount: Gwei,
     signature: BLSSignature,
 ) -> None:
-    validator_pubkeys = [v.pubkey for v in state.validators]
+    validator_pubkeys = [validator.pubkey for validator in state.validators]
     if pubkey not in validator_pubkeys:
         # Verify the deposit signature (proof of possession) which is not checked by the deposit contract
         deposit_message = DepositMessage(

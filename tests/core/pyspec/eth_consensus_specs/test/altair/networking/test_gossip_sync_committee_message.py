@@ -2,7 +2,10 @@ from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
     with_altair_and_later,
+    with_presets,
 )
+from eth_consensus_specs.test.helpers.block import build_empty_block
+from eth_consensus_specs.test.helpers.constants import MINIMAL
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
 )
@@ -13,14 +16,14 @@ from eth_consensus_specs.test.helpers.gossip import (
     wrap_genesis_block,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
-from eth_consensus_specs.test.helpers.state import transition_to
+from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block, transition_to
 from eth_consensus_specs.utils import bls
 
 
 def get_sync_committee_member(spec, state):
     """Find a validator that is in the current sync committee and return (index, subnet_id)."""
     for validator_index in range(len(state.validators)):
-        subnets = spec.compute_subnets_for_sync_committee(state, validator_index)
+        subnets = spec.compute_subnets_for_sync_committee(state, state.slot, validator_index)
         if len(subnets) > 0:
             return validator_index, next(iter(subnets))
     raise Exception("No sync committee member found")
@@ -66,14 +69,13 @@ def test_gossip_sync_committee_message__valid(spec, state):
 
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
-    yield "current_time_ms", "meta", int(current_time_ms)
-
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sync_committee_message=message,
-        current_time_ms=current_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "valid"
@@ -84,13 +86,102 @@ def test_gossip_sync_committee_message__valid(spec, state):
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "subnet_id": int(subnet_id),
                 "message": get_filename(message),
                 "expected": "valid",
             }
         ],
     )
+
+
+@with_altair_and_later
+@spec_state_test
+@always_bls
+@with_presets([MINIMAL])
+def test_gossip_sync_committee_message__missed_period_boundary_slot(spec, state):
+    """Select the subnet for the message slot when the head is one slot behind it."""
+    yield "topic", "meta", "sync_committee"
+
+    period_length = spec.Uint64(spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
+    message_slot = 2 * period_length - 1
+    genesis_state = state.copy()
+    store, genesis_block = get_genesis_forkchoice_store_and_block(spec, genesis_state)
+    anchor = state_transition_and_sign_block(
+        spec, state, build_empty_block(spec, state, message_slot - 1)
+    )
+    yield "state", genesis_state
+    assert anchor.message.parent_root == genesis_block.hash_tree_root()
+    signed_genesis = wrap_genesis_block(spec, genesis_block)
+    yield get_filename(signed_genesis), signed_genesis
+    yield get_filename(anchor), anchor
+    yield (
+        "blocks",
+        "meta",
+        [
+            {"block": get_filename(signed_genesis)},
+            {"block": get_filename(anchor)},
+        ],
+    )
+
+    spec.on_tick(store, spec.compute_time_at_slot_ms(store.genesis_time_ms, anchor.message.slot))
+    spec.on_block(store, anchor)
+    assert spec.get_head(store).root == anchor.message.hash_tree_root()
+    assert store.block_states[anchor.message.hash_tree_root()] == state
+    duty_state = state.copy()
+    transition_to(spec, duty_state, message_slot)
+    assert state.current_sync_committee != state.next_sync_committee
+
+    new_only = None
+    old_only = None
+    for validator_index in range(len(state.validators)):
+        old_subnets = spec.compute_subnets_for_sync_committee(state, state.slot, validator_index)
+        new_subnets = spec.compute_subnets_for_sync_committee(
+            duty_state, duty_state.slot, validator_index
+        )
+        if new_only is None and new_subnets - old_subnets:
+            new_only = validator_index, next(iter(new_subnets - old_subnets))
+        if old_only is None and old_subnets - new_subnets:
+            old_only = validator_index, next(iter(old_subnets - new_subnets))
+        if new_only is not None and old_only is not None:
+            break
+    assert new_only is not None
+    assert old_only is not None
+
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, message_slot) + 500
+    seen = get_seen(spec)
+    messages = []
+    for (validator_index, subnet_id), expected, expected_reason in (
+        (new_only, "valid", None),
+        (old_only, "reject", "subnet_id is not valid for the validator"),
+    ):
+        message = create_valid_sync_committee_message(
+            spec,
+            state,
+            validator_index,
+            slot=message_slot,
+            block_root=anchor.message.hash_tree_root(),
+        )
+        yield get_filename(message), message
+        result, reason = run_validate_gossip(
+            spec,
+            seen=seen,
+            store=store,
+            sync_committee_message=message,
+            current_time_ms=current_time_ms,
+            subnet_id=subnet_id,
+        )
+        assert (result, reason) == (expected, expected_reason)
+        messages.append(
+            {
+                "current_time_ms": int(current_time_ms),
+                "subnet_id": int(subnet_id),
+                "message": get_filename(message),
+                "expected": expected,
+                **({"reason": reason} if reason is not None else {}),
+            }
+        )
+    yield "messages", "meta", messages
 
 
 @with_altair_and_later
@@ -115,8 +206,6 @@ def test_gossip_sync_committee_message__ignore_future_slot(spec, state):
 
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
-    yield "current_time_ms", "meta", int(current_time_ms)
-
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -133,7 +222,7 @@ def test_gossip_sync_committee_message__ignore_future_slot(spec, state):
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "subnet_id": int(subnet_id),
                 "message": get_filename(message),
                 "expected": "ignore",
@@ -170,8 +259,6 @@ def test_gossip_sync_committee_message__ignore_past_slot(spec, state):
 
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
-    yield "current_time_ms", "meta", int(current_time_ms)
-
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -188,7 +275,7 @@ def test_gossip_sync_committee_message__ignore_past_slot(spec, state):
         "meta",
         [
             {
-                "offset_ms": 0,
+                "current_time_ms": int(current_time_ms),
                 "subnet_id": int(subnet_id),
                 "message": get_filename(message),
                 "expected": "ignore",
@@ -217,17 +304,16 @@ def test_gossip_sync_committee_message__reject_wrong_subnet(spec, state):
 
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
-    yield "current_time_ms", "meta", int(current_time_ms)
-
     # Use a wrong subnet_id
     wrong_subnet_id = (correct_subnet_id + 1) % spec.SYNC_COMMITTEE_SUBNET_COUNT
 
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sync_committee_message=message,
-        current_time_ms=current_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=wrong_subnet_id,
     )
     assert result == "reject"
@@ -238,7 +324,7 @@ def test_gossip_sync_committee_message__reject_wrong_subnet(spec, state):
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "subnet_id": int(wrong_subnet_id),
                 "message": get_filename(message),
                 "expected": "reject",
@@ -269,14 +355,13 @@ def test_gossip_sync_committee_message__reject_validator_index_out_of_range(spec
 
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
-    yield "current_time_ms", "meta", int(current_time_ms)
-
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sync_committee_message=message,
-        current_time_ms=current_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "reject"
@@ -287,7 +372,7 @@ def test_gossip_sync_committee_message__reject_validator_index_out_of_range(spec
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "subnet_id": int(subnet_id),
                 "message": get_filename(message),
                 "expected": "reject",
@@ -317,22 +402,21 @@ def test_gossip_sync_committee_message__ignore_duplicate(spec, state):
 
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
-    yield "current_time_ms", "meta", int(current_time_ms)
-
     # First validation should pass
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sync_committee_message=message,
-        current_time_ms=current_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "valid"
     assert reason is None
     messages.append(
         {
-            "offset_ms": 500,
+            "current_time_ms": int(current_time_ms),
             "subnet_id": int(subnet_id),
             "message": get_filename(message),
             "expected": "valid",
@@ -340,19 +424,20 @@ def test_gossip_sync_committee_message__ignore_duplicate(spec, state):
     )
 
     # Second validation should be ignored
+    current_time_ms += 100
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sync_committee_message=message,
-        current_time_ms=current_time_ms + 600,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "ignore"
     assert reason == "already seen message from this validator for this slot and subnet"
     messages.append(
         {
-            "offset_ms": 600,
+            "current_time_ms": int(current_time_ms),
             "subnet_id": int(subnet_id),
             "message": get_filename(message),
             "expected": "ignore",
@@ -398,14 +483,13 @@ def test_gossip_sync_committee_message__reject_invalid_signature(spec, state):
 
     current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
 
-    yield "current_time_ms", "meta", int(current_time_ms)
-
+    current_time_ms += 500
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         sync_committee_message=message,
-        current_time_ms=current_time_ms + 500,
+        current_time_ms=current_time_ms,
         subnet_id=subnet_id,
     )
     assert result == "reject"
@@ -416,7 +500,7 @@ def test_gossip_sync_committee_message__reject_invalid_signature(spec, state):
         "meta",
         [
             {
-                "offset_ms": 500,
+                "current_time_ms": int(current_time_ms),
                 "subnet_id": int(subnet_id),
                 "message": get_filename(message),
                 "expected": "reject",

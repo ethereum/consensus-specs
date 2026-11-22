@@ -94,16 +94,18 @@ in a timely manner on the p2p network are considered; otherwise, timeliness is
 not considered.
 
 *Note*: Inclusion lists MUST be retained for at least
-`MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` slots beyond their slot, after which
-they MAY be pruned.
+`MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS + 1` slots beyond their slot, after
+which they MAY be pruned. The inclusion lists of slot `N` are read whenever the
+payload of slot `N + 1` is processed, which may happen during slot `N + 2` while
+`should_extend_payload` still decides on that payload.
 
 ```python
 def get_inclusion_list_transactions(
     store: InclusionListStore, slot: Slot, dependent_root: Root, only_timely: bool = True
 ) -> Sequence[Transaction]:
     key = (slot, dependent_root)
-    inclusion_lists = store.inclusion_lists[key]
-    equivocators = store.equivocators[key]
+    inclusion_lists = store.inclusion_lists.get(key, {})
+    equivocators = store.equivocators.get(key, set())
 
     transactions: list[Transaction] = []
     for validator_index, inclusion_list in inclusion_lists.items():
@@ -132,8 +134,8 @@ def get_inclusion_list_bits(
     only_timely: bool = True,
 ) -> InclusionListBits:
     key = (slot, dependent_root)
-    inclusion_lists = store.inclusion_lists[key]
-    equivocators = store.equivocators[key]
+    inclusion_lists = store.inclusion_lists.get(key, {})
+    equivocators = store.equivocators.get(key, set())
 
     validator_indices = []
     for validator_index, inclusion_list in inclusion_lists.items():
@@ -147,9 +149,7 @@ def get_inclusion_list_bits(
 
         validator_indices.append(validator_index)
 
-    return InclusionListBits(
-        data=[validator_index in validator_indices for validator_index in committee]
-    )
+    return InclusionListBits(data=[index in validator_indices for index in committee])
 ```
 
 ### New `is_inclusion_list_bits_inclusive`

@@ -13,6 +13,7 @@
 - [Helpers](#helpers)
   - [Modified `Seen`](#modified-seen)
   - [Modified `compute_fork_version`](#modified-compute_fork_version)
+  - [Modified `verify_block_body_operation_limits`](#modified-verify_block_body_operation_limits)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
@@ -86,7 +87,7 @@ class Seen:
     execution_payloads: dict[Hash32, ExecutionPayload]
     execution_payload_envelopes: set[tuple[Root, BuilderIndex]]
     payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
-    execution_payload_bids: set[tuple[Slot, Hash32, Root, BuilderIndex]]
+    execution_payload_bid_counts: Counter[tuple[Slot, Hash32, Root, BuilderIndex]]
     best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
     proposer_preferences: dict[tuple[Slot, Root], ProposerPreferences]
     # [New in Heze:EIP7805]
@@ -119,6 +120,42 @@ def compute_fork_version(epoch: Epoch) -> Version:
     return GENESIS_FORK_VERSION
 ```
 
+### Modified `verify_block_body_operation_limits`
+
+*Note*: `verify_block_body_operation_limits` removes the check that
+`body.deposits` is empty.
+
+```python
+def verify_block_body_operation_limits(body: BeaconBlockBody) -> None:
+    """
+    Verify that each block body operation count is within its limit.
+    Raises GossipReject on validation failure.
+    """
+    # [REJECT] The proposer slashing count is within the limit
+    if len(body.proposer_slashings) > MAX_PROPOSER_SLASHINGS:
+        raise GossipReject("too many proposer slashings")
+
+    # [REJECT] The attester slashing count is within the limit
+    if len(body.attester_slashings) > MAX_ATTESTER_SLASHINGS_ELECTRA:
+        raise GossipReject("too many attester slashings")
+
+    # [REJECT] The attestation count is within the limit
+    if len(body.attestations) > MAX_ATTESTATIONS_ELECTRA:
+        raise GossipReject("too many attestations")
+
+    # [REJECT] The voluntary exit count is within the limit
+    if len(body.voluntary_exits) > MAX_VOLUNTARY_EXITS:
+        raise GossipReject("too many voluntary exits")
+
+    # [REJECT] The BLS to execution change count is within the limit
+    if len(body.bls_to_execution_changes) > MAX_BLS_TO_EXECUTION_CHANGES:
+        raise GossipReject("too many bls to execution changes")
+
+    # [REJECT] The payload attestation count is within the limit
+    if len(body.payload_attestations) > MAX_PAYLOAD_ATTESTATIONS:
+        raise GossipReject("too many payload attestations")
+```
+
 ## The gossip domain: gossipsub
 
 ### Topics and messages
@@ -148,11 +185,6 @@ def validate_execution_payload_bid_gossip(
     Raises GossipIgnore or GossipReject on validation failure.
     """
     bid = signed_execution_payload_bid.message
-
-    # [IGNORE] This is the first bid for this slot, parent, and builder
-    bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
-    if bid_key in seen.execution_payload_bids:
-        raise GossipIgnore("already seen valid bid for this slot, parent, and builder")
 
     # [IGNORE] This is the highest value bid seen for the slot and parent
     best_bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root)
@@ -246,6 +278,12 @@ def validate_execution_payload_bid_gossip(
     if not is_active_builder(state, bid.builder_index):
         raise GossipReject("builder is not active")
 
+    # [IGNORE] The builder has not reached its bid limit for this slot and parent
+    bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
+    bid_limit = get_builder_bid_limit(state, bid.builder_index)
+    if seen.execution_payload_bid_counts[bid_key] >= bid_limit:
+        raise GossipIgnore("builder has reached its bid limit for this slot and parent")
+
     # [IGNORE] The builder can cover the bid
     if not can_builder_cover_bid(state, bid.builder_index, bid.value):
         raise GossipIgnore("builder cannot cover bid value")
@@ -276,8 +314,8 @@ def validate_execution_payload_bid_gossip(
     if not verify_execution_payload_bid_signature(state, signed_execution_payload_bid):
         raise GossipReject("invalid bid signature")
 
-    # Mark this bid as seen and update the highest-value bid for this slot/parent
-    seen.execution_payload_bids.add(bid_key)
+    # Count this bid and update the highest-value bid for this slot/parent
+    seen.execution_payload_bid_counts[bid_key] += 1
     seen.best_execution_payload_bid[best_bid_key] = bid.value
 ```
 

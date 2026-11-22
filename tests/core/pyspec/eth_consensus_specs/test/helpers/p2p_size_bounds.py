@@ -82,7 +82,7 @@ def build_max_size_signed_execution_proof_envelope(spec):
     return spec.SignedExecutionProofEnvelope(
         message=spec.ExecutionProofEnvelope(
             proof_data=spec.ProofData(data=[0] * spec.MAX_PROOF_SIZE),
-            proof_type=spec.ProofType(0),
+            proof_type=spec.ProofType(1),
             beacon_block_root=spec.Root(),
         ),
         validator_index=spec.ValidatorIndex(0),
