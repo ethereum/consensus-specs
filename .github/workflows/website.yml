@@ -38,8 +38,6 @@ jobs:
         with:
           path: site
 
-  # Deploy in a separate job, as deploy-pages can miss an artifact uploaded in the same job, and
-  # re-running such a job uploads a duplicate artifact that deploy-pages also rejects
   deploy:
     needs: build
     environment:
