@@ -707,12 +707,12 @@ generated objects. Both providers use the shared generation and validation
 adapters and are registered with the coverage scoring CLI.
 
 Dispatch vectors include a case configuration that sets `GLOAS_FORK_EPOCH=0`.
-Default generation includes both block providers. Coverage loading passes
-the signed block to this target and selects dispatch-provider vectors when
-provider metadata is present, allowing it to share `sanity/blocks` with the
-operations assertion-limit provider. Regression tests materialize and validate
-every feasible witness under both presets, audit all profiles, and reject
-corrupted dispatch shapes and effects.
+Default generation includes both block providers. Coverage loading passes the
+signed block to this target and selects dispatch-provider vectors when provider
+metadata is present, allowing it to share `sanity/blocks` with the operations
+assertion-limit provider. Regression tests materialize and validate every
+feasible witness under both presets, audit all profiles, and reject corrupted
+dispatch shapes and effects.
 
 ### Attestation and pending-deposit migrations
 
@@ -860,13 +860,14 @@ inputs. The generic native-backend comparison skips Cartesian spaces exceeding
 ten million tuples; this provider instead compares its complete rows and fault
 scopes against fingerprints from the legacy MiniZinc model under both presets.
 
-Concrete regressions cover every minimal `max` case, both preset smoke pipelines,
-and mainnet standard witnesses with small queues. Full mainnet queues (262,144
-entries) are exercised by smoke. The legacy fixed validator counts were specific
-to minimal: mainnet now uses a compact pool of compounding validators, each at
-or below its effective-balance cap, to realize its much larger churn quotient.
-Low-churn fixtures retain enough validators for nonempty PTC slot committees.
-Genesis bases are cached, and AVAILABLE queues use small nonempty fixtures.
+Concrete regressions cover every minimal `max` case, both preset smoke
+pipelines, and mainnet standard witnesses with small queues. Full mainnet queues
+(262,144 entries) are exercised by smoke. The legacy fixed validator counts were
+specific to minimal: mainnet now uses a compact pool of compounding validators,
+each at or below its effective-balance cap, to realize its much larger churn
+quotient. Low-churn fixtures retain enough validators for nonempty PTC slot
+committees. Genesis bases are cached, and AVAILABLE queues use small nonempty
+fixtures.
 
 ### Central-default migration baseline
 
