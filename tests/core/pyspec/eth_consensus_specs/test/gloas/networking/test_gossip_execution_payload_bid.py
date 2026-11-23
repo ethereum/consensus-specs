@@ -974,6 +974,130 @@ def test_gossip_execution_payload_bid__ignore_builder_bid_limit_reached(spec, st
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__ignore_builder_bid_limit_excludes_pending_balance(
+    spec, state
+):
+    """A builder's bid limit does not count balance owed in pending withdrawals.
+
+    The parent's bid pays builder 0, and only a descendant block settles a
+    payment, so the payment is still pending at the bid's slot. The builder's
+    balance is a whole number of ETH, so the pending payment lowers its bid
+    limit by one. The bids up to the lowered limit are valid, and the next
+    (higher-value) bid, which the builder's full balance would have allowed,
+    hits the bid limit check.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    requests = spec.ExecutionRequests()
+    store, blocks, parent_root, builder_index, pending_value = (
+        setup_store_finalized_with_head_payment(spec, state, requests)
+    )
+    head_payload = record_head_payload(spec, state, store, blocks, execution_requests=requests)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
+
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
+    messages = []
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
+
+    advanced_state = store.block_states[parent_root].copy()
+    spec.process_slots(advanced_state, proposal_slot)
+    balance = advanced_state.builders[builder_index].balance
+    assert balance % spec.ETH_TO_GWEI == 0
+    assert 0 < pending_value < spec.ETH_TO_GWEI
+    assert (
+        spec.get_pending_balance_to_withdraw_for_builder(advanced_state, builder_index)
+        == pending_value
+    )
+    bid_limit = spec.get_builder_bid_limit(advanced_state, builder_index)
+    assert bid_limit == balance // spec.ETH_TO_GWEI - 1
+    assert bid_limit > 0
+
+    current_time_ms += 30
+    for value in range(1, bid_limit + 1):
+        bid = build_signed_bid(
+            spec,
+            state,
+            builder_index=builder_index,
+            slot=proposal_slot,
+            parent_block_hash=parent_block_hash,
+            parent_block_root=parent_root,
+            fee_recipient=common_fee,
+            gas_limit=parent_gas_limit,
+            value=spec.Gwei(value),
+        )
+        yield get_filename(bid), bid
+
+        current_time_ms += 10
+        result, reason = run_validate_gossip(
+            spec,
+            seen=seen,
+            store=store,
+            signed_execution_payload_bid=bid,
+            current_time_ms=current_time_ms,
+        )
+        assert result == "valid"
+        assert reason is None
+        messages.append(
+            {
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(bid),
+                "expected": result,
+            }
+        )
+
+    # One more bid from the same builder for the same slot and parent, with a
+    # higher value that the builder can cover, so only the bid limit check can
+    # trigger the ignore.
+    extra_value = spec.Gwei(bid_limit + 1)
+    assert spec.can_builder_cover_bid(advanced_state, builder_index, extra_value)
+    extra_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=builder_index,
+        slot=proposal_slot,
+        parent_block_hash=parent_block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=extra_value,
+    )
+    yield get_filename(extra_bid), extra_bid
+
+    current_time_ms += 10
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_execution_payload_bid=extra_bid,
+        current_time_ms=current_time_ms,
+    )
+    assert result == "ignore"
+    assert reason == "builder has reached its bid limit for this slot and parent"
+    messages.append(
+        {
+            "current_time_ms": int(current_time_ms),
+            "message": get_filename(extra_bid),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_not_highest_value(spec, state):
     """A bid whose value does not exceed the best bid for this slot/parent is ignored.
 
