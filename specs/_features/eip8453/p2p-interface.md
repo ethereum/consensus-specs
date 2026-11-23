@@ -542,7 +542,11 @@ def validate_attestation_gossip(
 
     # [REJECT] The attestation signature is valid
     attester = state.validators[attester_index]
-    domain = get_domain(state, DOMAIN_FINALITY_ATTESTER, attestation.epoch)
+    domain = compute_domain(
+        DOMAIN_FINALITY_ATTESTER,
+        compute_fork_version(attestation.epoch),
+        state.genesis_validators_root,
+    )
     signing_root = compute_signing_root(data, domain)
     if not bls.Verify(attester.pubkey, signing_root, attestation.signature):
         raise GossipReject("invalid attestation signature")

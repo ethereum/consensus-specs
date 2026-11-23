@@ -23,6 +23,7 @@ from eth_consensus_specs.heze import {preset_name} as heze
         return {
             "calculate_committee_fraction",
             "compute_adversarial_weight",
+            "compute_committee_weight_between_slots",
             "compute_empty_slot_support_discount",
             "compute_honest_ffg_support_for_current_target",
             "compute_on_chain_aggregate",

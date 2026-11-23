@@ -716,7 +716,11 @@ def is_valid_indexed_attestation(
     # Verify aggregate signature
     pubkeys = [state.validators[i].pubkey for i in indices]
     # [Modified in EIP8453]
-    domain = get_domain(state, DOMAIN_FINALITY_ATTESTER, indexed_attestation.epoch)
+    domain = compute_domain(
+        DOMAIN_FINALITY_ATTESTER,
+        compute_fork_version(indexed_attestation.epoch),
+        state.genesis_validators_root,
+    )
     signing_root = compute_signing_root(indexed_attestation.data, domain)
     return bls.FastAggregateVerify(pubkeys, signing_root, indexed_attestation.signature)
 ```
