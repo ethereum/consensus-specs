@@ -357,7 +357,9 @@ def get_builder_bid_limit(state: BeaconState, builder_index: BuilderIndex) -> Ui
     """
     Return the number of bids the builder may submit for each slot and parent.
     """
-    return Uint64(state.builders[builder_index].balance // ETH_TO_GWEI)
+    balance = state.builders[builder_index].balance
+    pending_withdrawals_amount = get_pending_balance_to_withdraw_for_builder(state, builder_index)
+    return Uint64(saturating_sub(balance, pending_withdrawals_amount) // ETH_TO_GWEI)
 ```
 
 ### New `is_current_or_next_slot`
@@ -1024,13 +1026,14 @@ def validate_payload_attestation_message_gossip(
 
 This topic is used to propagate signed bids as `SignedExecutionPayloadBid`.
 
-*Note*: The proposer for `bid.slot` SHOULD accept higher-value bids from a
-builder regardless of how many bids it has already seen from that builder for
-the same slot and parent. Otherwise, a builder could send low-value bids to the
-proposer and a high-value bid to the rest of the network. Nodes that accepted
-the high-value bid would not forward competing bids with lower values, and the
-proposer would ignore the high-value bid, leaving it with only the low-value
-bids.
+*Note*: The proposer for `bid.slot` SHOULD consider higher-value bids from a
+builder for its block regardless of how many bids it has already seen from that
+builder for the same slot and parent. Otherwise, a builder could send low-value
+bids to the proposer and a high-value bid to the rest of the network. Nodes that
+accepted the high-value bid would not forward competing bids with lower values,
+and the proposer would ignore the high-value bid, leaving it with only the
+low-value bids. A bid past the builder's bid limit is still ignored for gossip,
+so the proposer does not forward it.
 
 ```python
 def validate_execution_payload_bid_gossip(
