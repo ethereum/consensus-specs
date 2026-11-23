@@ -318,11 +318,11 @@ def get_finality_vote(
     height, root = justified.height, justified.root
     if height <= finalized_height:
         return HeightCheckpoint.empty()
-    if record.targets.get(height) not in (None, root):
+    if record.targets.get(height, root) != root:
         return HeightCheckpoint.empty()
     if height in record.timeouts:
         return HeightCheckpoint.empty()
-    if record.finality_locks.get(height) not in (None, root):
+    if record.finality_locks.get(height, root) != root:
         return HeightCheckpoint.empty()
     return justified.copy()
 ```
@@ -351,7 +351,7 @@ def get_height_vote(
         if lock == root:
             return target.copy(), False
         return None
-    if record.targets.get(height) in (None, root):
+    if record.targets.get(height, root) == root:
         return target.copy(), False
     return target.copy(), True
 ```
@@ -433,7 +433,9 @@ def get_attestation_signature(
     privkey: int,
 ) -> BLSSignature:
     # [Modified in EIP8453]
-    domain = get_domain(state, DOMAIN_FINALITY_ATTESTER, epoch)
+    domain = compute_domain(
+        DOMAIN_FINALITY_ATTESTER, compute_fork_version(epoch), state.genesis_validators_root
+    )
     signing_root = compute_signing_root(attestation_data, domain)
     return bls.Sign(privkey, signing_root)
 ```
