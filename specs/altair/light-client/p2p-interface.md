@@ -79,7 +79,7 @@ the network.
   `finality_update` for that slot did not indicate supermajority
 - _[IGNORE]_ The `finality_update` is received after the block at
   `signature_slot` was given enough time to propagate through the network --
-  i.e. validatate that `get_sync_message_due_ms()` milliseconds (with a
+  i.e. validate that `get_sync_message_due_ms()` milliseconds (with a
   `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) has transpired since the start of
   `signature_slot`.
 
@@ -126,7 +126,7 @@ the network.
   previously forwarded `optimistic_update`s
 - _[IGNORE]_ The `optimistic_update` is received after the block at
   `signature_slot` was given enough time to propagate through the network --
-  i.e. validatate that `get_sync_message_due_ms()` milliseconds (with a
+  i.e. validate that `get_sync_message_due_ms()` milliseconds (with a
   `MAXIMUM_GOSSIP_CLOCK_DISPARITY` allowance) has transpired since the start of
   `optimistic_update.signature_slot`.
 
