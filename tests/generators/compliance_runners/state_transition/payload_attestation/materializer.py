@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any, TYPE_CHECKING
+from typing import Any, ClassVar, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.payload_attestation import prepare_signed_payload_attestation
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
+from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
 from .target import TARGET
 
@@ -17,6 +18,7 @@ if TYPE_CHECKING:
 class PayloadAttestationMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "payload_attestation"
+    config_overrides: ClassVar[dict[str, Any]] = {"GLOAS_FORK_EPOCH": 0}
 
     def _base_state(self) -> Any:
         state = create_genesis_state(
@@ -27,6 +29,7 @@ class PayloadAttestationMaterializer(Materializer):
         self.spec.process_slots(state, self.spec.Slot(self.rng.randrange(2, 11)))
         return state
 
+    @bls_enabled()
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec, pre = self.spec, self._base_state()
         slot = pre.slot - 1 if sol.slot_is_previous else pre.slot

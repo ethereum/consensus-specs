@@ -82,7 +82,7 @@ def test_unknown_assertions_remain_unknown():
 
 
 def test_factory_and_provider_follow_case_spec(tmp_path, monkeypatch):
-    case = tmp_path / "operations" / "fake" / "main" / "case_0000"
+    case = tmp_path / "operations" / "fake" / provider.SUITE_NAME / "case_0000"
     case.mkdir(parents=True)
     (case / "dimensions.yaml").write_text("claimed: {limit: 2, check: true}\n")
     (case / "post.ssz_snappy").touch()

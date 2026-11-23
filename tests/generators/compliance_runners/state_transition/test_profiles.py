@@ -4,10 +4,60 @@ from types import SimpleNamespace
 
 import pytest
 
-from tests.generators.compliance_runners.state_transition.provider import load_provider
+from eth_consensus_specs.test.context import get_copy_of_spec
+from eth_consensus_specs.test.helpers.specs import spec_targets
+from eth_consensus_specs.utils import bls
+from tests.generators.compliance_runners.runner import state_transition as replay
+from tests.generators.compliance_runners.runner.discovery import gather_tests
+from tests.generators.compliance_runners.runner.io import read_yaml
+from tests.generators.compliance_runners.state_transition import provider as runner
+from tests.generators.compliance_runners.state_transition.provider import (
+    load_provider,
+    materialize_handler,
+    PROFILES,
+    PROVIDERS,
+)
+from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
-from . import provider as runner
-from .provider import materialize_handler, PROFILES, PROVIDERS
+
+@pytest.mark.parametrize("case_handler", ["blocks", "payload_attestation"])
+def test_generation_with_fork_config_replays_all_cases(tmp_path, monkeypatch, case_handler):
+    assert case_handler in runner.HANDLERS
+    spec = spec_targets["minimal"]["gloas"]
+    original_config = spec.config
+    monkeypatch.setattr(bls, "bls_active", False)
+    count = materialize_handler(case_handler, "max", tmp_path, spec=spec)
+    cases = list(gather_tests(tmp_path, kind="state_transition"))
+    assert len(cases) == count > 0
+    for case in cases:
+        provider = read_yaml(case.test_dir / "dimensions.yaml")["test_provider"]
+        if provider in ("process_operations_dispatch", "payload_attestation"):
+            assert read_yaml(case.test_dir / "config.yaml")["GLOAS_FORK_EPOCH"] == 0
+            assert all(
+                check.status == "ok"
+                for check in load_provider(provider).validate_case(case.test_dir)
+            )
+        replay.run_test(case)
+        if case_handler == "blocks" and not (case.test_dir / "post.ssz_snappy").exists():
+            check_rejected_block(case)
+    assert spec.config is original_config
+    assert bls.bls_active is False
+
+
+def check_rejected_block(case):
+    # Let only the failing operations check return. The signature, remaining block
+    # processing, and state root must all validate independently of that rejection.
+    spec = get_copy_of_spec(replay.load_spec(case.preset, case.fork, case.test_dir))
+    process_operations = spec.process_operations
+
+    def expect_rejected_operations(state, body, parent_slot):
+        with pytest.raises(AssertionError):
+            process_operations(state, body, parent_slot)
+
+    spec.process_operations = expect_rejected_operations
+    vector = replay.get_test_case(spec, case.test_dir, case.handler)
+    with bls_enabled():
+        spec.state_transition(vector["pre"], vector["blocks"][0], validate_result=True)
 
 
 def test_all_is_not_a_generation_profile(tmp_path):
@@ -61,6 +111,7 @@ def test_materialization_runner_consumes_case_lists(monkeypatch, tmp_path):
 
         def __init__(self, spec, **kwargs):
             assert spec is selected_spec
+            self.spec = spec
             assert kwargs == {"preset_name": "minimal", "seed": 124}
 
         def materialize_reps(self, directory, representatives, **kwargs):

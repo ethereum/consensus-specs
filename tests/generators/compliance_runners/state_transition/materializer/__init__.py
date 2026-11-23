@@ -7,8 +7,10 @@ import json
 import random
 import shutil
 from enum import Enum
-from typing import Any, TYPE_CHECKING
+from typing import Any, ClassVar, TYPE_CHECKING
 
+from eth_consensus_specs.test.context import get_copy_of_spec, spec_with_config_overrides
+from eth_consensus_specs.test.helpers.block import sign_block
 from eth_consensus_specs.test.utils.dumper import Dumper
 from tests.generators.compliance_runners.gen_base.gen_typing import (
     TestCase,
@@ -31,7 +33,29 @@ if TYPE_CHECKING:
 SUITE_NAME = "pyspec_tests"
 
 
+def materialize_operation_block(spec, pre, block, *, valid_block=None):
+    """Transition and sign a block, omitting the post-state on rejection."""
+    post = pre.copy()
+    try:
+        spec.state_transition(post, spec.SignedBeaconBlock(message=block), validate_result=False)
+    except (AssertionError, IndexError):
+        if valid_block is not None:
+            # Compute the root a client would get by skipping the invalid operations.
+            # The header must still commit to the body that the client received.
+            post = pre.copy()
+            spec.state_transition(
+                post, spec.SignedBeaconBlock(message=valid_block), validate_result=False
+            )
+            post.latest_block_header.body_root = block.body.hash_tree_root()
+            block.state_root = post.hash_tree_root()
+        post = None
+    else:
+        block.state_root = post.hash_tree_root()
+    return sign_block(spec, pre, block, proposer_index=block.proposer_index), post
+
+
 class Materializer:
+    config_overrides: ClassVar[dict[str, Any]] = {}
     spec: Any
     fork_name: str
     preset_name: str
@@ -47,6 +71,11 @@ class Materializer:
         preset_name: str = "minimal",
         seed: int = 0,
     ) -> None:
+        self.case_config = None
+        if self.config_overrides:
+            spec, self.case_config = spec_with_config_overrides(
+                get_copy_of_spec(spec), self.config_overrides
+            )
         self.spec = spec
         self.fork_name = fork_name
         self.preset_name = preset_name
@@ -128,6 +157,8 @@ class Materializer:
         case_name = f"case_{index:04d}"
         self.rng = self._rng_for_solution(solution)
         meta, parts = self.materialize_solution(solution)
+        if self.case_config is not None:
+            parts.append(("config", "cfg", self.case_config))
         claimed = meta.pop("claimed")
         test_case = TestCase(
             fork_name=self.fork_name,

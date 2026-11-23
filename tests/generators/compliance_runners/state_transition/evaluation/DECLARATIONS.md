@@ -706,8 +706,8 @@ now serialize declaration witnesses rather than rebuilding claims from their own
 generated objects. Both providers use the shared generation and validation
 adapters and are registered with the coverage scoring CLI.
 
-Dispatch vectors still need the existing `GLOAS_FORK_EPOCH=0` fixture setup; the
-`blocks` handler remains disabled in default generation. Coverage loading passes
+Dispatch vectors include a case configuration that sets `GLOAS_FORK_EPOCH=0`.
+Default generation includes both block providers. Coverage loading passes
 the signed block to this target and selects dispatch-provider vectors when
 provider metadata is present, allowing it to share `sanity/blocks` with the
 operations assertion-limit provider. Regression tests materialize and validate

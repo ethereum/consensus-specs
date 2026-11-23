@@ -11,6 +11,7 @@ import snappy
 from ruamel.yaml import YAML
 
 from tests.generators.compliance_runners.runner.formats import OPERATION_INPUTS
+from tests.generators.compliance_runners.runner.state_transition import load_spec
 
 from .catalog import HANDLERS, Provider, PROVIDERS, RUNNERS
 from .materializer import SUITE_NAME
@@ -101,7 +102,7 @@ def _spec_for_case(case_dir: Path) -> Any:
     """Load the preset encoded by a generated case's directory layout."""
     for parent in case_dir.parents:
         if parent.name in ("minimal", "mainnet"):
-            return import_module(f"eth_consensus_specs.gloas.{parent.name}")
+            return load_spec(parent.name, "gloas", case_dir)
     raise ValueError(f"could not determine preset for case: {case_dir}")
 
 
@@ -186,9 +187,9 @@ def _materialize_provider(
     seed: int,
 ) -> tuple[Any, int, str]:
     module = load_provider(provider.name)
-    chosen = module.build_profile(profile, spec=spec)
-    reps = [SimpleNamespace(**record) for record in chosen]
     materializer = module.MATERIALIZER(spec, preset_name=preset_name, seed=seed)
+    chosen = module.build_profile(profile, spec=materializer.spec)
+    reps = [SimpleNamespace(**record) for record in chosen]
     materializer.test_provider = provider.name
     if materializer.runner_name != provider.runner or materializer.handler_name != provider.handler:
         raise ValueError(f"provider metadata does not match materializer: {provider.name}")

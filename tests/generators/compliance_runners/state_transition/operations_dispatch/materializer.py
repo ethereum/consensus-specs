@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, TYPE_CHECKING
+from typing import Any, ClassVar, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.attestations import get_valid_attestation, sign_attestation
 from eth_consensus_specs.test.helpers.attester_slashings import (
@@ -15,11 +15,14 @@ from eth_consensus_specs.test.helpers.payload_attestation import prepare_signed_
 from eth_consensus_specs.test.helpers.proposer_slashings import get_valid_proposer_slashing
 from eth_consensus_specs.test.helpers.state import next_slots
 from eth_consensus_specs.test.helpers.voluntary_exits import prepare_signed_exits
-from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.aspects_helpers.entity_reference import (
     distinct_indices,
 )
-from tests.generators.compliance_runners.state_transition.materializer import Materializer
+from tests.generators.compliance_runners.state_transition.materializer import (
+    materialize_operation_block,
+    Materializer,
+)
+from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
 from .target import TARGET
 
@@ -30,6 +33,7 @@ if TYPE_CHECKING:
 class OperationsDispatchMaterializer(Materializer):
     runner_name = "sanity"
     handler_name = "blocks"
+    config_overrides: ClassVar[dict[str, Any]] = {"GLOAS_FORK_EPOCH": 0}
 
     def _genesis(self) -> Any:
         spec = self.spec
@@ -129,27 +133,25 @@ class OperationsDispatchMaterializer(Materializer):
         else:
             raise ValueError(f"unknown dispatch scenario: {scenario}")
 
+    @bls_enabled()
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         scenario = solution.scenario
-        old_bls_active = bls.bls_active
-        bls.bls_active = True
-        try:
-            pre = (
-                self._missed_slot_state()
-                if scenario.startswith("parent_slot_")
-                else self._parent_state()
-            )
-            block = build_empty_block(spec, pre, slot=int(pre.slot) + 1)
-            self._populate(scenario, pre, block)
-            signed_block = spec.SignedBeaconBlock(message=block)
-            post = pre.copy()
-            try:
-                spec.state_transition(post, signed_block, validate_result=False)
-            except (AssertionError, IndexError):
-                post = None
-        finally:
-            bls.bls_active = old_bls_active
+        pre = (
+            self._missed_slot_state()
+            if scenario.startswith("parent_slot_")
+            else self._parent_state()
+        )
+        block = build_empty_block(spec, pre, slot=int(pre.slot) + 1)
+        self._populate(scenario, pre, block)
+        valid_block = None
+        if scenario == "slash_before_exit":
+            valid_block = block.copy()
+            valid_block.body.voluntary_exits.pop()
+        elif scenario == "invalid_payload_attestation":
+            valid_block = block.copy()
+            valid_block.body.payload_attestations.pop()
+        signed_block, post = materialize_operation_block(spec, pre, block, valid_block=valid_block)
 
         claimed = self.claimed_record(TARGET, solution)
         meta = {

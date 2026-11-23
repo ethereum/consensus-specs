@@ -6,7 +6,11 @@ from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.block import build_empty_block
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
-from tests.generators.compliance_runners.state_transition.materializer import Materializer
+from tests.generators.compliance_runners.state_transition.materializer import (
+    materialize_operation_block,
+    Materializer,
+)
+from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
 from .target import LIMITS, TARGET
 
@@ -61,6 +65,7 @@ class OperationsMaterializer(Materializer):
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
 
+    @bls_enabled()
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         pre = self._base_state()
@@ -68,6 +73,7 @@ class OperationsMaterializer(Materializer):
         body = block.body
         gates = {f.name: getattr(solution, f.name) for f in LIMITS.factors}
         body.graffiti = spec.Bytes32(self.rng.getrandbits(256).to_bytes(32, "big"))
+        valid_block = block.copy() if not all(gates.values()) else None
 
         if not gates["deposits_empty"]:
             deposit = spec.Deposit()
@@ -90,12 +96,7 @@ class OperationsMaterializer(Materializer):
                     self._randomize_operation(operation)
                     values.append(operation)
 
-        signed_block = spec.SignedBeaconBlock(message=block)
-        post = pre.copy()
-        try:
-            spec.state_transition(post, signed_block, validate_result=False)
-        except (AssertionError, IndexError):
-            post = None
+        signed_block, post = materialize_operation_block(spec, pre, block, valid_block=valid_block)
 
         outcome = "ACCEPT_EMPTY"
         if not gates["deposits_empty"]:

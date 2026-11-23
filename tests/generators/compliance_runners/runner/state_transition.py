@@ -131,8 +131,11 @@ def decode_optional_post(spec, test_dir: Path):
 
 
 def load_spec(preset: str, fork: str, test_dir: Path):
+    return with_case_config(spec_targets[preset][fork], test_dir)
+
+
+def with_case_config(spec, test_dir: Path):
     """Apply case configuration without mutating the shared preset/fork spec."""
-    spec = spec_targets[preset][fork]
     config_path = test_dir / "config.yaml"
     if not config_path.exists():
         return spec

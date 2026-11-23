@@ -2,6 +2,8 @@
 
 from ruamel.yaml import YAML
 
+from tests.generators.compliance_runners.runner.state_transition import with_case_config
+
 from .evaluation.coverage_dsl import Context, NA
 from .provider import Check, check_dimensions, decode
 
@@ -77,7 +79,7 @@ def target_validator(target, *, operation_name=None, operation_type=None, spec, 
         return checks
 
     def validate_case(case_dir):
-        return validate_file(spec(), case_dir)
+        return validate_file(with_case_config(spec(), case_dir), case_dir)
 
     validate_case.for_spec = validate_file
     return recover, validate_case
