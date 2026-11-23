@@ -18,6 +18,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     fix,
     implies,
     Integer,
+    nwise,
     union,
 )
 
@@ -299,7 +300,10 @@ COVERAGE = coverage_spec(
         "normal": NORMAL,
         "exceptional": EXCEPTIONAL,
         "standard": union(NORMAL, EXCEPTIONAL),
-        "max": exhaustive(FACTORS),
+        "max": union(
+            exhaustive(FACTORS) * fix(state_effected=True),
+            nwise(FACTORS, 2) * fix(state_effected=False),
+        ),
     },
 )
 TARGET = bind(

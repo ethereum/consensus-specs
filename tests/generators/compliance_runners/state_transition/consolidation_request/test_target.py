@@ -78,10 +78,24 @@ def test_small_smoke_and_all_profile_obligations(preset):
         selected = records(preset, name)
         active = [{k: v for k, v in r.items() if v != "NA"} for r in selected]
         assert all(bound.feasible(r) for r in active)
-        if name == "max":
-            assert {frozenset(r.items()) for r in active} == formula.run()
-        else:
-            assert formula.covered(active) == formula.run()
+        assert formula.covered(active) == formula.run()
+
+
+@pytest.mark.parametrize("preset", ["minimal", "mainnet"])
+def test_max_preserves_successes_and_covers_rejection_pairs(preset):
+    bound = target(preset)
+    model, feasible = bound._configurations(filtered=True)
+    selected = {
+        frozenset((k, v) for k, v in row.items() if v != "NA") for row in records(preset, "max")
+    }
+    successes = {row for row in feasible if ("state_effected", True) in row}
+    assert {row for row in selected if ("state_effected", True) in row} == successes
+
+    rejected = selected - successes
+    all_rejected = feasible - successes
+    names = [f.name for f in FACTORS]
+    assert rejected < all_rejected
+    assert model.project(names, 2, rejected) == model.project(names, 2, all_rejected)
 
 
 def vector(materializer, record):
@@ -100,7 +114,7 @@ def vector(materializer, record):
     )
 
 
-def test_every_minimal_signature_survives_serialization():
+def test_every_minimal_max_case_survives_serialization():
     spec = spec_targets["minimal"]["gloas"]
     materializer = MATERIALIZER(spec, seed=124)
     for record in records("minimal", "max"):

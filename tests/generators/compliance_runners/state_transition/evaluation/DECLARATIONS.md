@@ -841,10 +841,11 @@ preserves grouped pairwise inputs and carries outcome context when projecting
 switch balances and churn; exceptional retains exactly one independently
 applicable failed gate. Membership failures deactivate the remaining predicates
 for that role. Both branches return normally on failure, so the scopes describe
-ignored-operation gates rather than rejecting assertions. `max` covers all
-27,996 signatures. Effects are observed from changed credentials, a correctly
-formed excess-balance pending deposit, or a consolidation append and source exit
-in the actual post-state; validation requires a post-state.
+ignored-operation gates rather than rejecting assertions. `max` generates all
+118 successful signatures and covers feasible pairs of active factors across
+rejected requests with 327 cases. Validation requires a post-state and observes
+changed credentials, a correctly formed excess-balance pending deposit, or a
+consolidation append and source exit.
 
 Generation, metadata, validation, and coverage loading use the shared adapters;
 the provider's custom model, coverage driver, and validator are removed. Use the
@@ -859,7 +860,7 @@ inputs. The generic native-backend comparison skips Cartesian spaces exceeding
 ten million tuples; this provider instead compares its complete rows and fault
 scopes against fingerprints from the legacy MiniZinc model under both presets.
 
-Concrete regressions cover every minimal signature, both preset smoke pipelines,
+Concrete regressions cover every minimal `max` case, both preset smoke pipelines,
 and mainnet standard witnesses with small queues. Full mainnet queues (262,144
 entries) are exercised by smoke. The legacy fixed validator counts were specific
 to minimal: mainnet now uses a compact pool of compounding validators, each at
