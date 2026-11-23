@@ -73,11 +73,15 @@ def test_invalid_attestation_data_index_too_high(spec, state):
     """
     Test that attestation with index >= 2 is invalid in Gloas.
     """
-    attestation = get_valid_attestation(spec, state)
-    next_slots(spec, state, spec.MIN_ATTESTATION_INCLUSION_DELAY)
+    # Same setup as the index zero previous slot test. A same-slot
+    # attestation would be rejected for its non-zero index instead.
+    transition_to_slot_via_block(spec, state, 5)
+    slot_3_block_root = spec.get_block_root_at_slot(state, 3)
+    attestation = get_valid_attestation(spec, state, slot=4, beacon_block_root=slot_3_block_root)
     attestation.data.index = 2
     sign_attestation(spec, state, attestation)
 
+    assert spec.is_attestation_same_slot(state, attestation.data) is False
     yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
