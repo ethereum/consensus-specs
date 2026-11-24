@@ -30,6 +30,8 @@ def test_generation_with_fork_config_replays_all_cases(tmp_path, monkeypatch, ca
     cases = list(gather_tests(tmp_path, kind="state_transition"))
     assert len(cases) == count > 0
     for case in cases:
+        if case_handler == "blocks":
+            assert read_yaml(case.test_dir / "meta.yaml") == {"bls_setting": 1, "blocks_count": 1}
         provider = read_yaml(case.test_dir / "dimensions.yaml")["test_provider"]
         if provider in ("process_operations_dispatch", "payload_attestation"):
             assert read_yaml(case.test_dir / "config.yaml")["GLOAS_FORK_EPOCH"] == 0

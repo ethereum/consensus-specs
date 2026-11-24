@@ -160,6 +160,8 @@ class Materializer:
         if self.case_config is not None:
             parts.append(("config", "cfg", self.case_config))
         claimed = meta.pop("claimed")
+        # Some reference-test runners reject the optional debug field.
+        meta.pop("description", None)
         test_case = TestCase(
             fork_name=self.fork_name,
             preset_name=self.preset_name,

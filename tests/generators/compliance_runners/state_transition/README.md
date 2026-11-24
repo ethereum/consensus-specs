@@ -137,8 +137,10 @@ Generated cases use this layout:
 ```
 
 Each case contains `pre.ssz_snappy`, the operation input when applicable,
-`post.ssz_snappy` when the handler accepts the input, `meta.yaml`,
-`manifest.yaml`, and `dimensions.yaml` with the claimed coverage dimensions.
+`post.ssz_snappy` when the handler accepts the input, `manifest.yaml`, and
+`dimensions.yaml` with the claimed coverage dimensions. Cases with runtime
+metadata include `meta.yaml`. The generator omits the optional `description`
+field for compatibility with strict reference-test runners.
 
 The modelling approach and the distinction between coverage dimensions,
 materialization, and validation are documented in
