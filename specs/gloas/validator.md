@@ -245,6 +245,12 @@ construct the `payload_attestations` field in `BeaconBlockBody`:
   indices with respect to the PTC that is obtained from
   `get_ptc(state, Slot(block_slot - 1))`.
 
+*Note*: A validator **could be included multiple times** in the PTC, such that
+multiple bits are set for a single `PayloadAttestationMessage`. The aggregate
+signature should include one signature per set bit in the `aggregation_bits`
+bitfield, with repeated signatures if one validator maps to multiple positions
+in the PTC.
+
 ##### Parent execution requests
 
 The `parent_execution_requests` field contains the execution requests from the
