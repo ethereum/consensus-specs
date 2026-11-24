@@ -159,72 +159,32 @@ def test_gossip_execution_payload_envelope__ignore_duplicate(spec, state):
 @spec_state_test
 def test_gossip_execution_payload_envelope__reject_slot_mismatch(spec, state):
     """An envelope whose payload.slot_number does not match block.slot is rejected."""
-    anchor_state = state.copy()
-    yield "topic", "meta", "execution_payload"
 
-    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
-    yield "state", anchor_state
-    for signed in blocks:
-        yield get_filename(signed), signed
-    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+    def update_envelope(envelope):
+        envelope.payload.slot_number += 1
 
-    seen = get_seen(spec)
-    signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
-    signed_envelope.message.payload.slot_number = spec.Uint64(state.slot + 1)
-    yield get_filename(signed_envelope), signed_envelope
-
-    messages = []
-
-    result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
+    yield from _assert_envelope_rejected(
+        spec,
+        state,
+        update_envelope,
+        "block's slot does not match payload's slot number",
     )
-    assert result == "reject"
-    assert reason == "block's slot does not match payload's slot number"
-    messages.append(
-        {
-            "message": get_filename(signed_envelope),
-            "expected": result,
-            "reason": reason,
-        }
-    )
-
-    yield "messages", "meta", messages
 
 
 @with_gloas_and_later
 @spec_state_test
 def test_gossip_execution_payload_envelope__reject_block_hash_mismatch(spec, state):
     """An envelope whose payload.block_hash does not match the bid is rejected."""
-    anchor_state = state.copy()
-    yield "topic", "meta", "execution_payload"
 
-    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
-    yield "state", anchor_state
-    for signed in blocks:
-        yield get_filename(signed), signed
-    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+    def update_envelope(envelope):
+        envelope.payload.block_hash = spec.Hash32(b"\xcd" * 32)
 
-    seen = get_seen(spec)
-    signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
-    signed_envelope.message.payload.block_hash = spec.Hash32(b"\xcd" * 32)
-    yield get_filename(signed_envelope), signed_envelope
-
-    messages = []
-
-    result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
+    yield from _assert_envelope_rejected(
+        spec,
+        state,
+        update_envelope,
+        "payload's block hash does not match the bid's block hash",
     )
-    assert result == "reject"
-    assert reason == "payload's block hash does not match the bid's block hash"
-    messages.append(
-        {
-            "message": get_filename(signed_envelope),
-            "expected": result,
-            "reason": reason,
-        }
-    )
-
-    yield "messages", "meta", messages
 
 
 @with_gloas_and_later
@@ -359,40 +319,18 @@ def test_gossip_execution_payload_envelope__reject_block_failed_validation(spec,
 @spec_state_test
 def test_gossip_execution_payload_envelope__reject_builder_index_mismatch(spec, state):
     """An envelope whose builder_index does not match the bid's builder_index is rejected."""
-    anchor_state = state.copy()
-    yield "topic", "meta", "execution_payload"
 
-    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
-    yield "state", anchor_state
-    for signed in blocks:
-        yield get_filename(signed), signed
-    yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
+    def update_envelope(envelope):
+        # A builder in the registry other than the one the bid commits to, so
+        # the envelope can carry a valid signature of that builder
+        envelope.builder_index = spec.BuilderIndex(0 if envelope.builder_index != 0 else 1)
 
-    seen = get_seen(spec)
-    signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
-    bid_builder_index = signed_block.message.body.signed_execution_payload_bid.message.builder_index
-    # Pick any builder index that differs from the bid's. We subtract 1 instead
-    # of adding so the value stays inside Uint64 range when the bid uses the
-    # max-value sentinel BUILDER_INDEX_SELF_BUILD.
-    signed_envelope.message.builder_index = spec.BuilderIndex(int(bid_builder_index) - 1)
-    yield get_filename(signed_envelope), signed_envelope
-
-    messages = []
-
-    result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, signed_execution_payload_envelope=signed_envelope
+    yield from _assert_envelope_rejected(
+        spec,
+        state,
+        update_envelope,
+        "envelope's builder index does not match the bid's builder index",
     )
-    assert result == "reject"
-    assert reason == "envelope's builder index does not match the bid's builder index"
-    messages.append(
-        {
-            "message": get_filename(signed_envelope),
-            "expected": result,
-            "reason": reason,
-        }
-    )
-
-    yield "messages", "meta", messages
 
 
 @with_gloas_and_later
