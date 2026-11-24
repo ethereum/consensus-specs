@@ -91,7 +91,7 @@ class Seen:
     # [New in EIP8453]
     attestation_validator_rounds: set[tuple[Round, ValidatorIndex]]
     # [New in EIP8453]
-    head_vote_validator_slots: set[tuple[Slot, ValidatorIndex]]
+    head_vote_counts: Counter[tuple[Slot, ValidatorIndex]]
 ```
 
 ### Modified `compute_fork_version`
@@ -411,10 +411,10 @@ def validate_head_vote_gossip(
     if compute_epoch_at_slot(data.slot) < EIP8453_FORK_EPOCH:
         raise GossipReject("head vote's slot is pre-eip8453")
 
-    # [IGNORE] This is the first valid head vote from this validator for the slot
+    # [IGNORE] This is the first or second valid head vote from this validator for the slot
     head_vote_key = (data.slot, validator_index)
-    if head_vote_key in seen.head_vote_validator_slots:
-        raise GossipIgnore("already seen head vote from this validator for this slot")
+    if seen.head_vote_counts[head_vote_key] >= 2:
+        raise GossipIgnore("already seen two valid head votes from this validator for this slot")
 
     # [IGNORE] The head vote is for the current slot
     if not is_current_slot(store, data.slot, current_time_ms):
@@ -455,7 +455,7 @@ def validate_head_vote_gossip(
         raise GossipReject("invalid head vote signature")
 
     # Mark this head vote as seen
-    seen.head_vote_validator_slots.add(head_vote_key)
+    seen.head_vote_counts[head_vote_key] += 1
 ```
 
 ##### New `head_vote_aggregate`
