@@ -66,14 +66,15 @@ COVERAGE = coverage_spec(
                 FINALIZATION.ref("finalization_path") == 1,
                 FINALIZATION.ref("finalization_path") == 2,
             ),
-            JUSTIFICATION.ref("previous_epoch_supermajority"),
+            ~JUSTIFICATION.ref("current_epoch_supermajority"),
         ),
         implies(
-            any_of(
-                FINALIZATION.ref("finalization_path") == 3,
-                FINALIZATION.ref("finalization_path") == 4,
-            ),
+            FINALIZATION.ref("finalization_path") == 3,
             all_of(*JUSTIFICATION.declarations),
+        ),
+        implies(
+            FINALIZATION.ref("finalization_path") == 4,
+            JUSTIFICATION.ref("current_epoch_supermajority"),
         ),
     ),
 )

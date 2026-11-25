@@ -24,38 +24,43 @@ class JustificationAndFinalizationMaterializer(Materializer):
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
-        pre.previous_justified_checkpoint.root = spec.Root(
-            self.rng.getrandbits(256).to_bytes(32, "big")
-        )
-        pre.current_justified_checkpoint.root = spec.Root(
-            self.rng.getrandbits(256).to_bytes(32, "big")
-        )
-        pre.finalized_checkpoint.root = spec.Root(self.rng.getrandbits(256).to_bytes(32, "big"))
         reached = solution.past_initial_epochs
         rule = int(solution.finalization_path) if reached else 0
-        epoch = int(spec.GENESIS_EPOCH) + (2 if reached else 1)
-        if rule in (1, 2):
-            epoch = int(spec.GENESIS_EPOCH) + (3 if rule == 1 else 2)
-            previous_epoch = epoch - (3 if rule == 1 else 2)
-            pre.previous_justified_checkpoint = type(pre.previous_justified_checkpoint)(
-                epoch=previous_epoch, root=pre.previous_justified_checkpoint.root
-            )
-            pre.current_justified_checkpoint = type(pre.current_justified_checkpoint)(
-                epoch=epoch, root=pre.current_justified_checkpoint.root
-            )
-        elif rule in (3, 4):
-            epoch = int(spec.GENESIS_EPOCH) + (2 if rule == 3 else 3)
-            current_epoch = epoch - (2 if rule == 3 else 1)
-            pre.current_justified_checkpoint = type(pre.current_justified_checkpoint)(
-                epoch=current_epoch, root=pre.current_justified_checkpoint.root
-            )
-            pre.previous_justified_checkpoint = type(pre.previous_justified_checkpoint)(
-                epoch=epoch, root=pre.previous_justified_checkpoint.root
-            )
-        # Epoch processing runs at the last slot of the epoch.
-        pre.slot = spec.Slot((epoch + 1) * int(spec.SLOTS_PER_EPOCH) - 1)
         previous = reached and solution.previous_epoch_supermajority
-        current = reached and solution.current_epoch_supermajority
+        carried = rule in (1, 2) and not previous
+        setup_rule = rule
+        if carried:
+            # One epoch earlier, rule 3 leaves three justified bits and rule 4 leaves two.
+            setup_rule = 3 if rule == 1 else 4
+            previous = setup_rule == 3
+        genesis = int(spec.GENESIS_EPOCH)
+        epoch = genesis + (8 if rule else 2 if reached else 1)
+        pre.slot = spec.Slot((epoch + 1) * int(spec.SLOTS_PER_EPOCH) - 1)
+        for i in range(genesis + 1, epoch + 1):
+            slot = spec.compute_start_slot_at_epoch(spec.Epoch(i))
+            pre.block_roots[slot % spec.SLOTS_PER_HISTORICAL_ROOT] = spec.Root(
+                self.rng.getrandbits(256).to_bytes(32, "big")
+            )
+        required = ()
+        if setup_rule:
+            previous_age, current_age, required = {
+                1: (3, 2, (1, 2)),
+                2: (2, 2, (1,)),
+                3: (4, 2, (1,)),
+                4: (4, 1, (0,)),
+            }[setup_rule]
+            previous_justified_epoch = spec.Epoch(epoch - previous_age)
+            current_justified_epoch = spec.Epoch(epoch - current_age)
+            pre.previous_justified_checkpoint = spec.Checkpoint(
+                epoch=previous_justified_epoch,
+                root=spec.get_block_root(pre, previous_justified_epoch),
+            )
+            pre.current_justified_checkpoint = spec.Checkpoint(
+                epoch=current_justified_epoch,
+                root=spec.get_block_root(pre, current_justified_epoch),
+            )
+        # At the guard, current support makes an accidental justification observable.
+        current = not reached or carried or solution.current_epoch_supermajority
         threshold_count = (2 * len(pre.validators) + 2) // 3
         previous_participants = (
             set(self.rng.sample(range(len(pre.validators)), threshold_count)) if previous else set()
@@ -71,10 +76,13 @@ class JustificationAndFinalizationMaterializer(Materializer):
                 (1 << int(spec.TIMELY_TARGET_FLAG_INDEX)) if i in current_participants else 0
             )
         bits = type(pre.justification_bits)()
-        required = {1: (0, 1), 2: (0,), 3: (0,), 4: ()}.get(rule, ())
         for i in range(4):
             bits[i] = i in required
         pre.justification_bits = bits
+        if carried:
+            spec.process_slots(pre, pre.slot + spec.SLOTS_PER_EPOCH)
+            # Participation rolls over, but the slashed vote no longer counts toward the threshold.
+            spec.slash_validator(pre, spec.ValidatorIndex(min(current_participants)))
         post = pre.copy()
         spec.process_justification_and_finalization(post)
         claimed = self.claimed_record(TARGET, solution)

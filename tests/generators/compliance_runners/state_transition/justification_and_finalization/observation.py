@@ -32,13 +32,9 @@ def observe_attributes(ctx: Context) -> dict[str, Any]:
     )
     current_support = 3 * int(spec.get_total_balance(state, current_indices)) >= 2 * active_balance
 
-    # The bits are shifted before the four finalization checks. Later checks
-    # overwrite earlier ones, so record the last successful rule.
-    bits = [
-        current_support,
-        previous_support,
-        *[bool(bit) for bit in state.justification_bits[:-2]],
-    ]
+    # Previous-epoch support can set bit 1 even when the bit shifted into it was clear.
+    old_bits = state.justification_bits
+    bits = (current_support, previous_support or old_bits[0], old_bits[1], old_bits[2])
     previous_justified = int(state.previous_justified_checkpoint.epoch)
     current_justified = int(state.current_justified_checkpoint.epoch)
     path = 0
