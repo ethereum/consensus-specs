@@ -7,7 +7,8 @@ BUCKET_DELTAS = {"LT_FAR": -2, "LT_1": -1, "EQ": 0, "GT_1": 1, "GT_FAR": 2}
 
 def slot_witness(assignment):
     """Choose non-negative slots with latest header no later than the state."""
-    state_slot = 4
+    # Leave room for an actual block after genesis in every slot combination.
+    state_slot = 5
     match_delta = BUCKET_DELTAS[assignment["slot_matches_state"]]
     newer_delta = BUCKET_DELTAS[assignment["slot_is_newer"]]
     # Far buckets contain several distances. Keep the latest header strictly

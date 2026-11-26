@@ -14,8 +14,13 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     Context,
     score,
 )
+from tests.generators.compliance_runners.state_transition.evaluation.invariant_scan import (
+    state_invariant_violations,
+)
 from tests.generators.compliance_runners.state_transition.provider import load_provider
+from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
+from . import materializer as header_materializer
 from .materializer import BlockHeaderMaterializer
 from .target import HEADER, TARGET
 from .witness import BUCKET_DELTAS
@@ -128,6 +133,38 @@ def test_later_assertions_remain_isolated(gate):
         "proposer_not_slashed": "assert not proposer.slashed",
     }[gate]
     assert first_assertion(spec, pre, block) == expected
+
+
+def test_slashed_proposer_pre_state_replays_from_genesis(monkeypatch):
+    spec = spec_targets["minimal"]["gloas"]
+    assignment = {
+        "slot_matches_state": "EQ",
+        "slot_is_newer": "GT_1",
+        "proposer_index_matches": True,
+        "parent_matches": True,
+        "proposer_not_slashed": False,
+        "accepted": False,
+    }
+    history = []
+    transition = header_materializer.state_transition_and_sign_block
+
+    def record_block(*args):
+        signed = transition(*args)
+        history.append(signed)
+        return signed
+
+    monkeypatch.setattr(header_materializer, "state_transition_and_sign_block", record_block)
+    _, pre, block, post = materialize(spec, assignment)
+    (prior_block,) = history
+    replay = BlockHeaderMaterializer(spec)._genesis_state.copy()
+    with bls_enabled():
+        spec.state_transition(replay, prior_block)
+    spec.process_slots(replay, pre.slot)
+
+    assert replay == pre
+    assert replay.validators[block.proposer_index].slashed
+    assert not list(state_invariant_violations(spec, pre))
+    assert post is None
 
 
 def test_impossible_pairs_and_contradictory_acceptance_are_rejected():

@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 
+from functools import cached_property
 from typing import Any, TYPE_CHECKING
 
-from eth_consensus_specs.test.helpers.block import build_empty_block
+from eth_consensus_specs.test.helpers.attester_slashings import (
+    get_valid_attester_slashing_by_indices,
+)
+from eth_consensus_specs.test.helpers.block import build_empty_block, get_proposer_index_maybe
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
+from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
+from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
 from .target import TARGET
 from .witness import slot_witness
@@ -19,64 +25,48 @@ class BlockHeaderMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "block_header"
 
-    def _base_state(self) -> Any:
+    @cached_property
+    def _genesis_state(self) -> Any:
         spec = self.spec
-        state = create_genesis_state(
+        return create_genesis_state(
             spec,
             validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,
             activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
         )
-        return state
 
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
         assignment = {f.name: getattr(solution, f.name) for f in TARGET.factors}
         state_slot, block_slot, latest_header_slot = slot_witness(assignment)
-        pre = self._base_state()
-        pre.slot = spec.Slot(state_slot)
-        header = pre.latest_block_header
-        header.parent_root = spec.Root(self.rng.getrandbits(256).to_bytes(32, "big"))
-        header.state_root = spec.Root(self.rng.getrandbits(256).to_bytes(32, "big"))
-        header.body_root = spec.Root(self.rng.getrandbits(256).to_bytes(32, "big"))
-        header.proposer_index = spec.ValidatorIndex(self.rng.randrange(len(pre.validators)))
-        current_epoch = int(spec.get_current_epoch(pre))
-        mix_index = (
-            current_epoch
-            + int(spec.EPOCHS_PER_HISTORICAL_VECTOR)
-            - int(spec.MIN_SEED_LOOKAHEAD)
-            - 1
-        ) % len(pre.randao_mixes)
-        pre.randao_mixes[mix_index] = spec.Bytes32(self.rng.getrandbits(256).to_bytes(32, "big"))
-        expected_proposer_index = int(spec.get_beacon_proposer_index(pre))
+        pre = self._genesis_state.copy()
+        expected_proposer = get_proposer_index_maybe(spec, pre, spec.Slot(state_slot))
+        proposer_index = expected_proposer
+        if not assignment["proposer_index_matches"]:
+            proposer_index = spec.ValidatorIndex((int(expected_proposer) + 1) % len(pre.validators))
 
-        proposer_index_matches = assignment["proposer_index_matches"]
-        parent_matches = assignment["parent_matches"]
-        proposer_not_slashed = assignment["proposer_not_slashed"]
-        pre.latest_block_header.slot = spec.Slot(latest_header_slot)
-        if latest_header_slot == state_slot:
-            # A header from the current slot has not had its state root filled
-            # by a subsequent process_slot invocation yet.
-            pre.latest_block_header.state_root = spec.Root()
+        with bls_enabled():
+            prior_block = build_empty_block(spec, pre, slot=spec.Slot(latest_header_slot))
+            prior_block.body.graffiti = spec.Bytes32(self.rng.getrandbits(256).to_bytes(32, "big"))
+            if not assignment["proposer_not_slashed"]:
+                slashing = get_valid_attester_slashing_by_indices(
+                    spec, pre, [proposer_index], signed_1=True, signed_2=True
+                )
+                prior_block.body.attester_slashings.append(slashing)
+            state_transition_and_sign_block(spec, pre, prior_block)
+        if pre.slot < state_slot:
+            spec.process_slots(pre, spec.Slot(state_slot))
+        assert spec.get_beacon_proposer_index(pre) == expected_proposer
 
-        block = build_empty_block(
-            spec, pre, slot=state_slot, proposer_index=expected_proposer_index
-        )
+        block = build_empty_block(spec, pre)
         block.slot = spec.Slot(block_slot)
-        block.proposer_index = spec.ValidatorIndex(expected_proposer_index)
-        if not proposer_index_matches:
-            block.proposer_index = spec.ValidatorIndex(
-                (expected_proposer_index + 1) % len(pre.validators)
-            )
+        block.proposer_index = proposer_index
         expected_parent_root = spec.hash_tree_root(pre.latest_block_header)
         block.parent_root = expected_parent_root
-        if not parent_matches:
+        if not assignment["parent_matches"]:
             mismatched_parent_root = bytearray(self.rng.getrandbits(256).to_bytes(32, "big"))
             if mismatched_parent_root == bytes(expected_parent_root):
                 mismatched_parent_root[0] ^= 1
             block.parent_root = spec.Root(bytes(mismatched_parent_root))
-        if not proposer_not_slashed and int(block.proposer_index) < len(pre.validators):
-            pre.validators[block.proposer_index].slashed = True
-
         post = pre.copy()
         try:
             spec.process_block_header(post, block)
