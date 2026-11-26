@@ -1,4 +1,4 @@
-"""Builder declaration witnesses retain the legacy space and survive materialization."""
+"""Check builder declaration coverage and the materialized fixtures."""
 
 from random import Random
 from types import SimpleNamespace
@@ -15,6 +15,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     score,
 )
 from tests.generators.compliance_runners.state_transition.evaluation.invariant_scan import (
+    entry_condition_violations,
     state_invariant_violations,
 )
 from tests.generators.compliance_runners.state_transition.materializer.common import (
@@ -37,7 +38,7 @@ def test_builder_deposit_request_history_rejects_below_execution_minimum():
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])
 @pytest.mark.parametrize(
     ("provider", "configuration_count"),
-    [("builder_deposit_request", 306), ("builder_pending_payments", 468)],
+    [("builder_deposit_request", 306), ("builder_pending_payments", 240)],
 )
 def test_complete_builder_witnesses_match_vectors_and_cover_profiles(
     preset, provider, configuration_count
@@ -65,9 +66,9 @@ def test_complete_builder_witnesses_match_vectors_and_cover_profiles(
         # Metadata is the solver's assignment; observation must recover it
         # from the bytes without using metadata to choose a branch.
         assert recover_record(module.TARGET, ctx)[2] == meta["claimed"] == record
+        assert not list(state_invariant_violations(spec, pre))
+        assert not list(state_invariant_violations(spec, post))
         if provider == "builder_deposit_request":
-            assert not list(state_invariant_violations(spec, pre))
-            assert not list(state_invariant_violations(spec, post))
             if record["reset_applies"] or record["reuses_swept_slot"] is True:
                 swept = pre.builders[0]
                 assert swept.balance == 0
@@ -86,6 +87,47 @@ def test_complete_builder_witnesses_match_vectors_and_cover_profiles(
                 assert len(post.builders) == len(pre.builders)
                 assert post.builders[0].pubkey == operation.pubkey != swept.pubkey
                 assert post.builders[0].balance == operation.amount
+        else:
+            assert not list(entry_condition_violations(spec, pre, "epoch_processing"))
+            slots = spec.SLOTS_PER_EPOCH
+            quorum = spec.get_builder_payment_quorum_threshold(pre)
+            empty = spec.BuilderPendingPayment.empty()
+            previous = list(pre.builder_pending_payments[:slots])
+            retained = list(pre.builder_pending_payments[slots:])
+            assert all(
+                payment.withdrawal.amount > 0
+                for payment in pre.builder_pending_payments
+                if payment != empty
+            )
+            assert retained[-1].weight == 0
+            if record["next_epoch_payments_occupancy"] != "EMPTY":
+                assert any(p.weight > quorum for p in retained)
+            if record["next_epoch_payments_occupancy"] == "MULTIPLE":
+                occupied = [i for i, p in enumerate(retained) if p != empty]
+                assert occupied[-1] - occupied[0] + 1 > len(occupied)
+            appended = [p.withdrawal for p in previous if p.weight >= quorum]
+            if (
+                record["previous_epoch_occupancy"] == "FULL"
+                and record["qualifying_payment_count"] == "MANY"
+            ):
+                assert previous[-1].weight >= quorum
+            if (
+                record["previous_epoch_occupancy"] == "MULTIPLE"
+                and record["mixed_quorum_relations"]
+            ):
+                assert any(p.weight >= quorum for p in previous[previous.index(empty) + 1 :])
+                assert len({w.builder_index for w in appended}) >= 2
+                assert len({w.fee_recipient for w in appended}) >= 2
+                assert all(
+                    w.fee_recipient != pre.builders[w.builder_index].execution_address
+                    for w in appended
+                )
+            assert list(post.builder_pending_withdrawals) == [
+                *pre.builder_pending_withdrawals,
+                *appended,
+            ]
+            assert list(post.builder_pending_payments[:slots]) == retained
+            assert all(payment == empty for payment in post.builder_pending_payments[slots:])
         observed.append(actual)
     for profile in PROFILES:
         representatives = module.build_profile(profile, spec=spec)

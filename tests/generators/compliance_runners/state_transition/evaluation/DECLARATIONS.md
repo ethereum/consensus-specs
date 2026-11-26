@@ -684,11 +684,15 @@ histories must meet the
 
 Pending payments retain quorum comparison boundaries, previous/next section
 occupancies, mixed quorum relations, qualifying counts, existing withdrawals,
-and rotation/append outcomes. Normal and standard profiles cover pairs of aspect
-projections; the exceptional profile is empty because this handler has no fault
-conditions. Conditional projections include their applicability context so
-absent dimensions cannot earn coverage for an active branch. Both providers
-require post-state presence during case validation.
+and rotation/append outcomes. The reachable fixture model has 240 `max`
+signatures. It drops the 228 signatures that required an occupied payment with
+zero withdrawal amount. Signed bids create the payments, included attestations
+determine their weights, and older quorum payments supply existing withdrawals.
+Normal and standard profiles cover pairs of aspect projections; the exceptional
+profile is empty because this handler has no fault conditions. Conditional
+projections include their applicability context so absent dimensions cannot earn
+coverage for an active branch. Both providers require post-state presence during
+case validation.
 
 ### Builder-exit and operation-dispatch migrations
 
