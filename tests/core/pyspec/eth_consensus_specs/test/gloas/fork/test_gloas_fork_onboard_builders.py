@@ -22,6 +22,11 @@ from eth_consensus_specs.test.helpers.keys import (
 from eth_consensus_specs.test.utils import with_meta_tags
 
 
+def onboardable_slot(spec):
+    """A deposit slot after the onboarding cutoff for a fork at genesis."""
+    return spec.GENESIS_SLOT + 1
+
+
 def get_builder_withdrawal_credentials(spec, pubkey):
     """Create builder withdrawal credentials from a pubkey."""
     return spec.BUILDER_WITHDRAWAL_PREFIX + b"\x00" * 11 + spec.sha256(pubkey)[12:]
@@ -47,7 +52,7 @@ def create_pending_deposit_for_builder(spec, pubkey, amount, signed=True, privke
         withdrawal_credentials=deposit_data.withdrawal_credentials,
         amount=deposit_data.amount,
         signature=deposit_data.signature,
-        slot=spec.GENESIS_SLOT,
+        slot=onboardable_slot(spec),
     )
 
 
@@ -438,7 +443,7 @@ def test_fork_invalid_builder_deposit_with_existing_validator_pubkey(spec, phase
         withdrawal_credentials=withdrawal_credentials,
         amount=amount,
         signature=spec.bls.G2_POINT_AT_INFINITY,
-        slot=spec.GENESIS_SLOT,
+        slot=onboardable_slot(spec),
     )
     validator_topup = spec.PendingDeposit(
         pubkey=validator_pubkey,
@@ -665,7 +670,7 @@ def test_fork_invalid_builder_deposit_followed_by_valid_builder_deposit(spec, ph
         withdrawal_credentials=builder_withdrawal_credentials,
         amount=amount,
         signature=post_spec.bls.G2_POINT_AT_INFINITY,  # Invalid signature
-        slot=post_spec.GENESIS_SLOT,
+        slot=onboardable_slot(post_spec),
     )
 
     # Second deposit: builder credentials with valid signature
@@ -712,7 +717,7 @@ def test_fork_valid_builder_deposit_followed_by_invalid_builder_deposit(spec, ph
         withdrawal_credentials=builder_withdrawal_credentials,
         amount=amount,
         signature=post_spec.bls.G2_POINT_AT_INFINITY,  # Invalid signature
-        slot=post_spec.GENESIS_SLOT,
+        slot=onboardable_slot(post_spec),
     )
 
     state.pending_deposits = spec.PendingDeposits.of(valid_builder_deposit, invalid_builder_deposit)
@@ -1086,3 +1091,97 @@ def test_fork_topups_to_non_latest_builders(spec, phases, state):
         amount * 3,
     ]
     assert list(post_state.pending_deposits) == []
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+def test_fork_builder_deposit_at_onboarding_cutoff_stays_pending(spec, phases, state):
+    """
+    Test a builder deposit included at the start of epoch ``fork - 2`` is not onboarded, because it
+    may have been applied before the fork on another branch, while a builder deposit one slot later
+    is onboarded.
+    """
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_DEPOSIT_AMOUNT
+
+    state.slot = post_spec.SLOTS_PER_EPOCH * 3
+    cutoff_slot = post_spec.compute_start_slot_at_epoch(
+        post_spec.compute_epoch_at_slot(state.slot) - 2
+    )
+
+    at_cutoff = create_pending_deposit_for_builder(post_spec, builder_pubkeys[0], amount)
+    at_cutoff.slot = cutoff_slot
+    after_cutoff = create_pending_deposit_for_builder(post_spec, builder_pubkeys[1], amount)
+    after_cutoff.slot = cutoff_slot + 1
+    state.pending_deposits = spec.PendingDeposits.of(at_cutoff, after_cutoff)
+
+    post_state = yield from run_fork_test(post_spec, state)
+
+    # Only the deposit after the cutoff is onboarded
+    assert len(post_state.builders) == 1
+    assert post_state.builders[0].pubkey == builder_pubkeys[1]
+
+    # The deposit at the cutoff stays pending, to be applied as a validator deposit
+    assert len(post_state.pending_deposits) == 1
+    assert post_state.pending_deposits[0] == at_cutoff
+
+
+def drain_pending_deposits(spec, state):
+    """Apply pending deposits until the queue is empty, ignoring epoch boundaries."""
+    for _ in range(64):
+        if len(state.pending_deposits) == 0:
+            return
+        spec.process_pending_deposits(state)
+    assert len(state.pending_deposits) == 0
+
+
+def fork_two_branches(spec, post_spec, state, applied_before_fork):
+    """
+    Upgrade two branches that share ``state`` as their finalized state. Branch ``x`` applied the
+    first ``applied_before_fork`` pending deposits before the fork, branch ``y`` applied none. Both
+    branches then drain the remaining pending deposits after the fork.
+    """
+    state_x = state.copy()
+    for deposit in list(state_x.pending_deposits)[:applied_before_fork]:
+        spec.apply_pending_deposit(state_x, deposit)
+    state_x.pending_deposits = spec.PendingDeposits.of(
+        *list(state_x.pending_deposits)[applied_before_fork:]
+    )
+    post_x = post_spec.upgrade_to_gloas(state_x)
+    post_y = post_spec.upgrade_to_gloas(state.copy())
+    drain_pending_deposits(post_spec, post_x)
+    drain_pending_deposits(post_spec, post_y)
+    return post_x, post_y
+
+
+@with_phases(phases=[FULU], other_phases=[GLOAS])
+@spec_test
+@with_state
+@with_meta_tags(GLOAS_FORK_TEST_META_TAGS)
+def test_fork_validator_indices_match_across_branches(spec, phases, state):
+    """
+    Test a finalized builder deposit that one branch applied before the fork, and the other did
+    not, leaves every validator index with the same pubkey on both branches.
+    """
+    post_spec = phases[GLOAS]
+    amount = post_spec.MIN_ACTIVATION_BALANCE
+    num_validators = len(state.validators)
+
+    builder_deposit = create_pending_deposit_for_builder(post_spec, builder_pubkeys[0], amount)
+    builder_deposit.slot = spec.GENESIS_SLOT
+    validator_deposit = create_pending_deposit_for_unregistered_validator(
+        post_spec, builder_pubkeys[1], amount
+    )
+    state.pending_deposits = spec.PendingDeposits.of(builder_deposit, validator_deposit)
+
+    yield "pre", state
+    post_x, post_y = fork_two_branches(spec, post_spec, state, applied_before_fork=1)
+
+    pubkeys_x = [validator.pubkey for validator in post_x.validators]
+    pubkeys_y = [validator.pubkey for validator in post_y.validators]
+    assert pubkeys_x == pubkeys_y
+    assert pubkeys_x[num_validators:] == [builder_pubkeys[0], builder_pubkeys[1]]
+
+    yield "post", post_y

@@ -65,6 +65,10 @@ topped up only via `BuilderDepositRequest`.
 During this pass:
 
 - Only deposits with builder withdrawal credentials can fund builders.
+- Only deposits included after the start of epoch `GLOAS_FORK_EPOCH - 2` can
+  fund builders. Earlier deposits may have been applied before the fork on
+  another branch, where they created validators, so they stay queued on every
+  branch to keep validator indices consistent across branches.
 - Other deposits stay queued, even if a builder uses the same public key.
 - A valid builder registration can use a validator's public key.
 
@@ -79,11 +83,20 @@ def onboard_builders_from_pending_deposits(state: BeaconState) -> None:
     onboarding builders at the fork.
     """
     validator_pubkeys = [validator.pubkey for validator in state.validators]
+    # Deposits up to this slot may have been applied before the fork on another branch
+    onboarding_cutoff_slot = compute_start_slot_at_epoch(
+        Epoch(max(int(get_current_epoch(state)), 2) - 2)
+    )
 
     pending_deposits = PendingDeposits()
     for deposit in state.pending_deposits:
         # Only builder-credential deposits can fund builders at the fork.
         if not is_builder_withdrawal_credential(deposit.withdrawal_credentials):
+            pending_deposits.append(deposit)
+            continue
+
+        # Only deposits that no branch could have applied before the fork can fund builders.
+        if deposit.slot <= onboarding_cutoff_slot:
             pending_deposits.append(deposit)
             continue
 
