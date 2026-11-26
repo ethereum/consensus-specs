@@ -127,9 +127,11 @@ def test_invalid_old_source_epoch(spec, state):
     state.finalized_checkpoint.epoch = 2
     state.previous_justified_checkpoint.epoch = 3
     state.current_justified_checkpoint.epoch = 4
-    attestation = get_valid_attestation(spec, state, slot=(spec.SLOTS_PER_EPOCH * 3) + 1)
+    attestation = get_valid_attestation(spec, state, slot=(spec.SLOTS_PER_EPOCH * 4) + 1)
 
-    # test logic sanity check: make sure the attestation is pointing to oldest known source epoch
+    # test logic sanity checks: make sure the target epoch is valid and the attestation is
+    # pointing to oldest known source epoch
+    assert attestation.data.target.epoch == spec.get_previous_epoch(state)
     assert attestation.data.source.epoch == state.previous_justified_checkpoint.epoch
 
     # Now go beyond that, it will be invalid
