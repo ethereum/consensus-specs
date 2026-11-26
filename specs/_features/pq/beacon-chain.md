@@ -68,7 +68,6 @@
     - [`XMSSAggregateStatement`](#xmssaggregatestatement)
 - [Helpers](#helpers)
   - [Crypto](#crypto)
-    - [New `keccak256`](#new-keccak256)
     - [New `xmss_sign`](#new-xmss_sign)
     - [New `xmss_verify`](#new-xmss_verify)
     - [New `xmss_get_leaf_index`](#new-xmss_get_leaf_index)
@@ -892,16 +891,6 @@ class XMSSAggregateStatement:
 ## Helpers
 
 ### Crypto
-
-#### New `keccak256`
-
-```python
-def keccak256(data: bytes) -> Bytes32:
-    """
-    Return the Keccak-256 hash of ``data``.
-    """
-    return Bytes32(keccak256_hash(data))
-```
 
 #### New `xmss_sign`
 
@@ -2533,16 +2522,7 @@ def process_consolidation_request(
     if get_pending_balance_to_withdraw(state, source_index) > 0:
         return
 
-    # Initiate source validator exit and append pending consolidation
-    source_validator.exit_epoch = compute_consolidation_epoch_and_update_churn(
-        state, source_validator.effective_balance
-    )
-    source_validator.withdrawable_epoch = (
-        source_validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
-    )
-    state.pending_consolidations.append(
-        PendingConsolidation(source_index=source_index, target_index=target_index)
-    )
+    initiate_validator_consolidation(state, source_index, target_index)
 ```
 
 ##### Validator preregistration requests

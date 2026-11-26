@@ -192,7 +192,7 @@ def test_compute_subnets_for_sync_committee(state, spec):
 
     for _, pubkey in some_sync_committee_members:
         validator_index = _validator_index_for_pubkey(state, pubkey)
-        subnets = spec.compute_subnets_for_sync_committee(state, validator_index)
+        subnets = spec.compute_subnets_for_sync_committee(state, state.slot, validator_index)
         expected_subnets = expected_subnets_by_pubkey[pubkey]
         assert subnets == expected_subnets
 
@@ -222,9 +222,40 @@ def test_compute_subnets_for_sync_committee_slot_period_boundary(state, spec):
 
     for _, pubkey in some_sync_committee_members:
         validator_index = _validator_index_for_pubkey(state, pubkey)
-        subnets = spec.compute_subnets_for_sync_committee(state, validator_index)
+        subnets = spec.compute_subnets_for_sync_committee(state, state.slot, validator_index)
         expected_subnets = expected_subnets_by_pubkey[pubkey]
         assert subnets == expected_subnets
+
+
+@with_all_phases_from_except(ALTAIR, [PQ])
+@with_presets([MINIMAL], reason="too slow to reach the second period boundary")
+@spec_state_test
+def test_compute_subnets_for_sync_committee_message_slot_with_stale_head(state, spec):
+    period_length = spec.Uint64(spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
+    message_slot = 2 * period_length - 1
+    transition_to(spec, state, message_slot - 1)
+    assert state.current_sync_committee != state.next_sync_committee
+
+    message_committee = state.next_sync_committee.copy()
+    expected_subnets = _get_expected_subnets_by_pubkey(
+        (
+            (_subnet_for_sync_committee_index(spec, index), pubkey)
+            for index, pubkey in enumerate(message_committee.pubkeys)
+        )
+    )
+    for validator_index, validator in enumerate(state.validators):
+        assert (
+            spec.compute_subnets_for_sync_committee(state, message_slot, validator_index)
+            == expected_subnets[validator.pubkey]
+        )
+
+    transition_to(spec, state, message_slot + 1)
+    assert state.current_sync_committee == message_committee
+    for validator_index, validator in enumerate(state.validators):
+        assert (
+            spec.compute_subnets_for_sync_committee(state, message_slot, validator_index)
+            == expected_subnets[validator.pubkey]
+        )
 
 
 @with_all_phases_from_except(ALTAIR, [PQ])

@@ -383,8 +383,9 @@ The validator broadcasts the assembled signature to the assigned subnet, the
 
 The `subnet_id` is derived from the position in the sync committee such that the
 sync committee is divided into "subcommittees". `subnet_id` can be computed via
-`compute_subnets_for_sync_committee(state, validator_index)` where `state` is a
-`BeaconState` during the matching sync committee period.
+`compute_subnets_for_sync_committee(state, slot, validator_index)` where `slot`
+is the message slot and `state` is a `BeaconState` containing the current or
+next sync committee for `slot + 1`.
 
 *Note*: This function returns multiple deduplicated subnets if a given validator
 index is included multiple times in a given sync committee across multiple
@@ -392,9 +393,9 @@ subcommittees.
 
 ```python
 def compute_subnets_for_sync_committee(
-    state: BeaconState, validator_index: ValidatorIndex
+    state: BeaconState, slot: Slot, validator_index: ValidatorIndex
 ) -> set[SubnetID]:
-    next_slot_epoch = compute_epoch_at_slot(state.slot + 1)
+    next_slot_epoch = compute_epoch_at_slot(slot + 1)
     if compute_sync_committee_period(get_current_epoch(state)) == compute_sync_committee_period(
         next_slot_epoch
     ):

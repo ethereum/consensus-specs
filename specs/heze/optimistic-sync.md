@@ -6,7 +6,7 @@
 
 - [Introduction](#introduction)
 - [Mechanisms](#mechanisms)
-  - [How to optimistically import blocks](#how-to-optimistically-import-blocks)
+  - [How to optimistically import payloads](#how-to-optimistically-import-payloads)
     - [New How to track inclusion list satisfaction](#new-how-to-track-inclusion-list-satisfaction)
 
 <!-- mdformat-toc end -->
@@ -15,23 +15,22 @@
 
 This document specifies the Heze modifications to optimistic sync for inclusion
 list satisfaction. It extends the
-[Bellatrix optimistic sync specification](../bellatrix/optimistic-sync.md).
+[Gloas optimistic sync specification](../gloas/optimistic-sync.md).
 
 ## Mechanisms
 
-### How to optimistically import blocks
+### How to optimistically import payloads
 
 #### New How to track inclusion list satisfaction
 
-When optimistically importing a block:
+When optimistically importing an envelope:
 
 - The
   [`is_inclusion_list_satisfied`](./fork-choice.md#new-is_inclusion_list_satisfied)
   function MUST return `True` if the execution engine returns `NOT_VALIDATED`.
   An `INVALIDATED` response MUST return `False`.
 
-When a block transitions from `NOT_VALIDATED` -> `VALID`, the response from the
-execution engine also indicates whether the block's execution payload satisfies
-the inclusion list constraints. The consensus engine MUST record the result for
-that block. The recorded inclusion list satisfaction of its ancestors remains
-unchanged.
+When a payload transitions from `NOT_VALIDATED` -> `VALID`, the response from
+the execution engine also indicates whether the payload satisfies the inclusion
+list constraints. The consensus engine MUST record the result for that payload.
+The recorded inclusion list satisfaction of its ancestors remains unchanged.
