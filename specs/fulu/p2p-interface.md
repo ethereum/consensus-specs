@@ -861,6 +861,7 @@ Per `fork_version = compute_fork_version(epoch)`:
 | `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
 | `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
 | `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
+| `HEZE_FORK_VERSION`      | `heze.SignedBeaconBlock`      |
 
 ## The discovery domain: discv5
 
