@@ -694,14 +694,15 @@ require post-state presence during case validation.
 
 `builder_exit_request/target.py` replaces its handler MiniZinc model, coverage
 driver, and custom validator. It observes booleans and numeric epochs, using
-`cmp3(deposit_epoch, finalized_epoch, op="<")` for the activity boundary. All 19
-feasible signatures from the former model are retained. Normal cases initiate an
-exit; exceptional cases have exactly one independently applicable failed gate,
-including ignored requests. The `max` profile retains all signatures, including
-two-fault cases. The restriction that pending funds belong to an active builder
-is explicitly a fixture constraint inherited from the old generator. Exit
-initiation is observed from the actual post-state, and validation requires that
-post-state to be present.
+`cmp3(deposit_epoch, finalized_epoch, op="<")` for the activity boundary. The
+`max` profile retains 15 of the 19 former signatures because a builder must have
+a finalized deposit before exiting. Normal cases initiate an exit. Exceptional
+cases have exactly one independently applicable failed gate, including ignored
+requests. Pending funds belong to an active builder in the generated scope.
+Fixtures derive them from paid bids, using a missed payload to retain a pending
+payment and settlement of the parent bid to queue a pending withdrawal before
+the exit handler runs. Exit initiation is observed from the post-state, and
+validation requires that post-state to be present.
 
 `operations_dispatch/target.py` preserves all five integration scenarios and the
 original profile selections. It classifies scenarios from raw list counts,

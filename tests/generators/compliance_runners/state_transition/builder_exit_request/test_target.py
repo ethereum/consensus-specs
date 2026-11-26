@@ -13,6 +13,9 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     Context,
     score,
 )
+from tests.generators.compliance_runners.state_transition.evaluation.invariant_scan import (
+    state_invariant_violations,
+)
 from tests.generators.compliance_runners.state_transition.provider import (
     load_provider,
     materialize_handler,
@@ -26,11 +29,11 @@ validate_case = load_provider("builder_exit_request").validate_case
 
 
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])
-def test_max_vectors_preserve_all_signatures_and_profile_coverage(preset, tmp_path):
+def test_max_vectors_preserve_reachable_signatures_and_profile_coverage(preset, tmp_path):
     spec = spec_targets[preset]["gloas"]
     target = TARGET.for_spec(spec)
     records = build_profile("max", spec=spec)
-    assert len(records) == 19
+    assert len(records) == 15
     materializer = MATERIALIZER(spec, preset_name=preset, seed=124)
     materializer.test_provider = "builder_exit_request"
     observations = []
@@ -48,6 +51,29 @@ def test_max_vectors_preserve_all_signatures_and_profile_coverage(preset, tmp_pa
         )
         _, observation, actual = recover_record(TARGET, context)
         assert actual == meta["claimed"] == record
+        pre, request, post = context.pre, context.operation, context.post
+        assert not list(state_invariant_violations(spec, pre))
+        assert not list(state_invariant_violations(spec, post))
+        requests = spec.ExecutionRequests(builder_exits=spec.BuilderExitRequests.of(request))
+        parent_bid = pre.latest_execution_payload_bid
+        assert parent_bid.execution_requests_root == spec.hash_tree_root(requests)
+        assert parent_bid.slot + 1 == pre.slot
+        if record["builder_has_pending_payment"] is True:
+            payment_index = spec.SLOTS_PER_EPOCH + (parent_bid.slot - 1) % spec.SLOTS_PER_EPOCH
+            payment = pre.builder_pending_payments[payment_index]
+            assert payment.withdrawal.builder_index == spec.BuilderIndex(0)
+            assert payment.withdrawal.amount > 0
+            assert payment.weight == 0
+        if record["builder_has_pending_withdrawal"] is True:
+            (withdrawal,) = pre.builder_pending_withdrawals
+            assert withdrawal.builder_index == parent_bid.builder_index
+            assert withdrawal.amount == parent_bid.value > 0
+        if record["exit_initiated"]:
+            assert post.builders[0].withdrawable_epoch == (
+                spec.get_current_epoch(pre) + spec.config.MIN_BUILDER_WITHDRAWABILITY_DELAY
+            )
+        else:
+            assert post == pre
         observations.append(observation)
     for name, profile in target.profiles.items():
         representatives = build_profile(name, spec=spec)

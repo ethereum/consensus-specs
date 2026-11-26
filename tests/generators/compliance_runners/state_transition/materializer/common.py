@@ -17,6 +17,8 @@ from eth_consensus_specs.test.helpers.execution_payload import (
     compute_el_block_hash,
 )
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
+from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey
+from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.materializer.state_preprocessor import (
     common_state_preprocessor,
 )
@@ -64,8 +66,8 @@ def finalize_genesis_builders(spec, state):
     return state
 
 
-def process_execution_requests_after_empty_parent(spec, state, requests):
-    """Build a full payload in the current slot and consume it in its child."""
+def process_payload_block_after_empty_parent(spec, state, requests, *, builder_index=None, value=0):
+    """Process a block at the current slot and verify its payload envelope."""
     assert state.latest_block_hash != state.latest_execution_payload_bid.block_hash
     assert all(
         request.amount >= spec.MIN_DEPOSIT_AMOUNT for request in requests.builder_deposits
@@ -75,9 +77,20 @@ def process_execution_requests_after_empty_parent(spec, state, requests):
         # The previous block's payload was skipped, so its withdrawals carry forward.
         payload.withdrawals = state.payload_expected_withdrawals.copy()
         payload.block_hash = compute_el_block_hash(spec, payload, state, requests)
-        parent.body.signed_execution_payload_bid = compute_and_sign_execution_payload_bid(
+        signed_bid = compute_and_sign_execution_payload_bid(
             spec, state, payload, execution_requests=requests
         )
+        if builder_index is not None:
+            bid = signed_bid.message.copy()
+            bid.builder_index = builder_index
+            bid.value = spec.Gwei(value)
+            domain = spec.get_domain(state, spec.DOMAIN_BEACON_BUILDER)
+            root = spec.compute_signing_root(bid, domain)
+            privkey = builder_pubkey_to_privkey[state.builders[builder_index].pubkey]
+            signed_bid = spec.SignedExecutionPayloadBid(
+                message=bid, signature=bls.Sign(privkey, root)
+            )
+        parent.body.signed_execution_payload_bid = signed_bid
         spec.process_block(state, parent)
         parent.state_root = spec.hash_tree_root(state)
         signed_parent = sign_block(spec, state, parent)
@@ -85,9 +98,15 @@ def process_execution_requests_after_empty_parent(spec, state, requests):
             spec, state, spec.hash_tree_root(parent), signed_parent, payload, requests
         )
         spec.verify_execution_payload_envelope(state, envelope, spec.NoopExecutionEngine())
+    return payload.block_hash
 
+
+def process_execution_requests_after_empty_parent(spec, state, requests):
+    """Build a full payload in the current slot and consume it in its child."""
+    payload_hash = process_payload_block_after_empty_parent(spec, state, requests)
+    with bls_enabled():
         child = build_empty_block_for_next_slot(spec, state)
-        child.body.signed_execution_payload_bid.message.parent_block_hash = payload.block_hash
+        child.body.signed_execution_payload_bid.message.parent_block_hash = payload_hash
         child.body.parent_execution_requests = requests
         transition_unsigned_block(spec, state, child)
 

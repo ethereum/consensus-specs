@@ -10,92 +10,119 @@ Spec: specs/gloas/beacon-chain.md process_builder_exit_request.
 
 from __future__ import annotations
 
+from functools import cached_property
 from typing import Any, TYPE_CHECKING
 
+from eth_consensus_specs.test.helpers.deposits import prepare_builder_deposit_request
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
-from tests.generators.compliance_runners.state_transition.materializer import (
-    ConcretizingMaterializer,
+from eth_consensus_specs.test.helpers.keys import builder_pubkeys
+from tests.generators.compliance_runners.state_transition.materializer import Materializer
+from tests.generators.compliance_runners.state_transition.materializer.common import (
+    exit_builder_after_empty_parent,
+    finalize_genesis_builders,
+    process_execution_requests_after_empty_parent,
+    process_payload_block_after_empty_parent,
 )
+from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
-from .concretization import STATE_EPOCH, STRATEGY
 from .target import TARGET
 
 if TYPE_CHECKING:
     from tests.generators.compliance_runners.gen_base.gen_typing import TestCasePart
 
 
-class BuilderExitRequestMaterializer(ConcretizingMaterializer):
+class BuilderExitRequestMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "builder_exit_request"
-    strategy = STRATEGY
 
-    def _base_state(self) -> Any:
+    @cached_property
+    def _genesis_state(self) -> Any:
         spec = self.spec
-        state = create_genesis_state(
-            spec,
-            validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,
-            activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
-        )
-        state.builders = type(state.builders)()
-        state.slot = spec.Slot(STATE_EPOCH * spec.SLOTS_PER_EPOCH)
+        balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+        return create_genesis_state(spec, [balance] * 64, balance, builder_count=1)
+
+    @cached_property
+    def _unfinalized_state(self) -> Any:
+        spec = self.spec
+        state = self._genesis_state.copy()
+        spec.process_slots(state, spec.compute_start_slot_at_epoch(spec.GENESIS_EPOCH + 1))
         return state
 
-    def materialize_concrete_attributes(
-        self, sol: Any, attributes: dict[str, Any]
-    ) -> tuple[dict, list[TestCasePart]]:
+    @cached_property
+    def _recent_deposit_state(self) -> Any:
         spec = self.spec
-        found = sol.builder_pubkey_found
-        pre = self._base_state()
-        current_epoch = attributes["current_epoch"]
-        if current_epoch != int(spec.get_current_epoch(pre)):
-            raise ValueError("builder-exit concretization epoch does not match the base state")
-        finalized_epoch = attributes["finalized_epoch"]
-        pre.finalized_checkpoint = spec.Checkpoint(
-            epoch=spec.Epoch(finalized_epoch), root=spec.Root(attributes["finalized_root"])
-        )
-        builder_pubkey = attributes["builder_pubkey"]
-        builder_address = attributes["builder_address"]
-
-        if found:
-            deposit_epoch = attributes["deposit_epoch"]
-            wset = sol.builder_withdrawable_epoch_set
-            pre.builders.append(
-                spec.Builder(
-                    pubkey=spec.BLSPubkey(builder_pubkey),
-                    version=spec.PAYLOAD_BUILDER_VERSION,
-                    execution_address=spec.ExecutionAddress(builder_address),
-                    balance=spec.Gwei(attributes["balance"]),
-                    deposit_epoch=spec.Epoch(deposit_epoch),
-                    withdrawable_epoch=spec.Epoch(current_epoch) if wset else spec.FAR_FUTURE_EPOCH,
-                )
+        state = self._unfinalized_state.copy()
+        with bls_enabled():
+            deposit = prepare_builder_deposit_request(
+                spec, state, amount=spec.MIN_DEPOSIT_AMOUNT, pubkey=builder_pubkeys[1], signed=True
             )
-            if sol.builder_has_pending_withdrawal:
-                pre.builder_pending_withdrawals.append(
-                    spec.BuilderPendingWithdrawal(
-                        fee_recipient=spec.ExecutionAddress(builder_address),
-                        amount=spec.Gwei(attributes["pending_withdrawal_amount"]),
-                        builder_index=spec.BuilderIndex(0),
-                    )
-                )
-            if sol.builder_has_pending_payment:
-                payment_index = self.rng.randrange(len(pre.builder_pending_payments))
-                pre.builder_pending_payments[payment_index] = spec.BuilderPendingPayment(
-                    weight=spec.Gwei(self.rng.randrange(1, 1001)),
-                    withdrawal=spec.BuilderPendingWithdrawal(
-                        fee_recipient=spec.ExecutionAddress(builder_address),
-                        amount=spec.Gwei(self.rng.randrange(1, 1001)),
-                        builder_index=spec.BuilderIndex(0),
-                    ),
-                    proposer_index=spec.ValidatorIndex(self.rng.randrange(len(pre.validators))),
-                )
-        source_address = attributes["source_address"]
+        requests = spec.ExecutionRequests(builder_deposits=spec.BuilderDepositRequests.of(deposit))
+        process_execution_requests_after_empty_parent(spec, state, requests)
+        spec.process_slots(state, state.slot + 1)
+        return state
 
-        request = spec.BuilderExitRequest(
-            source_address=spec.ExecutionAddress(source_address),
-            pubkey=spec.BLSPubkey(builder_pubkey),
+    @cached_property
+    def _active_state(self) -> Any:
+        return finalize_genesis_builders(self.spec, self._genesis_state.copy())
+
+    @cached_property
+    def _exited_state(self) -> Any:
+        spec = self.spec
+        state = self._active_state.copy()
+        exit_builder_after_empty_parent(spec, state, spec.BuilderIndex(0))
+        spec.process_slots(state, state.slot + 1)
+        return state
+
+    def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
+        spec = self.spec
+        builder_index = spec.BuilderIndex(0)
+        if not sol.builder_pubkey_found or sol.builder_deposit_to_finalized_epoch == "EQ":
+            pre = self._unfinalized_state.copy()
+        elif sol.builder_deposit_to_finalized_epoch == "GT":
+            pre = self._recent_deposit_state.copy()
+            builder_index = spec.BuilderIndex(1)
+        elif sol.builder_withdrawable_epoch_set:
+            pre = self._exited_state.copy()
+        else:
+            pre = self._active_state.copy()
+
+        builder = pre.builders[builder_index]
+        pubkey = builder.pubkey
+        source_address = builder.execution_address
+        if not sol.builder_pubkey_found:
+            pubkey = spec.BLSPubkey(self.rng.choice(builder_pubkeys[2:]))
+        elif not sol.source_address_matches:
+            source_address = spec.ExecutionAddress(
+                bytes([source_address[0] ^ 1]) + bytes(source_address[1:])
+            )
+        request = spec.BuilderExitRequest(source_address=source_address, pubkey=pubkey)
+
+        if sol.builder_has_pending_payment is True:
+            # A missed payload leaves the earlier bid's payment pending.
+            process_payload_block_after_empty_parent(
+                spec,
+                pre,
+                spec.ExecutionRequests(),
+                builder_index=builder_index,
+                value=self.rng.randrange(1, 1001),
+            )
+            spec.process_slots(pre, pre.slot + 1)
+
+        requests = spec.ExecutionRequests(builder_exits=spec.BuilderExitRequests.of(request))
+        paid_parent = sol.builder_has_pending_withdrawal is True
+        process_payload_block_after_empty_parent(
+            spec,
+            pre,
+            requests,
+            builder_index=builder_index if paid_parent else None,
+            value=self.rng.randrange(1, 1001) if paid_parent else 0,
         )
+        payment_index = spec.SLOTS_PER_EPOCH + pre.slot % spec.SLOTS_PER_EPOCH
+        spec.process_slots(pre, pre.slot + 1)
+        # Parent payment settlement precedes exit requests in apply_parent_execution_payload.
+        spec.settle_builder_payment(pre, payment_index)
         post = pre.copy()
-        spec.process_builder_exit_request(post, request)  # never raises
+        spec.process_builder_exit_request(post, request)
 
         claimed = self.claimed_record(TARGET, sol)
         meta = {

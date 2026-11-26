@@ -78,6 +78,7 @@ COVERAGE = coverage_spec(
     aspects=ASPECTS,
     constraints=(
         active == choose(found, deposit & ~withdrawable, no=False),
+        implies(found & withdrawable, deposit),
         pending == choose(found, withdrawal | payment, no=False),
         # Retain the legacy materializer's scope: pending funds belong to an
         # active builder. This is a fixture constraint, not a protocol rule.
