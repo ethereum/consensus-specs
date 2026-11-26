@@ -5,8 +5,11 @@ import pytest
 import snappy
 
 from eth_consensus_specs.gloas import minimal as spec
+from eth_consensus_specs.test.helpers.attestations import next_epoch_with_attestations
 from eth_consensus_specs.test.helpers.block import apply_empty_block
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
+from eth_consensus_specs.test.helpers.specs import spec_targets
+from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
 from .invariant_scan import entry_condition_violations, main, state_invariant_violations
 
@@ -109,6 +112,87 @@ def test_pending_queues(state):
         "duplicate_consolidation_source",
         "queued_consolidation_without_exit",
     }
+
+
+def test_builder_exit_requires_finality_strictly_past_the_deposit(state):
+    state.slot = spec.compute_start_slot_at_epoch(spec.Epoch(8))
+    state.finalized_checkpoint.epoch = spec.Epoch(4)
+    state.current_justified_checkpoint.epoch = spec.Epoch(5)
+    builder = state.builders[0]
+    builder.deposit_epoch = spec.Epoch(4)
+    assert not list(state_invariant_violations(spec, state))
+
+    builder.withdrawable_epoch = spec.get_current_epoch(state) + (
+        spec.config.MIN_BUILDER_WITHDRAWABILITY_DELAY
+    )
+    assert list(state_invariant_violations(spec, state)) == [
+        "builder_exit_without_finalized_deposit"
+    ]
+    builder.deposit_epoch = spec.Epoch(3)
+    assert not list(state_invariant_violations(spec, state))
+
+
+def test_genesis_builder_withdrawal_requires_finality_after_genesis(state):
+    builder_index = spec.BuilderIndex(0)
+    with bls_enabled():
+        for _ in range(3):
+            _, _, state = next_epoch_with_attestations(
+                spec, state, fill_cur_epoch=True, fill_prev_epoch=False
+            )
+        assert not spec.is_active_builder(state, builder_index)
+        _, _, state = next_epoch_with_attestations(
+            spec, state, fill_cur_epoch=True, fill_prev_epoch=False
+        )
+
+    builder = state.builders[builder_index]
+    spec.process_builder_exit_request(
+        state,
+        spec.BuilderExitRequest(pubkey=builder.pubkey, source_address=builder.execution_address),
+    )
+    assert builder.withdrawable_epoch == (
+        spec.GENESIS_EPOCH + 4 + spec.config.MIN_BUILDER_WITHDRAWABILITY_DELAY
+    )
+    assert not list(state_invariant_violations(spec, state))
+
+    builder.withdrawable_epoch -= 1
+    assert list(state_invariant_violations(spec, state)) == ["builder_withdrawal_epoch_too_early"]
+
+
+@pytest.mark.parametrize("preset", ["minimal", "mainnet"])
+def test_builder_withdrawal_schedule_uses_the_preset_delay(preset):
+    preset_spec = spec_targets[preset]["gloas"]
+    balance = preset_spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+    state = create_genesis_state(preset_spec, [balance] * 64, balance, builder_count=1)
+    state.slot = preset_spec.compute_start_slot_at_epoch(preset_spec.Epoch(9))
+    state.fork.epoch = preset_spec.Epoch(7)
+    state.finalized_checkpoint.epoch = preset_spec.Epoch(6)
+    state.current_justified_checkpoint.epoch = preset_spec.Epoch(7)
+    builder = state.builders[0]
+    builder.deposit_epoch = preset_spec.Epoch(5)
+    delay = preset_spec.config.MIN_BUILDER_WITHDRAWABILITY_DELAY
+
+    # The encoded withdrawal epoch is smaller than the delay itself.
+    builder.withdrawable_epoch = delay - 1
+    assert list(state_invariant_violations(preset_spec, state)) == [
+        "builder_withdrawal_epoch_too_early"
+    ]
+    # Gloas is active at epoch 7, but finality cannot yet be past epoch 5.
+    builder.withdrawable_epoch = delay + 7
+    assert list(state_invariant_violations(preset_spec, state)) == [
+        "builder_withdrawal_epoch_too_early"
+    ]
+    for scheduled in (8, 9):
+        builder.withdrawable_epoch = delay + scheduled
+        assert not list(state_invariant_violations(preset_spec, state))
+    state.fork.epoch = preset_spec.Epoch(9)
+    builder.withdrawable_epoch = delay + 8
+    assert list(state_invariant_violations(preset_spec, state)) == [
+        "builder_withdrawal_epoch_too_early"
+    ]
+    builder.withdrawable_epoch = delay + 10
+    assert list(state_invariant_violations(preset_spec, state)) == [
+        "builder_withdrawal_epoch_too_late"
+    ]
 
 
 def test_cli_reports_all_cases_and_distinguishes_input_errors(tmp_path, state):

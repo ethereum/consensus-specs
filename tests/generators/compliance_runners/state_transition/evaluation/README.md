@@ -21,12 +21,19 @@ uv run python -m tests.generators.compliance_runners.state_transition.evaluation
 The scan reads each generated Gloas case's `pre.ssz_snappy`, including cases
 with rejected operations. It uses the case's preset and configuration. State
 invariants cover finality, validator lifecycle and balances, committee
-membership, and builder and withdrawal queues. Entry conditions depend on where
-the handler runs. For example, epoch processing starts at the last slot of the
-epoch, after slot processing has written the historical roots for that slot. The
-cached block root must match the hash tree root of the latest block header.
-Passing means the pre-state satisfied these necessary conditions. Proving
-reachability also requires a history of valid transitions.
+membership, and builder and withdrawal queues. A finite builder withdrawal epoch
+requires a finalized checkpoint strictly after the deposit. Subtracting the
+configured delay gives the epoch of the exit or post-exit top-up. That epoch
+must be at least three epochs after the deposit, at or after the Gloas fork, and
+within the range from `GENESIS_EPOCH + 4` through the current epoch. The genesis
+bound reflects when blocks can first see a finalized checkpoint after genesis.
+
+Entry conditions depend on where the handler runs. For example, epoch processing
+starts at the last slot of the epoch, after slot processing has written the
+historical roots for that slot. The cached block root must match the hash tree
+root of the latest block header. Passing means the pre-state satisfied these
+necessary conditions. Proving reachability also requires a history of valid
+transitions.
 
 Use `--provider withdrawal_processing` or `--preset minimal` to narrow the scan.
 The summary gives counts and the first example path for each violation per

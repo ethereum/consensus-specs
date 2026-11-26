@@ -71,6 +71,24 @@ def state_invariant_violations(spec, state):
 
     if any(builder.deposit_epoch > epoch for builder in state.builders):
         yield "future_builder_deposit"
+    # Exit and post-exit top-up both schedule withdrawal at the current epoch
+    # plus the configured delay. Use ints so an early withdrawal cannot underflow.
+    delay = int(spec.config.MIN_BUILDER_WITHDRAWABILITY_DELAY)
+    schedules = [
+        (int(builder.deposit_epoch), int(builder.withdrawable_epoch) - delay)
+        for builder in state.builders
+        if builder.withdrawable_epoch != spec.FAR_FUTURE_EPOCH
+    ]
+    finalized_epoch = int(state.finalized_checkpoint.epoch)
+    if any(deposit >= finalized_epoch for deposit, _ in schedules):
+        yield "builder_exit_without_finalized_deposit"
+    # Blocks first see non-genesis finality in epoch GENESIS_EPOCH + 4.
+    # At block entry, finality then trails the current epoch by at least two.
+    earliest_exit_epoch = max(int(state.fork.epoch), int(spec.GENESIS_EPOCH) + 4)
+    if any(scheduled < max(earliest_exit_epoch, deposit + 3) for deposit, scheduled in schedules):
+        yield "builder_withdrawal_epoch_too_early"
+    if any(scheduled > int(epoch) for _, scheduled in schedules):
+        yield "builder_withdrawal_epoch_too_late"
     payments = state.builder_pending_payments
     if any(p.weight and not p.withdrawal.amount for p in payments):
         yield "positive_weight_without_bid"
