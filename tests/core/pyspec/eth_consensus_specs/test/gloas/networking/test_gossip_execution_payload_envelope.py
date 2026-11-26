@@ -36,6 +36,8 @@ def setup_store_with_block(spec, state, execution_requests=None, update_envelope
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     signed_anchor = wrap_genesis_block(spec, anchor_block)
     block = build_empty_block_for_next_slot(spec, state)
+    bid = block.body.signed_execution_payload_bid.message
+    bid.gas_limit = state.latest_execution_payload_bid.gas_limit
     if execution_requests is not None:
         block.body.signed_execution_payload_bid.message.execution_requests_root = (
             execution_requests.hash_tree_root()
@@ -710,31 +712,38 @@ def _assert_envelope_transactions(spec, state, extra, expected, reason=None):
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload"
 
-    store, blocks, signed_block, block_root = setup_store_with_block(spec, state)
+    count = state.latest_execution_payload_bid.gas_limit // spec.config.MIN_TRANSACTION_GAS + extra
+    transaction = spec.Transaction(data=[0x99])
+    transactions = spec.Transactions(data=[transaction] * count)
+
+    def update_envelope(envelope):
+        envelope.payload.transactions = transactions
+
+    store, blocks, signed_envelope = setup_store_with_block(
+        spec, state, update_envelope=update_envelope
+    )
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     yield "blocks", "meta", [{"block": get_filename(b)} for b in blocks]
 
-    bid = signed_block.message.body.signed_execution_payload_bid.message
-    count = bid.gas_limit // spec.config.MIN_TRANSACTION_GAS + extra
-    yield from _validate_envelope_with_transactions(
-        spec, state, store, signed_block, block_root, count, expected, reason
-    )
+    yield from _validate_envelope_with_transactions(spec, store, signed_envelope, expected, reason)
 
 
-def setup_store_with_parent_payload(spec, state, parent_gas_limit, gas_limit, withheld_parent):
+def setup_store_with_parent_payload(
+    spec, state, parent_gas_limit, gas_limit, withheld_parent, extra
+):
     """Apply a block whose payload of ``parent_gas_limit`` is revealed to the genesis store,
     then the block under test, whose bid builds on that payload and commits to ``gas_limit``.
     With ``withheld_parent``, a block that builds on the payload but withholds its own sits
-    in between. Returns store, blocks, parent payload envelope, signed_block, block_root."""
+    in between. Returns store, blocks, parent payload envelope, signed envelope."""
     store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
     blocks = [wrap_genesis_block(spec, anchor_block)]
 
-    parent_block_hash = spec.Hash32(b"\x01" * 32)
     parent = build_empty_block_for_next_slot(spec, state)
     parent.body.signed_execution_payload_bid.message.gas_limit = parent_gas_limit
-    parent.body.signed_execution_payload_bid.message.block_hash = parent_block_hash
+    commit_bid_to_execution_payload(spec, state, parent)
+    parent_block_hash = parent.body.signed_execution_payload_bid.message.block_hash
     signed_parent = state_transition_and_sign_block(spec, state, parent)
     record_block_in_store(spec, store, signed_parent, state.copy())
     blocks.append(signed_parent)
@@ -751,12 +760,22 @@ def setup_store_with_parent_payload(spec, state, parent_gas_limit, gas_limit, wi
 
     block = build_empty_block_for_next_slot(spec, state)
     block.body.signed_execution_payload_bid.message.parent_block_hash = parent_block_hash
-    block.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(b"\x03" * 32)
     block.body.signed_execution_payload_bid.message.gas_limit = gas_limit
+    max_gas_limit = spec.get_max_payload_gas_limit(store, block)
+    count = max_gas_limit // spec.config.MIN_TRANSACTION_GAS + extra
+    transaction = spec.Transaction(data=[0x99])
+    transactions = spec.Transactions(data=[transaction] * count)
+
+    def update_envelope(envelope):
+        envelope.payload.transactions = transactions
+
+    envelope = commit_bid_to_execution_payload(spec, state, block, update_envelope=update_envelope)
     signed_block = state_transition_and_sign_block(spec, state, block)
     block_root = record_block_in_store(spec, store, signed_block, state.copy())
     blocks.append(signed_block)
-    return store, blocks, parent_payload, signed_block, block_root
+    envelope.beacon_block_root = block_root
+    signed_envelope = sign_execution_payload_envelope(spec, state, signed_block, envelope)
+    return store, blocks, parent_payload, signed_envelope
 
 
 def _assert_envelope_transactions_with_parent(
@@ -769,9 +788,11 @@ def _assert_envelope_transactions_with_parent(
     yield "topic", "meta", "execution_payload"
 
     parent_gas_limit = spec.Uint64(30_000_000)
-    store, blocks, parent_payload, signed_block, block_root = setup_store_with_parent_payload(
-        spec, state, parent_gas_limit, parent_gas_limit * 2, withheld_parent
+    store, blocks, parent_payload, signed_envelope = setup_store_with_parent_payload(
+        spec, state, parent_gas_limit, parent_gas_limit * 2, withheld_parent, extra
     )
+    count = len(signed_envelope.message.payload.transactions)
+    assert count == 30_029_295 // spec.config.MIN_TRANSACTION_GAS + extra
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
@@ -780,26 +801,12 @@ def _assert_envelope_transactions_with_parent(
     blocks_meta[1]["payload"] = get_filename(parent_payload)
     yield "blocks", "meta", blocks_meta
 
-    max_gas_limit = parent_gas_limit + parent_gas_limit // 1024 - 1
-    count = max_gas_limit // spec.config.MIN_TRANSACTION_GAS + extra
-    yield from _validate_envelope_with_transactions(
-        spec, state, store, signed_block, block_root, count, expected, reason
-    )
+    yield from _validate_envelope_with_transactions(spec, store, signed_envelope, expected, reason)
 
 
-def _validate_envelope_with_transactions(
-    spec, state, store, signed_block, block_root, count, expected, reason
-):
-    """Validate an envelope for ``signed_block`` whose payload carries ``count`` transactions
-    and assert it returns ``expected``."""
+def _validate_envelope_with_transactions(spec, store, signed_envelope, expected, reason):
+    """Validate the signed envelope and assert the expected outcome."""
     seen = get_seen(spec)
-    signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
-    # Set the payload's transactions, then re-sign so the transaction count is the only
-    # check under test. Transactions are non-empty, as empty ones are rejected.
-    envelope = signed_envelope.message
-    transaction = spec.Transaction(data=list(b"\x99"))
-    envelope.payload.transactions = spec.Transactions(data=[transaction] * count)
-    signed_envelope = sign_execution_payload_envelope(spec, state, signed_block, envelope)
     yield get_filename(signed_envelope), signed_envelope
 
     messages = []
