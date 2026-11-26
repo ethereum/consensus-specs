@@ -107,6 +107,9 @@
     - [New `get_active_builder_preregistration`](#new-get_active_builder_preregistration)
   - [Beacon state mutators](#beacon-state-mutators)
     - [Modified `queue_excess_active_balance`](#modified-queue_excess_active_balance)
+    - [Modified `initiate_validator_exit`](#modified-initiate_validator_exit)
+    - [Modified `initiate_validator_consolidation`](#modified-initiate_validator_consolidation)
+    - [Modified `initiate_builder_exit`](#modified-initiate_builder_exit)
     - [New `remove_validator_preregistration`](#new-remove_validator_preregistration)
     - [New `remove_builder_preregistration`](#new-remove_builder_preregistration)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
@@ -154,6 +157,7 @@
         - [New `process_voluntary_exit_request`](#new-process_voluntary_exit_request)
     - [Parent execution payload](#parent-execution-payload)
       - [Modified `apply_parent_execution_payload`](#modified-apply_parent_execution_payload)
+      - [Modified `process_parent_execution_payload`](#modified-process_parent_execution_payload)
 
 <!-- mdformat-toc end -->
 
@@ -1565,6 +1569,71 @@ def queue_excess_active_balance(state: BeaconState, index: ValidatorIndex) -> No
         )
 ```
 
+#### Modified `initiate_validator_exit`
+
+*Note*: PQ removes the PQ registrations from the state, so an exit no longer
+removes one.
+
+```python
+def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
+    """
+    Initiate the exit of the validator with index ``index``.
+    """
+    # Return if validator already initiated exit
+    validator = state.validators[index]
+    if validator.exit_epoch != FAR_FUTURE_EPOCH:
+        return
+
+    # Compute exit queue epoch
+    exit_queue_epoch = compute_exit_epoch_and_update_churn(state, validator.effective_balance)
+
+    # Set validator exit epoch and withdrawable epoch
+    validator.exit_epoch = exit_queue_epoch
+    validator.withdrawable_epoch = validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+```
+
+#### Modified `initiate_validator_consolidation`
+
+*Note*: PQ removes the PQ registrations from the state, so a consolidation no
+longer removes one.
+
+```python
+def initiate_validator_consolidation(
+    state: BeaconState,
+    source_index: ValidatorIndex,
+    target_index: ValidatorIndex,
+) -> None:
+    """
+    Initiate the consolidation of the validator with index ``source_index`` into
+    the validator with index ``target_index``.
+    """
+    source_validator = state.validators[source_index]
+    source_validator.exit_epoch = compute_consolidation_epoch_and_update_churn(
+        state, source_validator.effective_balance
+    )
+    source_validator.withdrawable_epoch = (
+        source_validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+    )
+    state.pending_consolidations.append(
+        PendingConsolidation(source_index=source_index, target_index=target_index)
+    )
+```
+
+#### Modified `initiate_builder_exit`
+
+*Note*: PQ removes the PQ registrations from the state, so an exit no longer
+removes one.
+
+```python
+def initiate_builder_exit(state: BeaconState, builder_index: BuilderIndex) -> None:
+    """
+    Initiate the exit of the builder with index ``index``.
+    """
+    # Set builder exit epoch
+    builder = state.builders[builder_index]
+    builder.withdrawable_epoch = get_current_epoch(state) + MIN_BUILDER_WITHDRAWABILITY_DELAY
+```
+
 #### New `remove_validator_preregistration`
 
 *Note*: Removal preserves the order of the remaining records, which the state
@@ -2718,4 +2787,26 @@ def apply_parent_execution_payload(
     # Update parent payload availability and latest block hash
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
     state.latest_block_hash = parent_bid.block_hash
+```
+
+##### Modified `process_parent_execution_payload`
+
+*Note*: PQ's `ExecutionRequests` has no PQ registration request lists, so every
+full parent's execution requests are verified against the PQ type.
+
+```python
+def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> None:
+    bid = block.body.signed_execution_payload_bid.message
+    parent_bid = state.latest_execution_payload_bid
+    requests = block.body.parent_execution_requests
+
+    if bid.parent_block_hash != parent_bid.block_hash:
+        # Parent was EMPTY -- no execution requests expected
+        assert requests == ExecutionRequests.empty()
+        return
+
+    # [Modified in PQ]
+    # Parent was FULL -- verify the bid commitment and apply the payload
+    assert hash_tree_root(requests) == parent_bid.execution_requests_root
+    apply_parent_execution_payload(state, requests)
 ```

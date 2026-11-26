@@ -3,9 +3,9 @@ from eth_consensus_specs.test.helpers.constants import EIP8483
 from eth_consensus_specs.test.helpers.keys import pubkeys
 
 
-def set_execution_withdrawal_address(spec, state, validator_index, address):
+def set_compounding_withdrawal_address(spec, state, validator_index, address):
     state.validators[validator_index].withdrawal_credentials = (
-        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + address
+        spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + address
     )
 
 
@@ -48,7 +48,7 @@ def run_validator_pq_registration_request_processing(spec, state, request, valid
 @with_phases([EIP8483])
 @spec_state_test
 def test_process_validator_pq_registration_request__success(spec, state):
-    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    set_compounding_withdrawal_address(spec, state, 0, b"\x11" * 20)
     request = prepare_validator_pq_registration_request(spec, state, 0, b"\x22" * 64)
 
     yield from run_validator_pq_registration_request_processing(spec, state, request)
@@ -60,22 +60,8 @@ def test_process_validator_pq_registration_request__success(spec, state):
 
 @with_phases([EIP8483])
 @spec_state_test
-def test_process_validator_pq_registration_request__compounding_credentials(spec, state):
-    state.validators[0].withdrawal_credentials = (
-        spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
-    )
-    request = prepare_validator_pq_registration_request(spec, state, 0, b"\x22" * 64)
-
-    yield from run_validator_pq_registration_request_processing(spec, state, request)
-
-    assert len(state.validator_pq_registrations) == 1
-    assert state.validator_pq_registrations[0].validator_index == 0
-
-
-@with_phases([EIP8483])
-@spec_state_test
 def test_process_validator_pq_registration_request__overwrites_registration(spec, state):
-    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    set_compounding_withdrawal_address(spec, state, 0, b"\x11" * 20)
     spec.process_validator_pq_registration_request(
         state, prepare_validator_pq_registration_request(spec, state, 0, b"\x22" * 64)
     )
@@ -90,8 +76,8 @@ def test_process_validator_pq_registration_request__overwrites_registration(spec
 @with_phases([EIP8483])
 @spec_state_test
 def test_process_validator_pq_registration_request__registrations_for_two_validators(spec, state):
-    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
-    set_execution_withdrawal_address(spec, state, 1, b"\x11" * 20)
+    set_compounding_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    set_compounding_withdrawal_address(spec, state, 1, b"\x11" * 20)
     spec.process_validator_pq_registration_request(
         state, prepare_validator_pq_registration_request(spec, state, 1, b"\x22" * 64)
     )
@@ -108,13 +94,21 @@ def test_process_validator_pq_registration_request__registrations_for_two_valida
 @with_phases([EIP8483])
 @spec_state_test
 def test_process_validator_pq_registration_request__exited_validator(spec, state):
-    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    set_compounding_withdrawal_address(spec, state, 0, b"\x11" * 20)
     spec.initiate_validator_exit(state, 0)
     request = prepare_validator_pq_registration_request(spec, state, 0, b"\x22" * 64)
 
-    yield from run_validator_pq_registration_request_processing(spec, state, request)
+    yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
 
-    assert len(state.validator_pq_registrations) == 1
+
+@with_phases([EIP8483])
+@spec_state_test
+def test_process_validator_pq_registration_request__slashed_validator(spec, state):
+    set_compounding_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    spec.slash_validator(state, 0)
+    request = prepare_validator_pq_registration_request(spec, state, 0, b"\x22" * 64)
+
+    yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
 
 
 @with_phases([EIP8483])
@@ -159,8 +153,19 @@ def test_process_validator_pq_registration_request__bls_credentials_matching_sou
 
 @with_phases([EIP8483])
 @spec_state_test
+def test_process_validator_pq_registration_request__eth1_withdrawal_credentials(spec, state):
+    state.validators[0].withdrawal_credentials = (
+        spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX + b"\x00" * 11 + b"\x11" * 20
+    )
+    request = prepare_validator_pq_registration_request(spec, state, 0, b"\x22" * 64)
+
+    yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
+
+
+@with_phases([EIP8483])
+@spec_state_test
 def test_process_validator_pq_registration_request__wrong_source_address(spec, state):
-    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    set_compounding_withdrawal_address(spec, state, 0, b"\x11" * 20)
     request = prepare_validator_pq_registration_request(
         spec, state, 0, b"\x22" * 64, source_address=b"\x44" * 20
     )
@@ -171,8 +176,8 @@ def test_process_validator_pq_registration_request__wrong_source_address(spec, s
 @with_phases([EIP8483])
 @spec_state_test
 def test_process_validator_pq_registration_request__pq_data_already_registered(spec, state):
-    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
-    set_execution_withdrawal_address(spec, state, 1, b"\x44" * 20)
+    set_compounding_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    set_compounding_withdrawal_address(spec, state, 1, b"\x44" * 20)
     spec.process_validator_pq_registration_request(
         state, prepare_validator_pq_registration_request(spec, state, 0, b"\x22" * 64)
     )
@@ -184,7 +189,7 @@ def test_process_validator_pq_registration_request__pq_data_already_registered(s
 @with_phases([EIP8483])
 @spec_state_test
 def test_process_validator_pq_registration_request__resubmitted_registration(spec, state):
-    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    set_compounding_withdrawal_address(spec, state, 0, b"\x11" * 20)
     spec.process_validator_pq_registration_request(
         state, prepare_validator_pq_registration_request(spec, state, 0, b"\x22" * 64)
     )
@@ -198,8 +203,8 @@ def test_process_validator_pq_registration_request__resubmitted_registration(spe
 def test_process_validator_pq_registration_request__overwritten_pq_data_can_be_registered(
     spec, state
 ):
-    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
-    set_execution_withdrawal_address(spec, state, 1, b"\x44" * 20)
+    set_compounding_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    set_compounding_withdrawal_address(spec, state, 1, b"\x44" * 20)
     spec.process_validator_pq_registration_request(
         state, prepare_validator_pq_registration_request(spec, state, 0, b"\x22" * 64)
     )
@@ -222,8 +227,8 @@ def test_process_validator_pq_registration_request__overwritten_pq_data_can_be_r
 @with_phases([EIP8483])
 @spec_state_test
 def test_process_validator_pq_registration_request__first_part_already_registered(spec, state):
-    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
-    set_execution_withdrawal_address(spec, state, 1, b"\x44" * 20)
+    set_compounding_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    set_compounding_withdrawal_address(spec, state, 1, b"\x44" * 20)
     spec.process_validator_pq_registration_request(
         state, prepare_validator_pq_registration_request(spec, state, 0, b"\x22" * 64)
     )
@@ -236,8 +241,8 @@ def test_process_validator_pq_registration_request__first_part_already_registere
 @with_phases([EIP8483])
 @spec_state_test
 def test_process_validator_pq_registration_request__second_part_already_registered(spec, state):
-    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
-    set_execution_withdrawal_address(spec, state, 1, b"\x44" * 20)
+    set_compounding_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    set_compounding_withdrawal_address(spec, state, 1, b"\x44" * 20)
     spec.process_validator_pq_registration_request(
         state,
         prepare_validator_pq_registration_request(spec, state, 0, b"\x22" * 32 + b"\x55" * 32),
@@ -245,7 +250,15 @@ def test_process_validator_pq_registration_request__second_part_already_register
     # Different first part, same second part
     request = prepare_validator_pq_registration_request(spec, state, 1, b"\x33" * 32 + b"\x55" * 32)
 
-    yield from run_validator_pq_registration_request_processing(spec, state, request, valid=False)
+    yield from run_validator_pq_registration_request_processing(spec, state, request)
+
+    assert [
+        (registration.validator_index, registration.pq_data)
+        for registration in state.validator_pq_registrations
+    ] == [
+        (0, b"\x22" * 32 + b"\x55" * 32),
+        (1, b"\x33" * 32 + b"\x55" * 32),
+    ]
 
 
 @with_phases([EIP8483])
@@ -265,7 +278,7 @@ def test_process_validator_pq_registration_request__builder_pubkey(spec, state):
 @with_phases([EIP8483])
 @spec_state_test
 def test_process_validator_pq_registration_request__pq_data_registered_by_builder(spec, state):
-    set_execution_withdrawal_address(spec, state, 0, b"\x11" * 20)
+    set_compounding_withdrawal_address(spec, state, 0, b"\x11" * 20)
     state.builder_pq_registrations.append(
         spec.BuilderPQRegistration(builder_pubkey=state.builders[0].pubkey, pq_data=b"\x22" * 32)
     )

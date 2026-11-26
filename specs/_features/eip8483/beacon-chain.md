@@ -23,6 +23,13 @@
     - [`ValidatorPQRegistration`](#validatorpqregistration)
     - [`BuilderPQRegistrationRequest`](#builderpqregistrationrequest)
     - [`BuilderPQRegistration`](#builderpqregistration)
+- [Helpers](#helpers)
+  - [Beacon state mutators](#beacon-state-mutators)
+    - [New `remove_validator_pq_registration`](#new-remove_validator_pq_registration)
+    - [New `remove_builder_pq_registration`](#new-remove_builder_pq_registration)
+    - [Modified `initiate_validator_exit`](#modified-initiate_validator_exit)
+    - [Modified `initiate_validator_consolidation`](#modified-initiate_validator_consolidation)
+    - [Modified `initiate_builder_exit`](#modified-initiate_builder_exit)
 - [Beacon chain state transition function](#beacon-chain-state-transition-function)
   - [Block processing](#block-processing)
     - [Execution payload](#execution-payload)
@@ -32,6 +39,7 @@
       - [New `process_builder_pq_registration_request`](#new-process_builder_pq_registration_request)
     - [Parent execution payload](#parent-execution-payload)
       - [Modified `apply_parent_execution_payload`](#modified-apply_parent_execution_payload)
+      - [Modified `process_parent_execution_payload`](#modified-process_parent_execution_payload)
 
 <!-- mdformat-toc end -->
 
@@ -42,14 +50,23 @@ EIP-8483, with which validators and builders register opaque post-quantum (PQ)
 material. A validator registers 64 bytes, enough for a new public key and a
 RANDAO commitment. A builder registers only 32 bytes, enough for a new public
 key, since builders do not contribute to RANDAO. This specification gives the
-material no meaning beyond requiring each 32-byte part to be unique. A later
+material no meaning beyond requiring its first 32 bytes to be unique. A later
 fork that migrates to post-quantum signatures will define how it is used.
+
+The first 32 bytes of the PQ data are intended for a PQ public key. Before
+accepting a request, the predeploy contract checks a proof of possession over
+them. Because these bytes must be unique, this prevents someone from
+front-running a request by registering the same public key first, which would
+prevent that request from being accepted.
 
 The beacon state stores one `(validator_index, pq_data)` entry per validator and
 one `(builder_pubkey, pq_data)` entry per builder. Builder entries are keyed by
 public key rather than index, because a builder index is reused once its builder
 has withdrawn. A later request for the same validator or builder overwrites the
-earlier one.
+earlier one. An entry is removed when its validator or builder initiates an
+exit, after which that validator or builder cannot register again. These state
+fields are temporary and will be removed after the migration to post-quantum
+signatures.
 
 *Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md).
 
@@ -230,6 +247,99 @@ class BuilderPQRegistration(Container):
     pq_data: Bytes32
 ```
 
+## Helpers
+
+### Beacon state mutators
+
+#### New `remove_validator_pq_registration`
+
+```python
+def remove_validator_pq_registration(state: BeaconState, validator_index: ValidatorIndex) -> None:
+    state.validator_pq_registrations = ValidatorPQRegistrations(
+        data=[
+            registration
+            for registration in state.validator_pq_registrations
+            if registration.validator_index != validator_index
+        ]
+    )
+```
+
+#### New `remove_builder_pq_registration`
+
+```python
+def remove_builder_pq_registration(state: BeaconState, builder_pubkey: BLSPubkey) -> None:
+    state.builder_pq_registrations = BuilderPQRegistrations(
+        data=[
+            registration
+            for registration in state.builder_pq_registrations
+            if registration.builder_pubkey != builder_pubkey
+        ]
+    )
+```
+
+#### Modified `initiate_validator_exit`
+
+```python
+def initiate_validator_exit(state: BeaconState, index: ValidatorIndex) -> None:
+    """
+    Initiate the exit of the validator with index ``index``.
+    """
+    # Return if validator already initiated exit
+    validator = state.validators[index]
+    if validator.exit_epoch != FAR_FUTURE_EPOCH:
+        return
+
+    # Compute exit queue epoch
+    exit_queue_epoch = compute_exit_epoch_and_update_churn(state, validator.effective_balance)
+
+    # Set validator exit epoch and withdrawable epoch
+    validator.exit_epoch = exit_queue_epoch
+    validator.withdrawable_epoch = validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+
+    # [New in EIP8483]
+    remove_validator_pq_registration(state, index)
+```
+
+#### Modified `initiate_validator_consolidation`
+
+```python
+def initiate_validator_consolidation(
+    state: BeaconState, source_index: ValidatorIndex, target_index: ValidatorIndex
+) -> None:
+    """
+    Initiate the consolidation of the validator with index ``source_index`` into
+    the validator with index ``target_index``.
+    """
+    source_validator = state.validators[source_index]
+    source_validator.exit_epoch = compute_consolidation_epoch_and_update_churn(
+        state, source_validator.effective_balance
+    )
+    source_validator.withdrawable_epoch = (
+        source_validator.exit_epoch + MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+    )
+    state.pending_consolidations.append(
+        PendingConsolidation(source_index=source_index, target_index=target_index)
+    )
+
+    # [New in EIP8483]
+    remove_validator_pq_registration(state, source_index)
+```
+
+#### Modified `initiate_builder_exit`
+
+```python
+def initiate_builder_exit(state: BeaconState, builder_index: BuilderIndex) -> None:
+    """
+    Initiate the exit of the builder with index ``index``.
+    """
+    # Set builder exit epoch
+    builder = state.builders[builder_index]
+    builder.withdrawable_epoch = get_current_epoch(state) + MIN_BUILDER_WITHDRAWABILITY_DELAY
+
+    # [New in EIP8483]
+    remove_builder_pq_registration(state, builder.pubkey)
+```
+
 ## Beacon chain state transition function
 
 ### Block processing
@@ -263,12 +373,11 @@ def get_execution_requests_list(execution_requests: ExecutionRequests) -> Sequen
 
 ##### New `process_validator_pq_registration_request`
 
-*Note*: Invalid requests are ignored. No status is checked, so pending, active,
-exited, and slashed validators can all register PQ material, as long as the
-request comes from their withdrawal address and neither the first nor the last
-32 bytes of its PQ data are already registered. A validator that registers again
-must change both, because each is checked against every registration, including
-its own.
+*Note*: Invalid requests are ignored. Validators with `0x00` or `0x01`
+withdrawal credentials cannot register, and must switch to `0x02` credentials
+before registering. Pending and active validators can register PQ material, as
+long as the request comes from their withdrawal address and the first 32 bytes
+of its PQ data are not already registered. Exited validators cannot register.
 
 ```python
 def process_validator_pq_registration_request(
@@ -280,19 +389,21 @@ def process_validator_pq_registration_request(
     validator_index = ValidatorIndex(validator_pubkeys.index(request.validator_pubkey))
     validator = state.validators[validator_index]
 
-    # Verify the validator has execution withdrawal credentials
-    if not has_execution_withdrawal_credential(validator):
+    # Verify the validator has not initiated an exit
+    if validator.exit_epoch != FAR_FUTURE_EPOCH:
+        return
+
+    # Verify the validator has compounding withdrawal credentials
+    if not has_compounding_withdrawal_credential(validator):
         return
 
     # Verify the request comes from the validator's withdrawal address
     if validator.withdrawal_credentials[12:] != request.source_address:
         return
 
-    # Verify the PQ data is not already registered
+    # Verify the first 32 bytes of the PQ data are not already registered
     for registration in state.validator_pq_registrations:
         if registration.pq_data[:32] == request.pq_data[:32]:
-            return
-        if registration.pq_data[32:] == request.pq_data[32:]:
             return
 
     # Overwrite an existing registration for this validator
@@ -311,9 +422,9 @@ def process_validator_pq_registration_request(
 
 ##### New `process_builder_pq_registration_request`
 
-*Note*: Invalid requests are ignored. No status is checked, so active and exited
-builders can both register PQ material, as long as the request comes from their
-execution address and its PQ data is not already registered.
+*Note*: Invalid requests are ignored. Pending and active builders can register
+PQ material, as long as the request comes from their execution address and its
+PQ data is not already registered. Exited builders cannot register.
 
 ```python
 def process_builder_pq_registration_request(
@@ -324,6 +435,10 @@ def process_builder_pq_registration_request(
         return
     builder_index = BuilderIndex(builder_pubkeys.index(request.builder_pubkey))
     builder = state.builders[builder_index]
+
+    # Verify the builder has not initiated an exit
+    if builder.withdrawable_epoch != FAR_FUTURE_EPOCH:
+        return
 
     # Verify the request comes from the builder's execution address
     if builder.execution_address != request.source_address:
@@ -418,4 +533,45 @@ def apply_parent_execution_payload(
     # Update parent payload availability and latest block hash
     state.execution_payload_availability[parent_slot % SLOTS_PER_HISTORICAL_ROOT] = Boolean(True)
     state.latest_block_hash = parent_bid.block_hash
+```
+
+##### Modified `process_parent_execution_payload`
+
+*Note*: The first block after the fork may build on a full parent from before
+the fork, whose bid commits to the Gloas `ExecutionRequests` type. Its execution
+requests are verified against that type and cannot include PQ registration
+requests.
+
+```python
+def process_parent_execution_payload(state: BeaconState, block: BeaconBlock) -> None:
+    bid = block.body.signed_execution_payload_bid.message
+    parent_bid = state.latest_execution_payload_bid
+    requests = block.body.parent_execution_requests
+
+    if bid.parent_block_hash != parent_bid.block_hash:
+        # Parent was EMPTY -- no execution requests expected
+        assert requests == ExecutionRequests.empty()
+        return
+
+    # [New in EIP8483]
+    if compute_epoch_at_slot(parent_bid.slot) < EIP8483_FORK_EPOCH:
+        # Parent was FULL before the fork -- its bid commits to the Gloas type
+        assert len(requests.validator_pq_registrations) == 0
+        assert len(requests.builder_pq_registrations) == 0
+        requests_root = hash_tree_root(
+            gloas.ExecutionRequests(
+                deposits=requests.deposits,
+                withdrawals=requests.withdrawals,
+                consolidations=requests.consolidations,
+                builder_deposits=requests.builder_deposits,
+                builder_exits=requests.builder_exits,
+            )
+        )
+    else:
+        requests_root = hash_tree_root(requests)
+
+    # [Modified in EIP8483]
+    # Parent was FULL -- verify the bid commitment and apply the payload
+    assert requests_root == parent_bid.execution_requests_root
+    apply_parent_execution_payload(state, requests)
 ```

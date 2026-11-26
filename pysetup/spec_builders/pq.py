@@ -156,6 +156,8 @@ from eth_consensus_specs.utils.ssz.bytes import Bytes16
             "process_sync_committee_updates",
             "process_validator_pq_registration_request",
             "process_voluntary_exit",
+            "remove_builder_pq_registration",
+            "remove_validator_pq_registration",
             "upgrade_attestation_to_gloas",
             "upgrade_attester_slashing_to_gloas",
             "upgrade_indexed_attestation_to_gloas",

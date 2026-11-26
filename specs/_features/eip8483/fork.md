@@ -35,9 +35,9 @@ that sets `state.slot` equal to `EIP8483_FORK_EPOCH * SLOTS_PER_EPOCH`.
 *Note*: `latest_execution_payload_bid` is copied unchanged. Its
 `execution_requests_root` may commit to the pre-fork `ExecutionRequests` type,
 whose root differs from the extended type even for identical content. The
-upgrade cannot recompute it because the state stores only the commitment. The
-coordinated upgrade that activates this feature must define how the first
-post-fork block validates a full pre-fork parent.
+upgrade cannot recompute it because the state stores only the commitment.
+Instead, `process_parent_execution_payload` verifies the execution requests of a
+full pre-fork parent against `gloas.ExecutionRequests`.
 
 ```python
 def upgrade_to_eip8483(pre: gloas.BeaconState) -> BeaconState:

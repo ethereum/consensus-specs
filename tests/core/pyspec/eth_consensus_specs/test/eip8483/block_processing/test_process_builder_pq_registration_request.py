@@ -141,3 +141,12 @@ def test_process_builder_pq_registration_request__builder_shares_validator_pubke
     assert len(state.validator_pq_registrations) == 1
     assert len(state.builder_pq_registrations) == 1
     assert state.builder_pq_registrations[0].builder_pubkey == state.validators[0].pubkey
+
+
+@with_phases([EIP8483])
+@spec_state_test
+def test_process_builder_pq_registration_request__exited_builder(spec, state):
+    spec.initiate_builder_exit(state, 0)
+    request = prepare_builder_pq_registration_request(spec, state, 0, b"\x22" * 32)
+
+    yield from run_builder_pq_registration_request_processing(spec, state, request, valid=False)

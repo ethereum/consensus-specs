@@ -8,6 +8,7 @@
 - [Beacon chain responsibilities](#beacon-chain-responsibilities)
   - [Block and sidecar proposal](#block-and-sidecar-proposal)
     - [Constructing the `BeaconBlockBody`](#constructing-the-beaconblockbody)
+      - [Parent execution requests](#parent-execution-requests)
       - [Execution requests](#execution-requests)
 
 <!-- mdformat-toc end -->
@@ -24,6 +25,15 @@ All validator responsibilities remain unchanged other than those noted below.
 ### Block and sidecar proposal
 
 #### Constructing the `BeaconBlockBody`
+
+##### Parent execution requests
+
+*Note*: When building on a full parent from before the fork,
+`store.payloads[head.root].execution_requests` has the Gloas `ExecutionRequests`
+type. The proposer converts it to the new type by copying its fields and leaving
+the PQ registration request lists empty, both for `parent_execution_requests`
+and for the call to `apply_parent_execution_payload` in
+`prepare_execution_payload`.
 
 ##### Execution requests
 
