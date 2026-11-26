@@ -91,12 +91,24 @@ def test_validate_on_attestation_payload_invalid_index(spec, state):
     """
     Test that an attestation with an invalid index is rejected.
     """
-    store, _, block_state, _, test_steps = yield from setup_one_block_store(spec, state)
-    tick_store_to_slot(spec, store, block_state.slot + 1, test_steps)
+    store, block_root, block_state, _, test_steps = yield from setup_one_block_store(spec, state)
+
+    # Vote at slot 2 for the block at slot 1. A vote at the block's own slot
+    # would be rejected for its non-zero index instead.
+    state_at_2 = block_state.copy()
+    transition_to(spec, state_at_2, spec.Slot(2))
 
     # Get attestation with an invalid index.
-    att = get_valid_attestation(spec, block_state, payload_index=2, signed=True)
+    att = get_valid_attestation(
+        spec,
+        state_at_2,
+        slot=spec.Slot(2),
+        payload_index=2,
+        beacon_block_root=block_root,
+        signed=True,
+    )
 
+    tick_store_to_slot(spec, store, att.data.slot + 1, test_steps)
     yield from add_attestation(spec, store, att, test_steps, valid=False)
     yield "steps", test_steps
 
