@@ -15,7 +15,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_fulu,
     is_post_gloas,
 )
-from eth_consensus_specs.test.helpers.keys import builder_privkeys
+from eth_consensus_specs.test.helpers.keys import get_builder_privkey
 from eth_consensus_specs.test.helpers.signatures import (
     get_execution_payload_bid_signature,
     get_placeholder_signature,
@@ -140,7 +140,9 @@ def add_blobs_to_block(spec, state, block, rng: Random | None = None, blob_count
                 spec,
                 state,
                 block.body.signed_execution_payload_bid.message,
-                builder_privkeys[block.body.signed_execution_payload_bid.message.builder_index],
+                get_builder_privkey(
+                    spec, block.body.signed_execution_payload_bid.message.builder_index
+                ),
             )
     else:
         block.body.execution_payload.transactions = spec.Transactions.of(

@@ -295,7 +295,10 @@ def sign_attestation(spec, state, attestation):
 def get_attestation_signature(spec, state, attestation_data, privkey):
     domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
     signing_root = spec.compute_signing_root(attestation_data, domain)
-    return sign(spec, privkey, signing_root, attestation_data.slot, "ATTESTATION")
+    # The leaf is that of the target epoch, which a slashable attestation may
+    # not share with its slot
+    slot = spec.compute_start_slot_at_epoch(attestation_data.target.epoch)
+    return sign(spec, privkey, signing_root, slot, "ATTESTATION")
 
 
 def to_single_attestation(spec, state, attestation, attester_index=None):

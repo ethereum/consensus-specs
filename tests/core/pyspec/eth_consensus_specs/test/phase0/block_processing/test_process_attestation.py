@@ -6,6 +6,7 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     spec_test,
     with_all_phases,
+    with_all_phases_except,
     with_custom_state,
 )
 from eth_consensus_specs.test.helpers.attestations import (
@@ -17,6 +18,7 @@ from eth_consensus_specs.test.helpers.attestations import (
     sign_aggregate_attestation,
     sign_attestation,
 )
+from eth_consensus_specs.test.helpers.constants import PQ
 from eth_consensus_specs.test.helpers.forks import is_post_pq
 from eth_consensus_specs.test.helpers.registry import get_balances, set_balances, set_validators
 from eth_consensus_specs.test.helpers.state import (
@@ -56,7 +58,7 @@ def test_previous_epoch(spec, state):
     yield from run_attestation_processing(spec, state, attestation)
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 @always_bls
 def test_invalid_attestation_signature(spec, state):
@@ -66,7 +68,7 @@ def test_invalid_attestation_signature(spec, state):
     yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 @always_bls
 def test_invalid_empty_participants_zeroes_sig(spec, state):
@@ -79,7 +81,7 @@ def test_invalid_empty_participants_zeroes_sig(spec, state):
     yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 @always_bls
 def test_invalid_empty_participants_seemingly_valid_sig(spec, state):

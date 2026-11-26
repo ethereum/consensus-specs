@@ -5,6 +5,7 @@ from eth_consensus_specs.test.context import (
     spec_state_test,
     spec_test,
     with_all_phases,
+    with_all_phases_except,
     with_all_phases_from_to,
     with_custom_state,
     with_presets,
@@ -24,6 +25,7 @@ from eth_consensus_specs.test.helpers.constants import (
     DENEB,
     MAINNET,
     PHASE0,
+    PQ,
 )
 from eth_consensus_specs.test.helpers.fork_choice import (
     get_genesis_forkchoice_store_and_block,
@@ -36,6 +38,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     wrap_genesis_block,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
+from eth_consensus_specs.test.helpers.signatures import get_unsigned_signature
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
     state_transition_and_sign_block,
@@ -1075,9 +1078,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_not_aggregator(spec, state):
         committee = spec.get_beacon_committee(state, current_slot, committee_index)
 
         for index in committee:
-            privkey = privkeys[index]
-            selection_proof = spec.get_slot_signature(state, current_slot, privkey)
-            if not spec.is_aggregator(state, current_slot, committee_index, selection_proof):
+            if not is_aggregator(spec, state, current_slot, committee_index, index):
                 non_aggregator_index = index
                 target_committee_index = committee_index
                 break
@@ -1093,8 +1094,8 @@ def test_gossip_beacon_aggregate_and_proof__reject_not_aggregator(spec, state):
 
     # Create aggregate with non-aggregator
     privkey = privkeys[non_aggregator_index]
-    aggregate_and_proof = spec.get_aggregate_and_proof(
-        state, non_aggregator_index, attestation, privkey
+    aggregate_and_proof = get_aggregate_and_proof(
+        spec, state, non_aggregator_index, attestation, privkey
     )
     signature = spec.get_aggregate_and_proof_signature(state, aggregate_and_proof, privkey)
     signed_agg = spec.SignedAggregateAndProof(
@@ -1268,7 +1269,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_aggregator_index_out_of_range
     )
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 @always_bls
 def test_gossip_beacon_aggregate_and_proof__reject_invalid_selection_proof(spec, state):
@@ -1353,7 +1354,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregator_signature(
     signed_agg = create_signed_aggregate_and_proof(spec, state, attestation)
 
     # Corrupt the aggregator signature
-    signed_agg.signature = b"\x00" * 96
+    signed_agg.signature = get_unsigned_signature(spec)
 
     yield get_filename(signed_agg), signed_agg
 
@@ -1388,7 +1389,7 @@ def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregator_signature(
     )
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 @always_bls
 def test_gossip_beacon_aggregate_and_proof__reject_invalid_aggregate_signature(spec, state):

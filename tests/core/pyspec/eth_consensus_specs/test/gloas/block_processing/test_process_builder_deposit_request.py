@@ -1,6 +1,7 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
+    with_all_phases_from_except,
     with_gloas_and_later,
 )
 from eth_consensus_specs.test.helpers.builder_deposit_requests import (
@@ -8,6 +9,7 @@ from eth_consensus_specs.test.helpers.builder_deposit_requests import (
     prepare_process_builder_deposit_request,
     run_builder_deposit_request_processing,
 )
+from eth_consensus_specs.test.helpers.constants import GLOAS, PQ
 from eth_consensus_specs.test.helpers.deposits import prepare_builder_deposit_request
 from eth_consensus_specs.test.helpers.forks import is_post_pq
 from eth_consensus_specs.test.helpers.keys import (
@@ -480,7 +482,7 @@ def test_process_builder_deposit_request__top_up_non_builder_withdrawal_prefix(s
 #
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 @always_bls
 def test_process_builder_deposit_request__new_builder_invalid_sig(spec, state):
@@ -494,7 +496,7 @@ def test_process_builder_deposit_request__new_builder_invalid_sig(spec, state):
     )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 @always_bls
 def test_process_builder_deposit_request__key_validate_invalid_subgroup(spec, state):
@@ -520,7 +522,7 @@ def test_process_builder_deposit_request__key_validate_invalid_subgroup(spec, st
     )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 @always_bls
 def test_process_builder_deposit_request__key_validate_invalid_decompression(spec, state):
@@ -546,7 +548,7 @@ def test_process_builder_deposit_request__key_validate_invalid_decompression(spe
     )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 @always_bls
 def test_process_builder_deposit_request__key_validate_invalid_not_on_curve(spec, state):
@@ -572,7 +574,7 @@ def test_process_builder_deposit_request__key_validate_invalid_not_on_curve(spec
     )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 @always_bls
 def test_process_builder_deposit_request__key_validate_invalid_identity(spec, state):
@@ -598,7 +600,7 @@ def test_process_builder_deposit_request__key_validate_invalid_identity(spec, st
     )
 
 
-@with_gloas_and_later
+@with_all_phases_from_except(GLOAS, [PQ])
 @spec_state_test
 @always_bls
 def test_process_builder_deposit_request__new_builder_replayed_validator_sig(spec, state):

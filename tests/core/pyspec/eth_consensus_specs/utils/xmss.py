@@ -1,18 +1,19 @@
 """
-XMSS utilities backed by ethlib's leanXMSS.
+XMSS utilities backed by py-lean-pq's leanXMSS.
 """
 
+from functools import lru_cache
 from hashlib import sha256
 
-from ethlib.cryptography import xmss as leanxmss
+import py_lean_pq as leanpq
 
 ################################################################################
 # Constants
 ################################################################################
 
-PUBKEY_SIZE = leanxmss.PUB_KEY_SIZE
-SIGNATURE_SIZE = leanxmss.SIG_SIZE
-SEED_SIZE = leanxmss.SEED_LEN
+PUBKEY_SIZE = 32
+SIGNATURE_SIZE = 2404
+SEED_SIZE = 32
 # A signature starts with its leaf index, little-endian
 LEAF_INDEX_SIZE = 4
 
@@ -59,15 +60,26 @@ def _sk_to_seed(SK):
     return bytes(SK)
 
 
+@lru_cache(maxsize=256)
+def _secret_key(seed):
+    """
+    The leanXMSS key grown from ``seed``. Keys are kept, since a key builds its
+    top tree when it is created and the bottom tree of a leaf when it first
+    signs there.
+    """
+    return leanpq.XmssSecretKey.from_seed(seed)
+
+
 def _verify(PK, leaf_index, message, signature):
     """
     Verify one signature, including the leaf index it carries.
     """
     try:
-        if leanxmss.signature_index(bytes(signature)) != leaf_index:
+        if GetLeafIndex(signature) != leaf_index:
             return False
-        return leanxmss.verify(bytes(PK), bytes(message), bytes(signature))
-    except (TypeError, ValueError, OverflowError, RuntimeError):
+        leanpq.xmss_verify(bytes(PK), bytes(message), bytes(signature))
+        return True
+    except (TypeError, ValueError, OverflowError, leanpq.LeanPqError):
         return False
 
 
@@ -86,14 +98,12 @@ def StubPk(SK):
 
 def SkToPk(SK):
     """
-    The public key of ``SK``.
-
-    Key generation builds the key's top tree and takes minutes. When XMSS is
-    inactive, ``StubPk`` is returned instead.
+    The public key of ``SK``. When XMSS is inactive, ``StubPk`` is returned
+    instead.
     """
     if not xmss_active:
         return StubPk(SK)
-    return leanxmss.key_gen(_sk_to_seed(SK))
+    return _secret_key(_sk_to_seed(SK)).public_key
 
 
 ################################################################################
@@ -106,7 +116,7 @@ def Sign(SK, leaf_index, message):
         # Like a real signature, the stub starts with its leaf index
         leaf_bytes = int(leaf_index).to_bytes(LEAF_INDEX_SIZE, "little")
         return leaf_bytes + STUB_SIGNATURE[LEAF_INDEX_SIZE:]
-    return leanxmss.sign(_sk_to_seed(SK), int(leaf_index), bytes(message))
+    return _secret_key(_sk_to_seed(SK)).sign(bytes(message), int(leaf_index))
 
 
 @only_with_xmss(alt_return=True)
@@ -115,4 +125,7 @@ def Verify(PK, leaf_index, message, signature):
 
 
 def GetLeafIndex(signature):
-    return leanxmss.signature_index(bytes(signature))
+    signature = bytes(signature)
+    if len(signature) != SIGNATURE_SIZE:
+        raise ValueError(f"signature: expected {SIGNATURE_SIZE} bytes, got {len(signature)}")
+    return int.from_bytes(signature[:LEAF_INDEX_SIZE], "little")

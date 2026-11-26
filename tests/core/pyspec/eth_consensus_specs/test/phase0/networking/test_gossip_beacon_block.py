@@ -26,6 +26,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     run_validate_gossip,
     wrap_genesis_block,
 )
+from eth_consensus_specs.test.helpers.signatures import get_unsigned_signature
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -697,7 +698,7 @@ def test_gossip_beacon_block__reject_invalid_proposer_signature(spec, state):
     signed_block = state_transition_and_sign_block(spec, state, block)
 
     # Corrupt the signature
-    signed_block.signature = b"\x00" * 96
+    signed_block.signature = get_unsigned_signature(spec)
 
     yield get_filename(signed_block), signed_block
 

@@ -28,6 +28,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     wrap_genesis_block,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
+from eth_consensus_specs.test.helpers.signatures import get_unsigned_signature
 from eth_consensus_specs.test.helpers.state import (
     next_slot,
     state_transition_and_sign_block,
@@ -1013,7 +1014,7 @@ def test_gossip_beacon_attestation__reject_invalid_signature(spec, state):
         single_bit[0] = True
         attestation.aggregation_bits = spec.AggregationBits(data=single_bit)
     # Invalid signature (zeros)
-    attestation.signature = spec.BLSSignature(b"\x00" * 96)
+    attestation.signature = get_unsigned_signature(spec)
 
     yield get_filename(attestation), attestation
 

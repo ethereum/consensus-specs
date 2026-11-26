@@ -1,6 +1,7 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
+    with_all_phases_from_except,
     with_electra_and_later,
     with_presets,
 )
@@ -13,7 +14,7 @@ from eth_consensus_specs.test.helpers.attestations import (
     run_attestation_processing,
     sign_attestation,
 )
-from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.constants import ELECTRA, MINIMAL, PQ
 from eth_consensus_specs.test.helpers.forks import is_post_pq
 from eth_consensus_specs.test.helpers.state import (
     next_slots,
@@ -39,7 +40,7 @@ def test_invalid_attestation_data_index_not_zero(spec, state):
     yield from run_attestation_processing(spec, state, attestation, valid=False)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @always_bls
 def test_invalid_committee_index(spec, state):

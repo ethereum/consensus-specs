@@ -24,7 +24,7 @@ from eth_consensus_specs.test.helpers.attester_slashings import (
     get_valid_attester_slashing,
     get_valid_attester_slashing_by_indices,
 )
-from eth_consensus_specs.test.helpers.constants import MINIMAL
+from eth_consensus_specs.test.helpers.forks import is_post_pq
 from eth_consensus_specs.test.helpers.proposer_slashings import (
     get_min_slashing_penalty_quotient,
     get_whistleblower_reward_quotient,
@@ -340,7 +340,8 @@ def test_invalid_att1_empty_indices(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=True)
 
     attester_slashing.attestation_1.attesting_indices = spec.AttestingIndices(data=[])
-    attester_slashing.attestation_1.signature = spec.bls.G2_POINT_AT_INFINITY
+    if not is_post_pq(spec):
+        attester_slashing.attestation_1.signature = spec.bls.G2_POINT_AT_INFINITY
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, valid=False)
 
@@ -352,7 +353,8 @@ def test_invalid_att2_empty_indices(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=True, signed_2=False)
 
     attester_slashing.attestation_2.attesting_indices = spec.AttestingIndices(data=[])
-    attester_slashing.attestation_2.signature = spec.bls.G2_POINT_AT_INFINITY
+    if not is_post_pq(spec):
+        attester_slashing.attestation_2.signature = spec.bls.G2_POINT_AT_INFINITY
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, valid=False)
 
@@ -364,10 +366,12 @@ def test_invalid_all_empty_indices(spec, state):
     attester_slashing = get_valid_attester_slashing(spec, state, signed_1=False, signed_2=False)
 
     attester_slashing.attestation_1.attesting_indices = spec.AttestingIndices(data=[])
-    attester_slashing.attestation_1.signature = spec.bls.G2_POINT_AT_INFINITY
+    if not is_post_pq(spec):
+        attester_slashing.attestation_1.signature = spec.bls.G2_POINT_AT_INFINITY
 
     attester_slashing.attestation_2.attesting_indices = spec.AttestingIndices(data=[])
-    attester_slashing.attestation_2.signature = spec.bls.G2_POINT_AT_INFINITY
+    if not is_post_pq(spec):
+        attester_slashing.attestation_2.signature = spec.bls.G2_POINT_AT_INFINITY
 
     yield from run_attester_slashing_processing(spec, state, attester_slashing, valid=False)
 
@@ -546,8 +550,8 @@ def test_invalid_unsorted_att_2(spec, state):
 
 @with_gloas_and_later
 @with_presets(
-    [MINIMAL],
-    reason="mainnet config leads to larger validator set than limit of public/private keys pre-generated",
+    [],
+    reason="needs more validators than there are pre-generated test keys",
 )
 @spec_test
 @with_custom_state(
@@ -563,7 +567,9 @@ def test_invalid_too_many_attesting_indices(spec, state):
         spec.ValidatorIndex(i)
         for i in range(spec.MAX_VALIDATORS_PER_COMMITTEE * get_max_committees_per_slot(spec) + 1)
     ]
+    # A proof of this many XMSS signatures would exceed `MAX_STARK_PROOF_SIZE`
+    signed = not is_post_pq(spec)
     attester_slashing = get_valid_attester_slashing_by_indices(
-        spec, state, indices, signed_1=True, signed_2=True
+        spec, state, indices, signed_1=signed, signed_2=signed
     )
     yield from run_attester_slashing_processing(spec, state, attester_slashing, valid=False)

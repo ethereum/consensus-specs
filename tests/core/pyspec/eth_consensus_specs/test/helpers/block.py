@@ -15,9 +15,9 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_heze,
     is_post_pq,
 )
-from eth_consensus_specs.test.helpers.keys import get_vrf_proof, privkeys
+from eth_consensus_specs.test.helpers.keys import get_vrf_proof, privkeys, pubkey_to_privkey
 from eth_consensus_specs.test.helpers.signatures import get_empty_aggregate, sign
-from eth_consensus_specs.utils import bls
+from eth_consensus_specs.utils import bls, xmss
 from eth_consensus_specs.utils.bls import only_with_bls
 
 
@@ -91,8 +91,32 @@ def transition_unsigned_block(spec, state, block):
         state.latest_block_header.slot < block.slot
     )  # There may not already be a block in this slot or past it.
     assert state.slot == block.slot  # The block must be for this slot
+    # With real XMSS signatures, a block with attestations needs a real proof
+    if is_post_pq(spec) and xmss.xmss_active and len(block.body.proof) == 0:
+        block.body.proof = get_block_proof(spec, state, block.body.attestations)
     spec.process_block(state, block)
     return block
+
+
+def get_block_proof(spec, state, attestations):
+    """
+    The stark proof of the signatures of ``attestations``, for the ``proof`` of
+    the block that includes them.
+    """
+    statements = []
+    signatures = []
+    for attestation in attestations:
+        for statement in spec.get_attestation_statements(state, attestation):
+            statements.append(statement)
+            signatures.append(
+                [
+                    spec.xmss_sign(
+                        pubkey_to_privkey[pubkey], statement.leaf_index, statement.message
+                    )
+                    for pubkey in statement.pubkeys
+                ]
+            )
+    return spec.stark_prove_aggregates(statements, signatures)
 
 
 def apply_empty_block(spec, state, slot=None):

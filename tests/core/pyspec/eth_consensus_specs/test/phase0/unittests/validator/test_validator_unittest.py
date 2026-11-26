@@ -7,6 +7,7 @@ from eth_consensus_specs.test.context import (
     spec_state_test_with_matching_config,
     spec_test,
     with_all_phases,
+    with_all_phases_except,
     with_all_phases_from_to,
     with_phases,
 )
@@ -21,6 +22,7 @@ from eth_consensus_specs.test.helpers.constants import (
     FULU,
     HEZE,
     PHASE0,
+    PQ,
 )
 from eth_consensus_specs.test.helpers.forks import is_post_pq
 from eth_consensus_specs.test.helpers.keys import get_vrf_root, privkeys, pubkeys, xmss_pubkeys
@@ -146,7 +148,7 @@ def test_is_proposer(spec, state):
 # Block proposal
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 @always_bls
 def test_get_epoch_signature(spec, state):
@@ -338,7 +340,7 @@ def test_compute_new_state_root(spec, state):
     assert state_root == post_state.hash_tree_root()
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 @always_bls
 def test_get_block_signature(spec, state):
@@ -380,7 +382,7 @@ def test_compute_fork_digest(spec, state):
 # Attesting
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 @always_bls
 def test_get_attestation_signature_phase0(spec, state):
@@ -424,7 +426,7 @@ def test_compute_subnet_for_attestation(spec, state):
 # Attestation aggregation
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 @always_bls
 def test_get_slot_signature(spec, state):
@@ -443,7 +445,7 @@ def test_get_slot_signature(spec, state):
     )
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 @always_bls
 def test_is_aggregator(spec, state):
@@ -498,7 +500,7 @@ def test_get_aggregate_signature(spec, state):
     assert bls.FastAggregateVerify(attesting_pubkeys, signing_root, signature)
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 @always_bls
 def test_get_aggregate_and_proof(spec, state):
@@ -513,7 +515,7 @@ def test_get_aggregate_and_proof(spec, state):
     )
 
 
-@with_all_phases
+@with_all_phases_except([PQ])
 @spec_state_test
 @always_bls
 def test_get_aggregate_and_proof_signature(spec, state):

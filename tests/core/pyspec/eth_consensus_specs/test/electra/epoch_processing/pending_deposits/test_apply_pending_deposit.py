@@ -1,8 +1,10 @@
 from eth_consensus_specs.test.context import (
     always_bls,
     spec_state_test,
+    with_all_phases_from_except,
     with_electra_and_later,
 )
+from eth_consensus_specs.test.helpers.constants import ELECTRA, PQ
 from eth_consensus_specs.test.helpers.deposits import (
     prepare_pending_deposit,
     run_pending_deposit_applying,
@@ -248,7 +250,7 @@ def test_apply_pending_deposit_correct_sig_but_forked_state(spec, state):
     yield from run_pending_deposit_applying(spec, state, pending_deposit, validator_index)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @always_bls
 def test_apply_pending_deposit_incorrect_sig_new_deposit(spec, state):
@@ -353,7 +355,7 @@ def test_apply_pending_deposit_top_up__less_effective_balance(spec, state):
     )
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @always_bls
 def test_apply_pending_deposit_incorrect_sig_top_up(spec, state):
@@ -387,7 +389,7 @@ def test_apply_pending_deposit_incorrect_withdrawal_credentials_top_up(spec, sta
     yield from run_pending_deposit_applying(spec, state, pending_deposit, validator_index)
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @always_bls
 def test_apply_pending_deposit_key_validate_invalid_subgroup(spec, state):
@@ -408,7 +410,7 @@ def test_apply_pending_deposit_key_validate_invalid_subgroup(spec, state):
     )
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @always_bls
 def test_apply_pending_deposit_key_validate_invalid_decompression(spec, state):
@@ -429,7 +431,7 @@ def test_apply_pending_deposit_key_validate_invalid_decompression(spec, state):
     )
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @always_bls
 def test_apply_pending_deposit_key_validate_invalid_not_on_curve(spec, state):
@@ -450,7 +452,7 @@ def test_apply_pending_deposit_key_validate_invalid_not_on_curve(spec, state):
     )
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @always_bls
 def test_apply_pending_deposit_key_validate_invalid_identity(spec, state):
@@ -471,7 +473,7 @@ def test_apply_pending_deposit_key_validate_invalid_identity(spec, state):
     )
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @always_bls
 def test_apply_pending_deposit_ineffective_deposit_with_bad_fork_version(spec, state):
@@ -490,7 +492,7 @@ def test_apply_pending_deposit_ineffective_deposit_with_bad_fork_version(spec, s
     )
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @always_bls
 def test_apply_pending_deposit_with_previous_fork_version(spec, state):
@@ -514,7 +516,7 @@ def test_apply_pending_deposit_with_previous_fork_version(spec, state):
     )
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @always_bls
 def test_ineffective_deposit_with_current_fork_version(spec, state):

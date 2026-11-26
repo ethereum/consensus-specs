@@ -25,7 +25,7 @@ from eth_consensus_specs.test.helpers.genesis import build_mock_builder
 from eth_consensus_specs.test.helpers.inactivity_scores import (
     randomize_inactivity_scores,
 )
-from eth_consensus_specs.test.helpers.keys import builder_privkeys
+from eth_consensus_specs.test.helpers.keys import get_builder_privkey
 from eth_consensus_specs.test.helpers.multi_operations import (
     build_random_block_from_state_for_next_slot,
     get_random_bls_to_execution_changes,
@@ -536,7 +536,7 @@ def _build_random_signed_bid(spec, state, block, rng):
 
     if use_real_builder:
         signature = get_execution_payload_bid_signature(
-            spec, state, bid, builder_privkeys[builder_index]
+            spec, state, bid, get_builder_privkey(spec, builder_index)
         )
     else:
         signature = get_placeholder_signature(spec)

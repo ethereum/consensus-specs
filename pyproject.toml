@@ -16,10 +16,10 @@ dependencies = [
   "eth-hash[pycryptodome]==0.8.0",
   "eth-ssz-specs==0.1.0",
   "eth-utils==6.0.0",
-  "ethlib==0.3.0",
   "frozendict==2.5.1",
   "lru-dict==1.4.1",
   "marko==2.2.5",
+  "py-lean-pq==0.19.0",
   "py_arkworks_bls12381==0.5.0",
   "ruamel.yaml==0.19.1",
   "setuptools==84.2.1",
@@ -70,6 +70,7 @@ namespaces = true
 
 [tool.setuptools.package-data]
 configs = ["*.yaml"]
+eth_consensus_specs = ["test/helpers/xmss_pubkeys.bin"]
 presets = ["**/*.yaml", "**/*.json"]
 specs = ["**/*.md"]
 

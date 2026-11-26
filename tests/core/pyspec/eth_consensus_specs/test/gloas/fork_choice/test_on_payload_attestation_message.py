@@ -16,7 +16,11 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     tick_store_to_slot,
 )
 from eth_consensus_specs.test.helpers.keys import privkeys
-from eth_consensus_specs.test.helpers.signatures import aggregate, sign
+from eth_consensus_specs.test.helpers.signatures import (
+    aggregate,
+    get_unsigned_signature,
+    sign,
+)
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
 )
@@ -179,7 +183,7 @@ def test_on_payload_attestation_message_current_slot_and_signature(spec, state):
         ptc[0],
         payload_present=True,
     )
-    invalid_sig_msg.signature = spec.BLSSignature()
+    invalid_sig_msg.signature = get_unsigned_signature(spec)
     yield from add_payload_attestation_message(
         spec,
         store,

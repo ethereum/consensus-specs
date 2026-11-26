@@ -18,6 +18,7 @@ from eth_consensus_specs.test.helpers.gossip import (
     setup_store_with_failed_block,
     wrap_genesis_block,
 )
+from eth_consensus_specs.test.helpers.signatures import get_unsigned_signature
 from eth_consensus_specs.test.helpers.state import state_transition_and_sign_block
 from eth_consensus_specs.test.helpers.withdrawals import set_validator_partially_withdrawable
 
@@ -244,7 +245,7 @@ def test_gossip_execution_payload_envelope__reject_invalid_signature(spec, state
 
     seen = get_seen(spec)
     signed_envelope = build_signed_execution_payload_envelope(spec, state, block_root, signed_block)
-    signed_envelope.signature = spec.BLSSignature()
+    signed_envelope.signature = get_unsigned_signature(spec)
     yield get_filename(signed_envelope), signed_envelope
 
     messages = []

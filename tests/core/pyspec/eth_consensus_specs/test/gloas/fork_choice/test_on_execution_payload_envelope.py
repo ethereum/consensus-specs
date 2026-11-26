@@ -18,7 +18,7 @@ from eth_consensus_specs.test.helpers.fork_choice import (
     tick_and_add_block,
     tick_store_to_slot,
 )
-from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
+from eth_consensus_specs.test.helpers.keys import get_builder_privkey, privkeys
 from eth_consensus_specs.test.helpers.signatures import get_unsigned_signature
 from eth_consensus_specs.test.helpers.state import (
     state_transition_and_sign_block,
@@ -62,7 +62,7 @@ def _build_invalid_envelope(spec, state, block_root, signed_block, **overrides):
         if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
             privkey = privkeys[signed_block.message.proposer_index]
         else:
-            privkey = builder_privkeys[envelope.builder_index]
+            privkey = get_builder_privkey(spec, envelope.builder_index)
         signature = spec.get_execution_payload_envelope_signature(state, envelope, privkey)
     else:
         signature = get_unsigned_signature(spec)

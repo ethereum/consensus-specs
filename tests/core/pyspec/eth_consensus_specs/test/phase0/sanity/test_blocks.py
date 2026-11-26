@@ -60,6 +60,7 @@ from eth_consensus_specs.test.helpers.proposer_slashings import (
     get_valid_proposer_slashings,
 )
 from eth_consensus_specs.test.helpers.registry import get_balances, get_validators
+from eth_consensus_specs.test.helpers.signatures import sign
 from eth_consensus_specs.test.helpers.state import (
     get_balance,
     next_epoch,
@@ -72,7 +73,6 @@ from eth_consensus_specs.test.helpers.sync_committee import (
     compute_sync_committee_participant_reward_and_penalty,
 )
 from eth_consensus_specs.test.helpers.voluntary_exits import prepare_signed_exits
-from eth_consensus_specs.utils import bls
 
 
 @with_all_phases
@@ -318,7 +318,8 @@ def test_invalid_incorrect_block_sig(spec, state):
     )
     signing_root = spec.compute_signing_root(block, domain)
     invalid_signed_block = spec.SignedBeaconBlock(
-        message=block, signature=bls.Sign(123456, signing_root)
+        message=block,
+        signature=sign(spec, 123456, signing_root, block.slot, "LEAF_OFFSET_BEACON_PROPOSER"),
     )
     expect_assertion_error(lambda: spec.state_transition(state, invalid_signed_block))
 

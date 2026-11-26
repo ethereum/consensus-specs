@@ -12,7 +12,7 @@ from eth_consensus_specs.test.helpers.forks import (
     is_post_electra,
     is_post_gloas,
 )
-from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
+from eth_consensus_specs.test.helpers.keys import get_builder_privkey, privkeys
 from eth_consensus_specs.test.helpers.signatures import (
     get_execution_payload_bid_signature,
     get_placeholder_signature,
@@ -330,7 +330,7 @@ def sign_execution_payload_bid(spec, state, bid):
     if bid.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
         signature = get_placeholder_signature(spec)
     else:
-        privkey = builder_privkeys[bid.builder_index]
+        privkey = get_builder_privkey(spec, bid.builder_index)
         signature = get_execution_payload_bid_signature(spec, state, bid, privkey)
 
     return spec.SignedExecutionPayloadBid(
@@ -494,7 +494,7 @@ def sign_execution_payload_envelope(spec, state, signed_block, envelope):
     if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
         privkey = privkeys[signed_block.message.proposer_index]
     else:
-        privkey = builder_privkeys[envelope.builder_index]
+        privkey = get_builder_privkey(spec, envelope.builder_index)
     signature = spec.get_execution_payload_envelope_signature(state, envelope, privkey)
 
     return spec.SignedExecutionPayloadEnvelope(

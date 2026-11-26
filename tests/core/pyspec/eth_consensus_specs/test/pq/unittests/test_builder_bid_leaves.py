@@ -1,12 +1,12 @@
 from eth_consensus_specs.test.context import spec_state_test, with_phases
 from eth_consensus_specs.test.helpers.constants import PQ
-from eth_consensus_specs.test.helpers.keys import builder_privkeys
+from eth_consensus_specs.test.helpers.keys import get_builder_privkey
 
 
 def sign_bid_at_leaf(spec, state, leaf_index):
     bid = spec.ExecutionPayloadBid(slot=state.slot, builder_index=0)
     signature = spec.get_execution_payload_bid_signature(
-        state, bid, builder_privkeys[0], leaf_index
+        state, bid, get_builder_privkey(spec, 0), leaf_index
     )
     return spec.SignedExecutionPayloadBid(message=bid, signature=signature)
 

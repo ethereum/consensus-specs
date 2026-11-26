@@ -35,7 +35,7 @@ from .helpers.constants import (
     POST_FORK_OF,
     PQ,
 )
-from .helpers.forks import is_post_electra, is_post_fork, is_post_gloas, is_post_pq
+from .helpers.forks import is_post_electra, is_post_fork, is_post_gloas
 from .helpers.genesis import create_genesis_state
 from .helpers.specs import (
     spec_targets,
@@ -53,9 +53,6 @@ DEFAULT_TEST_PRESET = MINIMAL
 
 # Without pytest CLI arg or pyspec-test-generator 'run-phase' argument, this will be the config to apply.
 DEFAULT_PYTEST_FORKS = ALL_PHASES
-
-# XMSS key generation and signing take minutes, so tests use stubbed signatures.
-xmss.xmss_active = False
 
 
 @dataclass(frozen=True)
@@ -477,6 +474,7 @@ def never_bls(fn):
     def entry(*args, **kw):
         # override bls setting
         kw["bls_active"] = False
+        kw["xmss_active"] = False
         return bls_switch(fn)(*args, **kw)
 
     return with_meta_tags({"bls_setting": 2})(entry)
@@ -490,10 +488,9 @@ def always_bls(fn):
     """
 
     def entry(*args, **kw):
-        if "spec" in kw and is_post_pq(kw["spec"]):
-            dump_skipping_message("XMSS signing is too slow to run with real signatures")
         # override bls setting
         kw["bls_active"] = True
+        kw["xmss_active"] = True
         return bls_switch(fn)(*args, **kw)
 
     return with_meta_tags({"bls_setting": 1})(entry)
@@ -501,19 +498,22 @@ def always_bls(fn):
 
 def bls_switch(fn):
     """
-    Decorator to make a function execute with BLS ON, or BLS off.
-    Based on an optional bool argument ``bls_active``, passed to the function at runtime.
+    Decorator to make a function execute with BLS and XMSS ON, or off.
+    Based on optional bool arguments ``bls_active`` and ``xmss_active``, passed to the function at runtime.
     This decorator may only be applied to yielding spec test functions, and should be wrapped by vector_test,
      as the yielding needs to complete before setting back the BLS setting.
     """
 
     def entry(*args, **kw):
-        old_state = bls.bls_active
+        old_bls_state = bls.bls_active
+        old_xmss_state = xmss.xmss_active
         bls.bls_active = kw.pop("bls_active", True)
+        xmss.xmss_active = kw.pop("xmss_active", True)
         res = fn(*args, **kw)
         if res is not None:
             yield from res
-        bls.bls_active = old_state
+        bls.bls_active = old_bls_state
+        xmss.xmss_active = old_xmss_state
 
     return entry
 

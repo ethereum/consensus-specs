@@ -33,7 +33,7 @@ from eth_consensus_specs.test.helpers.constants import PQ
 from eth_consensus_specs.test.helpers.execution_requests import (
     get_non_empty_execution_requests,
 )
-from eth_consensus_specs.test.helpers.keys import builder_privkeys, privkeys
+from eth_consensus_specs.test.helpers.keys import get_builder_privkey, privkeys
 from eth_consensus_specs.test.helpers.multi_operations import (
     get_random_attestations,
 )
@@ -143,7 +143,7 @@ def _attempt_payload_with_withdrawals(spec, state, withdrawals):
     if envelope.builder_index == spec.BUILDER_INDEX_SELF_BUILD:
         privkey = privkeys[test_state.latest_block_header.proposer_index]
     else:
-        privkey = builder_privkeys[envelope.builder_index]
+        privkey = get_builder_privkey(spec, envelope.builder_index)
     signature = spec.get_execution_payload_envelope_signature(test_state, envelope, privkey)
 
     signed_envelope = spec.SignedExecutionPayloadEnvelope(
@@ -585,7 +585,7 @@ def test_builder_payment_removed_when_proposer_slashes_itself(spec, state):
     bid.builder_index = builder_index
     bid.value = value
     signature = get_execution_payload_bid_signature(
-        spec, state, bid, builder_privkeys[builder_index]
+        spec, state, bid, get_builder_privkey(spec, builder_index)
     )
     block.body.signed_execution_payload_bid = spec.SignedExecutionPayloadBid(
         message=bid,
@@ -860,7 +860,7 @@ def test_builder_payment_after_missed_epochs(spec, state):
 
     # Sign the bid with the builder's private key
     signature = get_execution_payload_bid_signature(
-        spec, state, bid, builder_privkeys[builder_index]
+        spec, state, bid, get_builder_privkey(spec, builder_index)
     )
     block_1.body.signed_execution_payload_bid = spec.SignedExecutionPayloadBid(
         message=bid,

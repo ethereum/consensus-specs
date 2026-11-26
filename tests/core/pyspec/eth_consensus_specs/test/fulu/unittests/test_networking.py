@@ -14,9 +14,6 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.blob import (
     get_sample_blob_tx,
 )
-from eth_consensus_specs.test.helpers.block import (
-    sign_block,
-)
 from eth_consensus_specs.test.helpers.constants import (
     FULU,
     GLOAS,
@@ -60,7 +57,8 @@ def compute_data_column_sidecar(spec, state):
             spec, block.body.execution_payload, state
         )
 
-    signed_block = sign_block(spec, state, block, proposer_index=0)
+    # The sidecar checks do not verify the block signature
+    signed_block = spec.SignedBeaconBlock(message=block)
     sidecar = spec.get_data_column_sidecars_from_block(signed_block, cells_and_kzg_proofs)[0]
     return sidecar, blob_kzg_commitments
 

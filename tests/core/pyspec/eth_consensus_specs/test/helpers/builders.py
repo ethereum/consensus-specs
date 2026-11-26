@@ -20,7 +20,7 @@ def add_builder_to_registry(
         spec: The spec object
         state: The beacon state to modify
         builder_index: The index for the builder in the registry
-        pubkey: Builder's BLS public key (default: derived from builder_index)
+        pubkey: Builder's public key (default: derived from builder_index)
         execution_address: Builder's execution layer address (default: derived from builder_index)
         balance: Builder's balance in Gwei (default: spec.MIN_DEPOSIT_AMOUNT)
         deposit_epoch: Epoch when builder deposited (default: 0)
@@ -30,9 +30,11 @@ def add_builder_to_registry(
     while len(state.builders) <= builder_index:
         append_builder(spec, state, spec.Builder())
 
-    # Set builder properties
+    # Set builder properties. The default pubkey has the length of the fork's
+    # pubkey type, BLS before PQ and XMSS from PQ onwards.
+    pubkey_length = len(state.builders[builder_index].pubkey)
     state.builders[builder_index].pubkey = (
-        pubkey if pubkey is not None else builder_index.to_bytes(48, "little")
+        pubkey if pubkey is not None else builder_index.to_bytes(pubkey_length, "little")
     )
     builder = get_builders(spec, state)[builder_index]
     builder.execution_address = (

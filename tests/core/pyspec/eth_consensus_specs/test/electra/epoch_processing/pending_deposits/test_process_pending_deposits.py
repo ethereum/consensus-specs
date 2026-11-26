@@ -5,6 +5,7 @@ from eth_consensus_specs.test.context import (
     single_phase,
     spec_state_test,
     spec_test,
+    with_all_phases_from_except,
     with_all_phases_from_to,
     with_custom_state,
     with_electra_and_later,
@@ -16,6 +17,7 @@ from eth_consensus_specs.test.helpers.constants import (
     ELECTRA,
     HEZE,
     MINIMAL,
+    PQ,
 )
 from eth_consensus_specs.test.helpers.deposits import prepare_pending_deposit
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
@@ -334,7 +336,7 @@ def test_process_pending_deposits_multiple_pending_deposits_above_churn(spec, st
     ]
 
 
-@with_electra_and_later
+@with_all_phases_from_except(ELECTRA, [PQ])
 @spec_state_test
 @always_bls
 def test_process_pending_deposits_multiple_for_new_validator(spec, state):
