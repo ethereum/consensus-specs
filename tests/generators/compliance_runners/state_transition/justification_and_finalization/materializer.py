@@ -83,6 +83,8 @@ class JustificationAndFinalizationMaterializer(Materializer):
             spec.process_slots(pre, pre.slot + spec.SLOTS_PER_EPOCH)
             # Participation rolls over, but the slashed vote no longer counts toward the threshold.
             spec.slash_validator(pre, spec.ValidatorIndex(min(current_participants)))
+        # Epoch processing starts after process_slot has cached the final slot's roots.
+        spec.process_slot(pre)
         post = pre.copy()
         spec.process_justification_and_finalization(post)
         claimed = self.claimed_record(TARGET, solution)

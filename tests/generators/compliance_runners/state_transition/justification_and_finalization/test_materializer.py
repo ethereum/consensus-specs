@@ -9,6 +9,9 @@ from eth_consensus_specs.test.phase0.epoch_processing.test_process_justification
     finalize_on_12,
 )
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import score
+from tests.generators.compliance_runners.state_transition.evaluation.invariant_scan import (
+    entry_condition_violations,
+)
 from tests.generators.compliance_runners.state_transition.provider import load_provider
 
 from .materializer import MATERIALIZER
@@ -42,6 +45,14 @@ def _materialize(**record):
     materializer.rng = Random(0)
     _, parts = materializer.materialize_solution(SimpleNamespace(**record))
     return {name: spec.BeaconState.decode_bytes(data) for name, _, data in parts}
+
+
+def test_max_vectors_start_after_slot_processing():
+    provider = load_provider("justification_and_finalization", spec=spec)
+    profile = provider.TARGET.for_spec(spec).profiles["max"]
+    for record in profile.generation_obligations():
+        pre = _materialize(**dict(record))["pre"]
+        assert not list(entry_condition_violations(spec, pre, "epoch_processing")), record
 
 
 def test_early_epoch_guard_preserves_state_despite_current_support():
