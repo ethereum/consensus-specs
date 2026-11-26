@@ -31,7 +31,10 @@ bound reflects when blocks can first see a finalized checkpoint after genesis.
 Entry conditions depend on where the handler runs. For example, epoch processing
 starts at the last slot of the epoch, after slot processing has written the
 historical roots for that slot. The cached block root must match the hash tree
-root of the latest block header. Passing means the pre-state satisfied these
+root of the latest block header. Builder exit requests run after the parent
+payload's builder payment has been settled. The parent's payment entry must be
+empty when its slot is in the current or previous epoch. Payments for other
+slots may still be pending. Passing means the pre-state satisfied these
 necessary conditions. Proving reachability also requires a history of valid
 transitions.
 

@@ -64,6 +64,45 @@ def test_epoch_entry_detects_stale_block_root_after_ring_wraps(state):
     assert not list(entry_condition_violations(spec, state, "epoch_processing"))
 
 
+@pytest.mark.parametrize(("parent_epoch", "ring_epoch"), [(2, 1), (1, 0)])
+def test_builder_exit_entry_requires_the_parent_payment_to_be_settled(
+    tmp_path, state, parent_epoch, ring_epoch
+):
+    slots_per_epoch = spec.SLOTS_PER_EPOCH
+    state.slot = spec.Slot(2 * slots_per_epoch + 2)
+    state.latest_block_header.slot = spec.Slot(parent_epoch * slots_per_epoch + 1)
+    payment_index = ring_epoch * slots_per_epoch + 1
+    payment = spec.BuilderPendingPayment(
+        withdrawal=spec.BuilderPendingWithdrawal(amount=spec.Gwei(1))
+    )
+    state.builder_pending_payments[payment_index] = payment
+    state.builder_pending_payments[payment_index - 1] = payment
+    assert not list(entry_condition_violations(spec, state, "operations"))
+
+    case = tmp_path / "minimal/gloas/operations/builder_exit_request/pyspec_tests/case_0000"
+    case.mkdir(parents=True)
+    (case / "dimensions.yaml").write_text("test_provider: builder_exit_request\n")
+    pre = case / "pre.ssz_snappy"
+    output = tmp_path / "report.json"
+    args = ["--test-dir", str(tmp_path), "--json", str(output)]
+    pre.write_bytes(snappy.compress(state.encode_bytes()))
+    assert main(args) == 1
+    report = json.loads(output.read_text())
+    assert report["providers"]["minimal/builder_exit_request"]["counts"] == {
+        "builder_exit_parent_payment_unsettled": 1
+    }
+
+    spec.settle_builder_payment(state, spec.Uint64(payment_index))
+    pre.write_bytes(snappy.compress(state.encode_bytes()))
+    assert main(args) == 0
+
+    state.latest_block_header.slot = spec.Slot(1)
+    state.builder_pending_payments[payment_index] = payment
+    assert not list(
+        entry_condition_violations(spec, state, "operations", handler="builder_exit_request")
+    )
+
+
 def test_registry_and_payment_invariants(state):
     state.inactivity_scores = type(state.inactivity_scores)()
     state.finalized_checkpoint.epoch = spec.Epoch(1)

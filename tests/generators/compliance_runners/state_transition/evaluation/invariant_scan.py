@@ -16,7 +16,7 @@ from tests.generators.compliance_runners.state_transition.catalog import PROVIDE
 from tests.generators.compliance_runners.state_transition.materializer import SUITE_NAME
 
 
-def entry_condition_violations(spec, state, runner):
+def entry_condition_violations(spec, state, runner, *, handler=None):
     """Check the point at which the runner enters the state transition."""
     if runner == "epoch_processing":
         if state.slot % spec.SLOTS_PER_EPOCH != spec.SLOTS_PER_EPOCH - 1:
@@ -37,6 +37,18 @@ def entry_condition_violations(spec, state, runner):
             or state.block_roots[state.slot] != spec.Root()
         ):
             yield "first_lap_destination_populated"
+    if runner == "operations" and handler == "builder_exit_request":
+        # apply_parent_execution_payload settles the parent payment before requests.
+        parent_slot = state.latest_block_header.slot
+        parent_epoch = spec.compute_epoch_at_slot(parent_slot)
+        payment_index = parent_slot % spec.SLOTS_PER_EPOCH
+        if parent_epoch == spec.get_current_epoch(state):
+            payment_index += spec.SLOTS_PER_EPOCH
+        elif parent_epoch != spec.get_previous_epoch(state):
+            # An older parent's payment has already left the ring.
+            return
+        if state.builder_pending_payments[payment_index] != spec.BuilderPendingPayment.empty():
+            yield "builder_exit_parent_payment_unsettled"
 
 
 def state_invariant_violations(spec, state):
@@ -167,7 +179,7 @@ def scan(root: Path, *, provider=None, preset=None):
                     continue
 
                 faults = [
-                    *entry_condition_violations(spec, state, runner),
+                    *entry_condition_violations(spec, state, runner, handler=handler),
                     *state_invariant_violations(spec, state),
                 ]
                 report = reports[f"{preset_name}/{name}"]
