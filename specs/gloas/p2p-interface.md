@@ -55,6 +55,8 @@
     - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
     - [ExecutionPayloadEnvelopesByRange v1](#executionpayloadenvelopesbyrange-v1)
     - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
+- [Broadcasting retrieved blocks](#broadcasting-retrieved-blocks)
+- [Broadcasting retrieved payload envelopes](#broadcasting-retrieved-payload-envelopes)
 
 <!-- mdformat-toc end -->
 
@@ -1696,3 +1698,40 @@ Per `fork_version = compute_fork_version(epoch)`:
 | `fork_version`       | Chunk SSZ type                         |
 | -------------------- | -------------------------------------- |
 | `GLOAS_FORK_VERSION` | `gloas.SignedExecutionPayloadEnvelope` |
+
+## Broadcasting retrieved blocks
+
+The table that lists the relevant message topics and the fields that identify
+missing beacon blocks is extended with `execution_payload`,
+`payload_attestation_message` and `execution_payload_bid` message topics,
+`data_column_sidecar_{subnet_id}` topic is modified.
+
+| Message topic                     | Root of missing beacon block                                          |
+| --------------------------------- | --------------------------------------------------------------------- |
+| `beacon_block`                    | `signed_beacon_block.message.parent_root`                             |
+| `beacon_aggregate_and_proof`      | `signed_aggregate_and_proof.message.aggregate.data.beacon_block_root` |
+| `beacon_attestation_{subnet_id}`  | `attestation.data.beacon_block_root`                                  |
+| `data_column_sidecar_{subnet_id}` | `sidecar.beacon_block_root` or `group_id.beacon_block_root`           |
+| `execution_payload`               | `signed_execution_payload_envelope.message.beacon_block_root`         |
+| `payload_attestation_message`     | `payload_attestation_message.data.beacon_block_root`                  |
+| `execution_payload_bid`           | `signed_execution_payload_bid.message.parent_block_root`              |
+
+## Broadcasting retrieved payload envelopes
+
+When a message is queued for processing because a required execution payload
+envelope has not been received, the beacon node MUST process that envelope, once
+retrieved, as if it had been received via Gossipsub. Specifically, the node MUST
+run
+`validate_execution_payload_envelope_gossip(seen, store, retrieved_execution_payload_envelope)`,
+where `retrieved_execution_payload_envelope` is the retrieved signed execution
+payload envelope. If validation completes without raising an exception, the node
+MUST publish the envelope on the `execution_payload` Gossipsub topic.
+
+The table lists the relevant message topics and the beacon block root
+corresponding to the missing payload envelope.
+
+| Message topic                    | Root of the corresponding beacon block                                | Condition                                                         |
+| -------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `beacon_block`                   | `signed_beacon_block.message.parent_root`                             | `is_parent_node_full(store, signed_beacon_block.message) == True` |
+| `beacon_aggregate_and_proof`     | `signed_aggregate_and_proof.message.aggregate.data.beacon_block_root` | `aggregate.data.index == 1`                                       |
+| `beacon_attestation_{subnet_id}` | `attestation.data.beacon_block_root`                                  | `attestation.data.index == 1`                                     |

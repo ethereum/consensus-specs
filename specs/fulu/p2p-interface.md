@@ -44,6 +44,7 @@
     - [Next fork digest](#next-fork-digest)
 - [Peer scoring](#peer-scoring)
 - [Supernodes](#supernodes)
+- [Broadcasting retrieved blocks](#broadcasting-retrieved-blocks)
 
 <!-- mdformat-toc end -->
 
@@ -974,3 +975,16 @@ is connected to validator(s) with a combined balance greater than or equal to
 may altruistically be a supernode. Therefore, there are expected to be many
 (hundreds) of supernodes on mainnet and it is likely (though not necessary) for
 a node to be connected to several of these by chance.
+
+## Broadcasting retrieved blocks
+
+The table that lists the relevant message topics and the fields that identify
+missing beacon blocks is extended with `data_column_sidecar_{subnet_id}` message
+topic.
+
+| Message topic                     | Root of missing beacon block                                                                                     |
+| --------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `beacon_block`                    | `signed_beacon_block.message.parent_root`                                                                        |
+| `beacon_aggregate_and_proof`      | `signed_aggregate_and_proof.message.aggregate.data.beacon_block_root`                                            |
+| `beacon_attestation_{subnet_id}`  | `attestation.data.beacon_block_root`                                                                             |
+| `data_column_sidecar_{subnet_id}` | `sidecar.signed_block_header.message.parent_root` or `sidecar.header[0].signed_block_header.message.parent_root` |
