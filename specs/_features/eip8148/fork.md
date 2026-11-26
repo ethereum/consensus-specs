@@ -32,10 +32,10 @@ change is made to upgrade to EIP-8148.
 The upgrade occurs after the completion of the inner loop of `process_slots`
 that sets `state.slot` equal to `EIP8148_FORK_EPOCH * SLOTS_PER_EPOCH`.
 
-*Note*: The threshold bytes of every existing compounding validator are cleared,
-so that every validator that exists at the fork starts at the default threshold
-regardless of what its credentials carried before. Only validators whose
-credentials have non-zero threshold bytes are changed.
+*Note*: The threshold of every existing compounding validator is set to the
+default, `MAX_EFFECTIVE_BALANCE_ELECTRA`, regardless of what its credentials
+carried before. This changes the withdrawal credentials of every compounding
+validator.
 
 *Note*: `latest_execution_payload_bid` is copied unchanged. Its
 `execution_requests_root` may commit to the pre-fork `ExecutionRequests` type,

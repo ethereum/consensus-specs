@@ -1,6 +1,7 @@
 from eth_consensus_specs.test.context import always_bls, spec_state_test, with_gloas_and_later
 from eth_consensus_specs.test.helpers.deposits import prepare_pending_deposit
 from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_with
+from eth_consensus_specs.test.helpers.forks import is_post_eip8148
 from eth_consensus_specs.test.helpers.keys import (
     builder_pubkey_to_privkey,
     privkeys,
@@ -115,6 +116,10 @@ def test_process_pending_deposits__pending_validator_invalid_non_builder_topup(s
     assert list(state.builders) == pre_builders
     assert len(state.validators) == pre_validator_count + 1
     assert state.validators[-1].pubkey == pubkey
+    if is_post_eip8148(spec):
+        expected_validator = spec.Validator(withdrawal_credentials=validator_credentials)
+        spec.set_sweep_threshold(expected_validator, spec.MAX_EFFECTIVE_BALANCE_ELECTRA)
+        validator_credentials = expected_validator.withdrawal_credentials
     assert state.validators[-1].withdrawal_credentials == validator_credentials
     assert state.balances[-1] == validator_deposit.amount + invalid_topup.amount
 

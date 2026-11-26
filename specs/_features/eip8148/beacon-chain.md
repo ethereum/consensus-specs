@@ -154,11 +154,11 @@ little-endian integer:
 | `3..11`  | Reserved                                         |
 | `12..31` | Execution address                                |
 
-*Note*: A stored value of `0` means the default threshold,
-`MAX_EFFECTIVE_BALANCE_ELECTRA`. A value that is out of range is read as the
-default, so that credentials built by tooling unaware of this upgrade, or
-carrying a nonsensical value, behave as they did before. For credentials with
-any other prefix, the threshold is `get_max_effective_balance(validator)`.
+*Note*: The default threshold, `MAX_EFFECTIVE_BALANCE_ELECTRA`, is stored
+explicitly. A value that is out of range, including `0`, is read as the default
+but is never stored, because deposits, the switch to compounding credentials and
+the fork all write a valid threshold. For credentials with any other prefix, the
+threshold is `get_max_effective_balance(validator)`.
 
 ```python
 def get_sweep_threshold(validator: Validator) -> Gwei:
@@ -183,18 +183,12 @@ def get_sweep_threshold(validator: Validator) -> Gwei:
 
 #### New `set_sweep_threshold`
 
-*Note*: A threshold of `MAX_EFFECTIVE_BALANCE_ELECTRA` is stored as `0`, so that
-every threshold has a single encoding and a validator that sets the maximum has
-the same credentials as one that never set a threshold.
-
 ```python
 def set_sweep_threshold(validator: Validator, threshold: Gwei) -> None:
     """
     Store ``threshold`` in the compounding withdrawal credentials of ``validator``.
     """
-    increments = Uint16(0)
-    if MIN_ACTIVATION_BALANCE <= threshold < MAX_EFFECTIVE_BALANCE_ELECTRA:
-        increments = Uint16(threshold // EFFECTIVE_BALANCE_INCREMENT)
+    increments = Uint16(threshold // EFFECTIVE_BALANCE_INCREMENT)
 
     start = SWEEP_THRESHOLD_CREDENTIAL_OFFSET
     end = start + SWEEP_THRESHOLD_CREDENTIAL_LENGTH
@@ -213,7 +207,7 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
     """
     Check if ``validator`` is partially withdrawable.
     """
-    # [Modified in EIP8148]
+    # [New in EIP8148]
     sweep_threshold = get_sweep_threshold(validator)
     # [Modified in EIP8148]
     has_sweep_threshold = validator.effective_balance >= sweep_threshold
@@ -221,7 +215,7 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
     has_excess_balance = balance > sweep_threshold
     return (
         has_execution_withdrawal_credential(validator)
-        # [Modified in EIP8148]
+        # [New in EIP8148]
         and has_sweep_threshold
         and has_excess_balance
     )
@@ -231,8 +225,8 @@ def is_partially_withdrawable_validator(validator: Validator, balance: Gwei) -> 
 
 #### Modified `switch_to_compounding_validator`
 
-*Note*: The threshold bytes are cleared so that a validator switching to
-compounding credentials starts at the default threshold.
+*Note*: A validator switching to compounding credentials starts at the default
+threshold, regardless of what its credentials carried before.
 
 ```python
 def switch_to_compounding_validator(state: BeaconState, index: ValidatorIndex) -> None:
@@ -362,9 +356,9 @@ def get_validators_sweep_withdrawals(
 
 ##### Modified `get_validator_from_deposit`
 
-*Note*: The function `get_validator_from_deposit` is modified to store the
-threshold of a new compounding validator in its canonical encoding, and to cap
-its initial effective balance at that threshold.
+*Note*: The function `get_validator_from_deposit` is modified to replace an
+out-of-range threshold of a new compounding validator with the default, and to
+cap its initial effective balance at the threshold.
 
 ```python
 def get_validator_from_deposit(

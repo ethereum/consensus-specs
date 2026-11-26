@@ -13,6 +13,7 @@ from eth_consensus_specs.test.helpers.withdrawals import (
 )
 
 ADDRESS = b"\x11" * 20
+DEFAULT_THRESHOLD_BYTES = (2048).to_bytes(2, "little")
 
 
 def _credentials(spec, prefix, increments):
@@ -51,15 +52,6 @@ def _prepare_compounding(spec, state, index=0, balance_eth=32):
 @with_eip8148_and_later
 @spec_test
 @single_phase
-def test_get_sweep_threshold__default(spec):
-    assert spec.get_sweep_threshold(_compounding_validator(spec)) == (
-        spec.MAX_EFFECTIVE_BALANCE_ELECTRA
-    )
-
-
-@with_eip8148_and_later
-@spec_test
-@single_phase
 def test_get_sweep_threshold__custom(spec):
     for amount in (32, 128, 1000, 2047, 2048):
         assert spec.get_sweep_threshold(_compounding_validator(spec, amount)) == _eth(spec, amount)
@@ -69,7 +61,7 @@ def test_get_sweep_threshold__custom(spec):
 @spec_test
 @single_phase
 def test_get_sweep_threshold__out_of_range_is_default(spec):
-    for increments in (1, 31, 2049, 0xFFFF):
+    for increments in (0, 1, 31, 2049, 0xFFFF):
         validator = _compounding_validator(spec, increments)
         assert spec.get_sweep_threshold(validator) == spec.MAX_EFFECTIVE_BALANCE_ELECTRA
 
@@ -102,15 +94,13 @@ def test_set_sweep_threshold__little_endian(spec):
 @with_eip8148_and_later
 @spec_test
 @single_phase
-def test_set_sweep_threshold__max_restores_credentials(spec):
+def test_set_sweep_threshold__max_is_stored_explicitly(spec):
     validator = _compounding_validator(spec)
-    original = validator.withdrawal_credentials
-
-    spec.set_sweep_threshold(validator, _eth(spec, 128))
-    assert validator.withdrawal_credentials != original
 
     spec.set_sweep_threshold(validator, spec.MAX_EFFECTIVE_BALANCE_ELECTRA)
-    assert validator.withdrawal_credentials == original
+
+    assert _threshold_bytes(validator) == DEFAULT_THRESHOLD_BYTES
+    assert spec.get_sweep_threshold(validator) == spec.MAX_EFFECTIVE_BALANCE_ELECTRA
 
 
 @with_eip8148_and_later
@@ -130,13 +120,13 @@ def test_get_validator_from_deposit__caps_effective_balance(spec):
 @spec_test
 @single_phase
 def test_get_validator_from_deposit__normalizes_threshold(spec):
-    for increments in (5, 2048, 3000):
+    for increments in (0, 5, 2048, 3000):
         credentials = _credentials(spec, spec.COMPOUNDING_WITHDRAWAL_PREFIX, increments)
         validator = spec.get_validator_from_deposit(
             spec.BLSPubkey(b"\x22" * 48), credentials, spec.MAX_EFFECTIVE_BALANCE_ELECTRA
         )
 
-        assert _threshold_bytes(validator) == b"\x00\x00"
+        assert _threshold_bytes(validator) == DEFAULT_THRESHOLD_BYTES
         assert validator.effective_balance == spec.MAX_EFFECTIVE_BALANCE_ELECTRA
 
 
@@ -154,16 +144,16 @@ def test_process_set_sweep_threshold_request__success(spec, state):
 
 @with_eip8148_and_later
 @spec_state_test
-def test_process_set_sweep_threshold_request__max_restores_credentials(spec, state):
+def test_process_set_sweep_threshold_request__max_is_stored_explicitly(spec, state):
     validator = _prepare_compounding(spec, state)
-    original = validator.withdrawal_credentials
 
     spec.process_set_sweep_threshold_request(state, _request(spec, state, 0, _eth(spec, 64)))
     spec.process_set_sweep_threshold_request(
         state, _request(spec, state, 0, spec.MAX_EFFECTIVE_BALANCE_ELECTRA)
     )
 
-    assert validator.withdrawal_credentials == original
+    assert _threshold_bytes(validator) == DEFAULT_THRESHOLD_BYTES
+    assert spec.get_sweep_threshold(validator) == spec.MAX_EFFECTIVE_BALANCE_ELECTRA
 
 
 def _assert_request_ignored(spec, state, request, index=0):
@@ -262,7 +252,7 @@ def test_get_validators_sweep_withdrawals__sweeps_above_threshold(spec, state):
 
 @with_eip8148_and_later
 @spec_state_test
-def test_switch_to_compounding_validator__clears_threshold(spec, state):
+def test_switch_to_compounding_validator__resets_threshold(spec, state):
     set_eth1_withdrawal_credential_with_balance(spec, state, 0, address=ADDRESS)
     validator = state.validators[0]
     validator.withdrawal_credentials = _credentials(spec, spec.ETH1_ADDRESS_WITHDRAWAL_PREFIX, 128)
@@ -270,14 +260,14 @@ def test_switch_to_compounding_validator__clears_threshold(spec, state):
     spec.switch_to_compounding_validator(state, 0)
 
     assert spec.has_compounding_withdrawal_credential(validator)
-    assert _threshold_bytes(validator) == b"\x00\x00"
+    assert _threshold_bytes(validator) == DEFAULT_THRESHOLD_BYTES
     assert spec.get_sweep_threshold(validator) == spec.MAX_EFFECTIVE_BALANCE_ELECTRA
 
 
 @with_phases(phases=[HEZE], other_phases=[EIP8148])
 @spec_test
 @with_state
-def test_upgrade_to_eip8148__clears_threshold(spec, phases, state):
+def test_upgrade_to_eip8148__resets_threshold(spec, phases, state):
     post_spec = phases[EIP8148]
     compounding = state.validators[0]
     compounding.withdrawal_credentials = _credentials(spec, spec.COMPOUNDING_WITHDRAWAL_PREFIX, 128)
@@ -286,7 +276,7 @@ def test_upgrade_to_eip8148__clears_threshold(spec, phases, state):
 
     post = post_spec.upgrade_to_eip8148(state)
 
-    assert _threshold_bytes(post.validators[0]) == b"\x00\x00"
+    assert _threshold_bytes(post.validators[0]) == DEFAULT_THRESHOLD_BYTES
     assert post_spec.get_sweep_threshold(post.validators[0]) == (
         post_spec.MAX_EFFECTIVE_BALANCE_ELECTRA
     )
