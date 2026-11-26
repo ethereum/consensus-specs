@@ -676,6 +676,12 @@ earlier branch bypasses its check. Normal profiles cover grouped input pairs for
 each compatible credited outcome; exceptional profiles cover both ignored
 outcomes, and `max` retains the entire feasible space.
 
+The builder-deposit provider exercises raw consensus-handler inputs, including
+amounts below the execution-layer minimum. Cases with a zero-balance unexited
+builder seed a synthetic registry entry. Builder deposit requests in block
+histories must meet the
+[EIP-8282 execution-layer minimum](https://github.com/ethereum/EIPs/blob/de4c6f02c7bec4686762c55f8ab6abcf97a77d7d/EIPS/eip-8282.md#deposit-requests).
+
 Pending payments retain quorum comparison boundaries, previous/next section
 occupancies, mixed quorum relations, qualifying counts, existing withdrawals,
 and rotation/append outcomes. Normal and standard profiles cover pairs of aspect

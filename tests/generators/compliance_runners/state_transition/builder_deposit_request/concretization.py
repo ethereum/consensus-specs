@@ -5,9 +5,6 @@ from __future__ import annotations
 from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys
-from tests.generators.compliance_runners.state_transition.aspects_helpers.byte_witness import (
-    distinct_bytes,
-)
 from tests.generators.compliance_runners.state_transition.aspects_helpers.deposit_amount import (
     deposit_amount_from_profile,
 )
@@ -26,42 +23,28 @@ if TYPE_CHECKING:
 
 
 VALIDATOR_COUNT = 64
-EPOCHS_PAST_GENESIS = 10
 
 
 class ManualConcretizer:
     def concretize(self, abstract_case: Any, spec: Any, rng: Random) -> dict[str, Any]:
         rec = vars(abstract_case)
-        slot_epoch = rng.randrange(1, EPOCHS_PAST_GENESIS + 1)
-        request_index, wrong_index = distinct_indices(rng, len(builder_pubkeys), 2)
+        # Keys zero and one identify the genesis builder and the synthetic zero-balance builder.
+        request_index, wrong_index = distinct_indices(rng, len(builder_pubkeys) - 2, 2)
+        found = rec["builder_pubkey_found"]
+        exited = rec["builder_withdrawable_epoch_set"] is True
+        zero_balance = rec["builder_balance_zero"] is True
+        request_index = request_index + 2
+        if found:
+            request_index = 1 if zero_balance and not exited else 0
         request_pubkey = builder_pubkeys[request_index]
-        wrong_pubkey = builder_pubkeys[wrong_index]
+        wrong_pubkey = builder_pubkeys[wrong_index + 2]
         address_tail = spec.sha256(request_pubkey)[12:]
         attributes: dict[str, Any] = {
-            "slot": slot_epoch * int(spec.SLOTS_PER_EPOCH),
-            "current_epoch": slot_epoch,
             "request_pubkey": request_pubkey,
-            "wrong_pubkey": wrong_pubkey,
-            "address_tail": address_tail,
-            "builder_found": rec["builder_pubkey_found"],
+            "builder_exited": exited,
+            "builder_balance_zero": zero_balance,
             "reuses_swept_slot": rec["reuses_swept_slot"] is True,
         }
-
-        if rec["builder_pubkey_found"]:
-            execution_address, _ = distinct_bytes(rng, 20)
-            attributes["execution_address"] = execution_address
-            attributes["balance"] = (
-                0
-                if rec["builder_balance_zero"]
-                else rng.randrange(1, int(spec.MIN_ACTIVATION_BALANCE) + 1)
-            )
-            attributes["deposit_epoch"] = rng.randrange(slot_epoch + 1)
-            attributes["withdrawable_epoch"] = (
-                slot_epoch if rec["builder_withdrawable_epoch_set"] else int(spec.FAR_FUTURE_EPOCH)
-            )
-        elif rec["reuses_swept_slot"] is True:
-            attributes["execution_address"] = distinct_bytes(rng, 20)[0]
-
         attributes["withdrawal_credentials"] = withdrawal_credentials_from_profile(
             spec, rec["withdrawal_credentials_profile"], address_tail, rng
         )

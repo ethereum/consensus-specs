@@ -5,18 +5,6 @@ from __future__ import annotations
 from functools import cached_property
 from typing import Any, TYPE_CHECKING
 
-from eth_consensus_specs.test.helpers.attestations import next_epoch_with_attestations
-from eth_consensus_specs.test.helpers.block import (
-    build_block_and_payload,
-    build_empty_block_for_next_slot,
-    sign_block,
-    transition_unsigned_block,
-)
-from eth_consensus_specs.test.helpers.execution_payload import (
-    compute_and_sign_execution_payload_bid,
-    compute_and_sign_execution_payload_envelope,
-    compute_el_block_hash,
-)
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, builder_pubkeys
 from eth_consensus_specs.utils import bls
@@ -25,6 +13,10 @@ from tests.generators.compliance_runners.state_transition.aspects_helpers.byte_w
 )
 from tests.generators.compliance_runners.state_transition.materializer import (
     ConcretizingMaterializer,
+)
+from tests.generators.compliance_runners.state_transition.materializer.common import (
+    exit_builder_after_empty_parent,
+    finalize_genesis_builders,
 )
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
@@ -53,52 +45,14 @@ class BidProcessingMaterializer(ConcretizingMaterializer):
         state = create_genesis_state(spec, [balance] * 64, balance, builder_count=1)
         self._genesis_epoch_base = state.copy()
         spec.process_slots(self._genesis_epoch_base, spec.GENESIS_SLOT + 1)
-        with bls_enabled():
-            # Establish finality through signed attestations before choosing deposit epochs.
-            for _ in range(4):
-                _, _, state = next_epoch_with_attestations(
-                    spec, state, fill_cur_epoch=True, fill_prev_epoch=False
-                )
-        spec.process_slots(state, state.slot + 1)
-        self._base = state
+        self._base = finalize_genesis_builders(spec, state)
 
     @cached_property
     def _exited_bases(self) -> dict[str, Any]:
         spec = self.spec
         state = self._base.copy()
-        builder = state.builders[0]
-        requests = spec.ExecutionRequests(
-            builder_exits=spec.BuilderExitRequests.of(
-                spec.BuilderExitRequest(
-                    pubkey=builder.pubkey, source_address=builder.execution_address
-                )
-            )
-        )
-        with bls_enabled():
-            parent, payload = build_block_and_payload(spec, state, execution_requests=requests)
-            # The previous block's payload was skipped, so its withdrawals carry forward.
-            payload.withdrawals = state.payload_expected_withdrawals.copy()
-            payload.block_hash = compute_el_block_hash(spec, payload, state, requests)
-            parent.body.signed_execution_payload_bid = compute_and_sign_execution_payload_bid(
-                spec, state, payload, execution_requests=requests
-            )
-            spec.process_block(state, parent)
-            parent.state_root = spec.hash_tree_root(state)
-            signed_parent = sign_block(spec, state, parent)
-            envelope = compute_and_sign_execution_payload_envelope(
-                spec, state, spec.hash_tree_root(parent), signed_parent, payload, requests
-            )
-            spec.verify_execution_payload_envelope(state, envelope, spec.NoopExecutionEngine())
-
-            block = build_empty_block_for_next_slot(spec, state)
-            block.body.signed_execution_payload_bid.message.parent_block_hash = payload.block_hash
-            block.body.parent_execution_requests = requests
-            transition_unsigned_block(spec, state, block)
-
+        exit_builder_after_empty_parent(spec, state, spec.BuilderIndex(0))
         withdrawable_epoch = state.builders[0].withdrawable_epoch
-        assert withdrawable_epoch == (
-            spec.get_current_epoch(state) + spec.config.MIN_BUILDER_WITHDRAWABILITY_DELAY
-        )
         bases = {}
         for comparison, offset in (("LT", -1), ("EQ", 0), ("GT", 1)):
             epoch = spec.Epoch(int(withdrawable_epoch) + offset)
