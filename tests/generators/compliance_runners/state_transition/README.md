@@ -125,6 +125,10 @@ uv run pytest \
 The `--test-dir` option can be repeated to run multiple test roots. Optional
 `--start` and `--limit` arguments select a slice of the discovered cases.
 
+The
+[pre-state invariant scan](evaluation/README.md#checking-pre-state-invariants)
+checks generated fixtures for state invariants and handler entry conditions.
+
 ## Output
 
 Generated cases use this layout:

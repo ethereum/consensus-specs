@@ -8,6 +8,32 @@ post-states, and rejection cases.
 Outputs are deliberately local. They contain generated test suites, copied slice
 source, coverage databases, and JSON reports and must not be committed.
 
+## Checking pre-state invariants
+
+Run the standalone invariant scan against a generated vector root containing
+`minimal/`, `mainnet/`, or both:
+
+```bash
+uv run python -m tests.generators.compliance_runners.state_transition.evaluation.invariant_scan \
+  --test-dir ./comptests_st_max
+```
+
+The scan reads each generated Gloas case's `pre.ssz_snappy`, including cases
+with rejected operations. It uses the case's preset and configuration. State
+invariants cover finality, validator lifecycle and balances, committee
+membership, and builder and withdrawal queues. Entry conditions depend on where
+the handler runs. For example, epoch processing starts at the last slot of the
+epoch, after slot processing has written the historical roots for that slot. The
+cached block root must match the hash tree root of the latest block header.
+Passing means the pre-state satisfied these necessary conditions. Proving
+reachability also requires a history of valid transitions.
+
+Use `--provider withdrawal_processing` or `--preset minimal` to narrow the scan.
+The summary gives counts and the first example path for each violation per
+preset and provider. Add `--json report.json` to save those results and any
+input errors. Exit status is 0 for a clean scan, 1 for invariant violations, and
+2 for unreadable input or an empty selection.
+
 ## Groups and exclusions
 
 [`groups.yaml`](groups.yaml) defines composable vector/code scopes. The standard
