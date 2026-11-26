@@ -1,0 +1,6 @@
+# Minimal preset - EIP8288
+
+# Execution
+# ---------------------------------------------------------------
+# 2**20 (= 1,048,576) bytes
+MAX_DEPENDENCY_PROOF_BYTES: 1048576
