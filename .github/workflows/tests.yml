@@ -57,6 +57,10 @@ on:
         description: Generate heze tests
         default: true
         type: boolean
+      pq:
+        description: Generate pq tests
+        default: false
+        type: boolean
   schedule:
     - cron: "0 0 * * *"
 
@@ -115,6 +119,7 @@ jobs:
             [[ "${{ inputs.fulu }}" == "true" ]] && selected+=("fulu")
             [[ "${{ inputs.gloas }}" == "true" ]] && selected+=("gloas")
             [[ "${{ inputs.heze }}" == "true" ]] && selected+=("heze")
+            [[ "${{ inputs.pq }}" == "true" ]] && selected+=("pq")
 
             if [[ ${#selected[@]} -eq 0 ]]; then
               echo "No forks selected." >&2
