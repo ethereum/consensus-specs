@@ -29,6 +29,7 @@
   - [New `is_past_slot`](#new-is_past_slot)
   - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
   - [New `is_bid_compatible_with_head`](#new-is_bid_compatible_with_head)
+  - [New `get_max_payload_gas_limit`](#new-get_max_payload_gas_limit)
   - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
   - [New `verify_block_body_operation_limits`](#new-verify_block_body_operation_limits)
   - [New `verify_execution_requests_limits`](#new-verify_execution_requests_limits)
@@ -83,9 +84,16 @@ for the corresponding variable-size libp2p messages. The bound for
 
 ## Configs
 
-| Name                   | Value                  |
-| ---------------------- | ---------------------- |
-| `MAX_REQUEST_PAYLOADS` | `Uint64(2**7)` (= 128) |
+*Note*: `MIN_TRANSACTION_GAS` is a lower bound on the gas used by a single
+transaction, it bounds the number of transactions an execution payload can
+contain for a given gas limit. The value is set well below the cheapest
+transaction in Glamsterdam (12,000 gas). It may need to be changed in a future
+fork if the execution layer reduces the cost of a transaction below this value.
+
+| Name                   | Value                     |
+| ---------------------- | ------------------------- |
+| `MAX_REQUEST_PAYLOADS` | `Uint64(2**7)` (= 128)    |
+| `MIN_TRANSACTION_GAS`  | `Uint64(2**12)` (= 4,096) |
 
 ## Types
 
@@ -426,7 +434,11 @@ def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
     builds_on_parent_payload = bid.parent_block_hash == head_bid.parent_block_hash
 
     if builds_on_parent_block and builds_on_parent_payload:
-        return True
+        # A proposer only builds on the head's parent to re-org the head
+        bid_slot_ok = head_block.slot + 1 == bid.slot
+        head_late = is_head_late(store, head_node.root)
+        proposer_equivocation = is_proposer_equivocation(store, head_node.root)
+        return bid_slot_ok and (head_late or proposer_equivocation)
 
     if bid.parent_block_root != head_node.root:
         return False
@@ -437,6 +449,25 @@ def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
         return builds_on_head_payload
 
     return builds_on_parent_payload
+```
+
+### New `get_max_payload_gas_limit`
+
+```python
+def get_max_payload_gas_limit(store: Store, block: BeaconBlock) -> Uint64:
+    """
+    Return the highest gas limit the EIP-1559 transition rule allows for the
+    execution payload of ``block``, given the gas limit of the parent payload,
+    i.e. the payload of the closest full ancestor. If no ancestor in the store
+    is full, the parent payload is unknown and the bid's gas limit is the bound.
+    """
+    bid = block.body.signed_execution_payload_bid.message
+    while block.parent_root in store.blocks:
+        if is_parent_node_full(store, block):
+            parent_gas_limit = store.payloads[block.parent_root].payload.gas_limit
+            return parent_gas_limit + saturating_sub(parent_gas_limit // 1024, 1)
+        block = store.blocks[block.parent_root]
+    return bid.gas_limit
 ```
 
 ### New `verify_attestation_payload_status`
@@ -987,6 +1018,12 @@ def validate_execution_payload_envelope_gossip(
     if len(payload.withdrawals) > MAX_WITHDRAWALS_PER_PAYLOAD:
         raise GossipReject("too many withdrawals")
 
+    # [REJECT] The number of transactions is within the limit implied by the parent payload's gas limit
+    max_gas_limit = get_max_payload_gas_limit(store, block)
+    max_payload_transactions = max_gas_limit // MIN_TRANSACTION_GAS
+    if len(payload.transactions) > max_payload_transactions:
+        raise GossipReject("too many transactions")
+
     # [REJECT] The payload builds on the execution head of the block's post-state
     if payload.parent_hash != state.latest_block_hash:
         raise GossipReject("payload's parent hash does not match the latest block hash")
@@ -1121,6 +1158,12 @@ def validate_execution_payload_bid_gossip(
     # [IGNORE] The bid's slot is the current slot or the next slot
     if not is_current_or_next_slot(store, bid.slot, current_time_ms):
         raise GossipIgnore("bid's slot is not the current or next slot")
+
+    # [IGNORE] The bid is received after the payload attestation deadline of the previous slot
+    previous_slot_time_ms = compute_time_at_slot_ms(store.genesis_time_ms, bid.slot - 1)
+    payload_attestation_due_time_ms = previous_slot_time_ms + get_payload_attestation_due_ms()
+    if current_time_ms < payload_attestation_due_time_ms:
+        raise GossipIgnore("bid is received before the payload attestation deadline")
 
     # [REJECT] The bid's execution payment is zero
     if bid.execution_payment != 0:

@@ -187,6 +187,7 @@ def create_genesis_state(spec, validator_balances, activation_threshold, builder
             # The genesis bid's block hash is the empty hash
             block_hash=spec.Hash32(),
             parent_block_hash=genesis_payload.block_hash,
+            gas_limit=genesis_payload.gas_limit,
             execution_requests_root=spec.hash_tree_root(spec.ExecutionRequests()),
         )
         # Use realistic body root in the latest block header
