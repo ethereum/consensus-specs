@@ -197,6 +197,63 @@ def test_process_payload_attestation_partial_participation(spec, state):
     yield from run_payload_attestation_processing(spec, state, payload_attestation)
 
 
+def _get_duplicate_ptc_member(spec, state, slot):
+    """
+    Return a validator index that occupies more than one position in the PTC
+    for ``slot``, along with its number of positions.
+    """
+    ptc = list(spec.get_ptc(state, slot))
+    for validator_index in ptc:
+        count = ptc.count(validator_index)
+        if count > 1:
+            return validator_index, count
+    raise AssertionError("expected a validator with multiple PTC positions")
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+@always_bls
+def test_process_payload_attestation_duplicate_ptc_member_signed_per_position(spec, state):
+    """
+    Test that a validator with multiple PTC positions can have all of its bits
+    set when its signature is aggregated once per set bit
+    """
+    spec.process_slots(state, state.slot + 1)
+
+    validator_index, count = _get_duplicate_ptc_member(spec, state, state.slot - 1)
+    payload_attestation = prepare_signed_payload_attestation(
+        spec, state, attesting_indices=[validator_index] * count
+    )
+    assert sum(bool(bit) for bit in payload_attestation.aggregation_bits) == count
+
+    yield from run_payload_attestation_processing(spec, state, payload_attestation)
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+@always_bls
+def test_process_payload_attestation_invalid_duplicate_ptc_member_signed_once(spec, state):
+    """
+    Test that a validator with multiple PTC positions cannot have all of its
+    bits set when its signature is included only once in the aggregate
+    """
+    spec.process_slots(state, state.slot + 1)
+
+    validator_index, count = _get_duplicate_ptc_member(spec, state, state.slot - 1)
+    payload_attestation = prepare_signed_payload_attestation(
+        spec, state, attesting_indices=[validator_index] * count
+    )
+    assert sum(bool(bit) for bit in payload_attestation.aggregation_bits) == count
+
+    # Replace the aggregate with a single signature from the validator
+    data = payload_attestation.data
+    domain = spec.get_domain(state, spec.DOMAIN_PTC_ATTESTER, spec.compute_epoch_at_slot(data.slot))
+    signing_root = spec.compute_signing_root(data, domain)
+    payload_attestation.signature = spec.bls.Sign(privkeys[validator_index], signing_root)
+
+    yield from run_payload_attestation_processing(spec, state, payload_attestation, valid=False)
+
+
 #
 # Invalid beacon block root tests
 #
