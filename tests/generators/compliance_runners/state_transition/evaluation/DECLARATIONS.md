@@ -909,22 +909,23 @@ evaluation README; generated reports remain local.
 
 ### Bid-processing migration
 
-`bid_processing/target.py` uses the shared MiniZinc default and preserves all
-1,433 legacy signatures on both presets, including 66 zero-fault, 755 one-fault,
-and 612 two-fault cases. The old fixture counted only INVALID signatures toward
-its fault bound; an external INF signature can coexist with another failure. The
-explicit `fault_count` dimension preserves the independently counted scopes.
-Smoke stays at 12 cases. Normal preserves all 206 legacy grouped pairwise
-projections with 28 complete witnesses; exceptional has 11 cases, standard 39,
-and max 1,433. The former normal/standard greedy selections had 13/24 cases.
+`bid_processing/target.py` uses the shared MiniZinc default and retains 661
+legacy signatures on both presets. A current-epoch deposit can equal the
+finalized checkpoint only in genesis epoch. A builder's deposit must precede the
+finalized checkpoint before the builder can exit. This leaves 34 zero-fault, 353
+one-fault, and 274 two-fault cases. The legacy fixture counted only INVALID
+signatures toward its fault bound, so an external INF signature can coexist with
+another failure. The `fault_count` dimension counts both failures. Smoke covers
+all 12 outcomes. Normal covers 189 grouped pairwise projections with 21
+witnesses. Exceptional has 11 cases, standard 32, and max 661.
 
 Numeric observations use `cmp3`, predicates use Boolean domains, and inactive
 self-build builder fields use shared `NA`. Generation, metadata, validation, and
 coverage loading use shared adapters. The handwritten model and custom coverage
-and validation modules are removed. Legacy-space fingerprints and concrete
-recovery/replay tests cover both presets; Python reference projection parity
-uses the exhaustively legacy-validated feasible rows to avoid raw-space
-enumeration. Fixture scope and generation commands are in the provider README.
+and validation modules are removed. Fingerprints of the retained legacy rows and
+concrete recovery and replay tests cover both presets. Python reference
+projection parity uses the validated rows to avoid enumerating the raw space.
+Fixture scope and generation commands are in the provider README.
 
 ### Aggregate withdrawal-processing migration
 

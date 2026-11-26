@@ -1,4 +1,4 @@
-"""Bid declarations preserve legacy signatures and independently recover vectors."""
+"""Bid declarations preserve finality-compatible signatures and recover vectors independently."""
 
 import json
 from functools import lru_cache
@@ -10,6 +10,7 @@ from types import SimpleNamespace
 import pytest
 from ruamel.yaml import YAML
 
+from eth_consensus_specs.test.helpers.execution_payload import compute_el_block_hash
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.runner.discovery import gather_tests
@@ -26,6 +27,9 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     Context,
     load_observations,
     score,
+)
+from tests.generators.compliance_runners.state_transition.evaluation.invariant_scan import (
+    state_invariant_violations,
 )
 from tests.generators.compliance_runners.state_transition.provider import (
     load_provider,
@@ -65,15 +69,15 @@ def input_pairs(rows):
 
 
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])
-def test_complete_legacy_space_and_fault_scopes(preset):
-    # Fingerprints captured from the former handler_bid_processing.mzn model,
-    # with F/T -> bool, inactive variants -> NA, and _nfaults -> fault_count.
+def test_finality_compatible_legacy_space_and_fault_scopes(preset):
+    # Fingerprints of the original max rows after applying the finality
+    # constraints to deposits and exits.
     all_records = records(preset, "max")
     for faults, count, expected in (
-        (None, 1433, "d207d81d0b5186cc7bb1bf65fec2dd6c2171cb76e2a3ff169222f03e02469c75"),
-        (0, 66, "d0052504cc441d6babe8857940dc6ae76027016d2774a88bf7529fb1ccfe976e"),
-        (1, 755, "6aa2ceca9917d4a905442b395f526c4cf886a58176c1ddd8c0c71dfba8e850f4"),
-        (2, 612, "bb675cc92c9d02ba73837784f343fd8e3624e9a911ba17ff076b840b406b9a2a"),
+        (None, 661, "5816b8b0f0ccf3916945fc58a429d4a70fd584b3a26b2f993728e2751236c338"),
+        (0, 34, "3e1385d450db5b9871ae0e7b72c04029dae381476ab78e8ba3590475cc08e99d"),
+        (1, 353, "946fa0e13214041a3eef9eaab45e596a1cd58f6c9d8599953eb002c7b982deb3"),
+        (2, 274, "5c1e9c7fd1a7d4d70d998a2571997239092faa058ea0d955472efa28733e64b5"),
     ):
         selected = [r for r in all_records if faults is None or r["fault_count"] == faults]
         assert len(selected) == count
@@ -84,25 +88,25 @@ def test_complete_legacy_space_and_fault_scopes(preset):
 
 
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])
-def test_legacy_profile_coverage_and_small_smoke(preset):
+def test_profile_coverage_and_small_smoke(preset):
     smoke = records(preset, "smoke")
-    assert len(smoke) == len({r["outcome"] for r in smoke}) == 12
+    assert len(smoke) == 12
+    assert {r["outcome"] for r in smoke} == {r["outcome"] for r in records(preset, "max")}
     assert all(r["fault_count"] <= 1 for r in smoke)
     normal = records(preset, "normal")
-    assert len(normal) == 28
+    assert len(normal) == 21
     assert all(r["fault_count"] == 0 and r["outcome"] == "ACCEPT" for r in normal)
-    # Check every original grouped pairwise obligation, including legacy NA
-    # projections, rather than matching the old greedy representative choices.
+    # Compare against the grouped pairwise obligations of the retained legacy rows.
     projections = input_pairs(normal)
-    assert len(projections) == 206
+    assert len(projections) == 189
     assert (
         sha256(json.dumps(sorted(projections, key=repr)).encode()).hexdigest()
-        == "b27466cd8f113c83c4550eb84781777cc75aa08ec6b7521528bea33869bfa7f4"
+        == "3cc2b4277660e2f324b3e536b96fb59bd507157a8d3883b8ee144f0bd1a8f944"
     )
     exceptional = records(preset, "exceptional")
     assert len(exceptional) == len({r["outcome"] for r in exceptional}) == 11
     assert all(r["fault_count"] == 1 for r in exceptional)
-    assert len(records(preset, "standard")) == 39
+    assert len(records(preset, "standard")) == 32
 
 
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])
@@ -185,10 +189,36 @@ def vector(preset, record):
     )
 
 
+def test_exit_payload_carries_expected_withdrawals(monkeypatch):
+    spec = spec_targets["minimal"]["gloas"]
+    m = MATERIALIZER(spec)
+    base = m._base
+    assert not base.payload_expected_withdrawals
+    assert spec.get_expected_withdrawals(base).withdrawals
+
+    verify_envelope = spec.verify_execution_payload_envelope
+    verified_block_hashes = []
+
+    def verify_exit_envelope(state, signed_envelope, engine):
+        envelope = signed_envelope.message
+        assert envelope.execution_requests.builder_exits
+        assert envelope.payload.block_hash == compute_el_block_hash(
+            spec, envelope.payload, base, envelope.execution_requests
+        )
+        verify_envelope(state, signed_envelope, engine)
+        verified_block_hashes.append(envelope.payload.block_hash)
+
+    monkeypatch.setattr(spec, "verify_execution_payload_envelope", verify_exit_envelope)
+    exited_bases = m._exited_bases
+    (block_hash,) = verified_block_hashes
+    assert all(state.latest_block_hash == block_hash for state in exited_bases.values())
+
+
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])
-def test_standard_and_builder_state_witnesses_survive_serialization(preset):
+def test_standard_and_builder_state_witnesses_survive_serialization(preset, monkeypatch):
     # Cover every standard witness, every builder state, and all self-build
-    # signatures, without serializing the same large mainnet state 1,433 times.
+    # signatures, without serializing the same large mainnet state for every row.
+    monkeypatch.setattr(bls, "bls_active", False)
     selected = {tuple(sorted(r.items())): r for r in records(preset, "standard")}
     states = set()
     for r in records(preset, "max"):
@@ -196,12 +226,33 @@ def test_standard_and_builder_state_witnesses_survive_serialization(preset):
         if r["builder_type"] == "SELF" or state not in states:
             selected[tuple(sorted(r.items()))] = r
             states.add(state)
-    assert len(states) == 65  # 64 external builder states plus the inactive self state.
+    assert len(states) == 25  # 24 external builder states plus the inactive self state.
     for r in selected.values():
         metadata, ctx = vector(preset, r)
         assert recover_record(TARGET, ctx)[2] == metadata["claimed"] == r
         assert (ctx.post is not None) == (r["outcome"] == "ACCEPT")
         assert ctx.operation.message.block_hash != ctx.operation.message.parent_block_hash
+        assert not list(state_invariant_violations(ctx.spec, ctx.pre))
+        spec, pre = ctx.spec, ctx.pre
+        checkpoint = pre.finalized_checkpoint
+        if r["cmp_state_epoch_deposit_epoch"] == r["cmp_finalized_epoch_deposit_epoch"] == "EQ":
+            assert spec.get_current_epoch(pre) == spec.GENESIS_EPOCH
+            assert checkpoint == spec.Checkpoint()
+            assert pre.builders[ctx.operation.message.builder_index].withdrawable_epoch == (
+                spec.FAR_FUTURE_EPOCH
+            )
+        else:
+            assert checkpoint.epoch > spec.GENESIS_EPOCH
+            assert checkpoint.root == spec.get_block_root(pre, checkpoint.epoch)
+        if r["withdrawable_epoch_set"] is True:
+            builder = pre.builders[ctx.operation.message.builder_index]
+            # The block that processed the exit is still the latest block.
+            exit_epoch = spec.compute_epoch_at_slot(pre.latest_block_header.slot)
+            assert builder.deposit_epoch < checkpoint.epoch <= exit_epoch
+            assert builder.withdrawable_epoch == (
+                exit_epoch + spec.config.MIN_BUILDER_WITHDRAWABILITY_DELAY
+            )
+        assert bls.bls_active is False
 
 
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])

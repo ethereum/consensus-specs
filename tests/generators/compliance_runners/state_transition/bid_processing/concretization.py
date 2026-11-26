@@ -19,40 +19,17 @@ if TYPE_CHECKING:
     from random import Random
 
 
-def _pick_deposit_epoch(s_dep: str, state_epoch: int, rng: Random) -> int:
-    """Pick deposit_epoch satisfying cmp(state_epoch, deposit_epoch) = s_dep.
-    s_dep=EQ -> deposit == state; GT -> state > deposit.
-    Ensure deposit_epoch >= 1 so finalized can be below it when needed.
-    """
-    if s_dep == "EQ":
+def pick_deposit_epoch(
+    state_cmp: str, finalized_cmp: str, state_epoch: int, finalized_epoch: int, rng: Random
+) -> int:
+    """Choose a deposit epoch relative to the state's existing checkpoints."""
+    if state_cmp == "EQ":
         return state_epoch
-    # GT: state > deposit. Keep it positive so finalized can be below it.
-    return rng.randrange(1, state_epoch)
-
-
-def _pick_finalized_epoch(f_dep: str, deposit_epoch: int, rng: Random) -> int:
-    """Pick finalized_epoch satisfying cmp(finalized_epoch, deposit_epoch) = f_dep.
-    f_dep=LT means finalized < deposit; EQ means equal; GT means finalized > deposit.
-    """
-    if f_dep == "LT":
-        return rng.randrange(deposit_epoch)
-    elif f_dep == "EQ":
-        return deposit_epoch
-    return deposit_epoch + rng.randrange(1, 11)
-
-
-def _pick_withdrawable_epoch(w_cmp: str, state_epoch: int, rng: Random) -> int:
-    """Pick a withdrawable epoch satisfying the requested comparison.
-    cmp(state_epoch, withdrawable_epoch) = w_cmp.
-    LT -> state < withdrawable (withdrawable = state + 1)
-    EQ -> state == withdrawable
-    GT -> state > withdrawable (withdrawable = state - 1)
-    """
-    if w_cmp == "LT":
-        return state_epoch + rng.randrange(1, 11)
-    elif w_cmp == "EQ":
-        return state_epoch
-    return rng.randrange(state_epoch)
+    if finalized_cmp == "LT":
+        return rng.randrange(finalized_epoch + 1, state_epoch)
+    if finalized_cmp == "EQ":
+        return finalized_epoch
+    return rng.randrange(finalized_epoch)
 
 
 def _pick_balance_and_bid_value(
@@ -129,39 +106,22 @@ def _pick_balance_and_bid_value(
     return balance, bid_value
 
 
-# ``make_base_state(..., preprocess=True)`` advances the state by two epochs.
-_STATE_EPOCH = 2
-
-
 class ManualConcretizer:
     def concretize(self, abstract_case: Any, spec: Any, rng: Random) -> dict[str, Any]:
         rec = vars(abstract_case)
         is_self = rec["builder_type"] == "SELF"
-        builder_key_index, wrong_key_index = distinct_indices(rng, len(builder_pubkeys), 2)
+        # Key zero is already in the genesis registry for the exit history.
+        builder_key_index, wrong_key_index = distinct_indices(rng, len(builder_pubkeys) - 1, 2)
         builder_address, _ = distinct_bytes(rng, 20)
         result: dict[str, Any] = {
             "is_self": is_self,
             "past_genesis": rec.get("state_slot_past_genesis", True),
-            "current_epoch": _STATE_EPOCH,
-            "builder_key_index": builder_key_index,
-            "wrong_key_index": wrong_key_index,
+            "builder_key_index": builder_key_index + 1,
+            "wrong_key_index": wrong_key_index + 1,
             "builder_address": builder_address,
         }
 
         if not is_self:
-            deposit_epoch = _pick_deposit_epoch(
-                rec["cmp_state_epoch_deposit_epoch"], _STATE_EPOCH, rng
-            )
-            result["deposit_epoch"] = deposit_epoch
-            result["finalized_epoch"] = _pick_finalized_epoch(
-                rec["cmp_finalized_epoch_deposit_epoch"], deposit_epoch, rng
-            )
-            result["finalized_root"] = distinct_bytes(rng, 32)[0]
-            if rec["withdrawable_epoch_set"] is True:
-                result["withdrawable_epoch"] = _pick_withdrawable_epoch(
-                    rec["cmp_state_epoch_withdrawal_epoch"], _STATE_EPOCH, rng
-                )
-
             pending_payment_amount = (
                 rng.randrange(1, 1001) if rec["has_pending_payments"] is True else 0
             )

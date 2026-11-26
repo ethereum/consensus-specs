@@ -79,6 +79,7 @@ withdrawable = dimension(
 finalized = dimension(
     "cmp_finalized_epoch_deposit_epoch", cmp3(finalized_input, deposit_input, op=">"), when=external
 )
+deposited_this_epoch = external & (coverage_value(deposit) == "EQ")
 withdrawable_set = dimension(
     "withdrawable_epoch_set", withdrawable_input != far_future, when=external
 )
@@ -243,6 +244,8 @@ COVERAGE = coverage_spec(
         past_genesis,
         coverage_value(value) != "LT",
         implies(external, coverage_value(deposit) != "LT"),
+        implies(deposited_this_epoch, coverage_value(finalized) != "GT"),
+        implies(external & withdrawable_set, finalized),
         implies(external, coverage_value(zero) != "LT"),
         implies(external, zero == ~balance),
         implies(external & active, balance),

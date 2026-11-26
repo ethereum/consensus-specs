@@ -13,10 +13,12 @@ and does not trust metadata. Claims are recovered through `target_validator`.
 
 ## Coverage and legacy parity
 
-The native model retains all **1,433 legacy signatures** on both minimal and
-mainnet after normalizing `F`/`T` to booleans and inactive values to `NA`. The
-added `fault_count` dimension independently counts applicable failing gates: 66
-signatures have zero faults, 755 have one, and 612 have two.
+The model retains **661 of the 1,433 legacy signatures** on both minimal and
+mainnet. Finality cannot be later than a current-epoch deposit, which excludes
+580 signatures. Equality uses a slot in genesis epoch with the default
+checkpoint. An initiated exit requires finality strictly after the deposit,
+which excludes 192 more signatures. Of the retained signatures, 34 have zero
+faults, 353 have one, and 274 have two.
 
 The legacy fixture's at-most-one-failure constraint counted only `INVALID`
 external signatures. An `INF` signature could coexist with one other failed
@@ -26,26 +28,28 @@ exceptional profiles select exactly one independently counted fault.
 | Profile     | Coverage                                      | Cases |
 | ----------- | --------------------------------------------- | ----: |
 | smoke       | One clean representative per terminal outcome |    12 |
-| normal      | Grouped pairwise input aspects, zero faults   |    28 |
+| normal      | Grouped pairwise input aspects, zero faults   |    21 |
 | exceptional | Each terminal outcome with exactly one fault  |    11 |
-| standard    | Normal plus exceptional                       |    39 |
-| max         | Every feasible complete signature             | 1,433 |
+| standard    | Normal plus exceptional                       |    32 |
+| max         | Every feasible complete signature             |   661 |
 
-Normal preserves all 206 original grouped pairwise projections. Its 28 complete
-witnesses replace the old greedy selector's 13 representatives; standard changes
-from 24 to 39 accordingly. These are coverage-equivalent sets, not identical
-representative selections. Smoke stays at one case per reachable outcome.
+Normal covers all 189 grouped pairwise projections from the retained zero-fault
+signatures. Smoke still covers all 12 outcomes.
 
-Generation retains the existing fixture scope: self-builds or existing external
-builders, states past genesis, and a block hash distinct from its parent hash.
-The materializer guarantees the latter explicitly. Missing builders and genesis
-rejections can be observed but are outside the generated space.
+The materializer reaches finality through signed blocks with attestations.
+Exited-builder cases process a genesis builder's exit request from a parent
+payload, then advance through skipped slots to the epochs immediately before,
+at, and after the preset's withdrawal delay expires. Other external cases choose
+a synthetic deposit epoch relative to the checkpoint. Pending payments start at
+zero weight, as in bid processing. Builder balances and versions remain targeted
+handler inputs. Generation covers self-builds and existing external builders
+after slot zero with a block hash distinct from its parent hash.
 
 The mixed-radix projection encoding is larger than Gecode's integer range, so
 MiniZinc enumerates feasible rows and the shared projection evaluator operates
 on those rows. It does not enumerate the raw Cartesian space. Regression tests
-compare exhaustive legacy fingerprints, fault scopes, legacy profile coverage,
-and Python reference projections/completions over the legacy-validated rows.
+compare fingerprints and fault scopes for the retained legacy rows, grouped
+profile coverage, and Python reference projections over the same rows.
 
 ## Generate and validate
 

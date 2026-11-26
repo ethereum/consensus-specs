@@ -2,8 +2,22 @@
 
 from __future__ import annotations
 
+from functools import cached_property
 from typing import Any, TYPE_CHECKING
 
+from eth_consensus_specs.test.helpers.attestations import next_epoch_with_attestations
+from eth_consensus_specs.test.helpers.block import (
+    build_block_and_payload,
+    build_empty_block_for_next_slot,
+    sign_block,
+    transition_unsigned_block,
+)
+from eth_consensus_specs.test.helpers.execution_payload import (
+    compute_and_sign_execution_payload_bid,
+    compute_and_sign_execution_payload_envelope,
+    compute_el_block_hash,
+)
+from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import builder_pubkey_to_privkey, builder_pubkeys
 from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.aspects_helpers.byte_witness import (
@@ -12,11 +26,9 @@ from tests.generators.compliance_runners.state_transition.aspects_helpers.byte_w
 from tests.generators.compliance_runners.state_transition.materializer import (
     ConcretizingMaterializer,
 )
-from tests.generators.compliance_runners.state_transition.materializer.common import (
-    make_base_state,
-)
+from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
-from .concretization import STRATEGY
+from .concretization import pick_deposit_epoch, STRATEGY
 from .target import TARGET
 
 if TYPE_CHECKING:
@@ -36,11 +48,64 @@ class BidProcessingMaterializer(ConcretizingMaterializer):
 
     def __init__(self, spec: Any, fork_name="gloas", preset_name="minimal", seed: int = 0):
         super().__init__(spec, fork_name, preset_name, seed)
-        # Generated witnesses are always past genesis.
-        self._base = make_base_state(spec, num_validators=256, preprocess=True)
+        # Compounding validators keep PTC sampling fast across skipped epochs.
+        balance = spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+        state = create_genesis_state(spec, [balance] * 64, balance, builder_count=1)
+        self._genesis_epoch_base = state.copy()
+        spec.process_slots(self._genesis_epoch_base, spec.GENESIS_SLOT + 1)
+        with bls_enabled():
+            # Establish finality through signed attestations before choosing deposit epochs.
+            for _ in range(4):
+                _, _, state = next_epoch_with_attestations(
+                    spec, state, fill_cur_epoch=True, fill_prev_epoch=False
+                )
+        spec.process_slots(state, state.slot + 1)
+        self._base = state
 
-    def _base_state(self) -> Any:
-        return self._base.copy()
+    @cached_property
+    def _exited_bases(self) -> dict[str, Any]:
+        spec = self.spec
+        state = self._base.copy()
+        builder = state.builders[0]
+        requests = spec.ExecutionRequests(
+            builder_exits=spec.BuilderExitRequests.of(
+                spec.BuilderExitRequest(
+                    pubkey=builder.pubkey, source_address=builder.execution_address
+                )
+            )
+        )
+        with bls_enabled():
+            parent, payload = build_block_and_payload(spec, state, execution_requests=requests)
+            # The previous block's payload was skipped, so its withdrawals carry forward.
+            payload.withdrawals = state.payload_expected_withdrawals.copy()
+            payload.block_hash = compute_el_block_hash(spec, payload, state, requests)
+            parent.body.signed_execution_payload_bid = compute_and_sign_execution_payload_bid(
+                spec, state, payload, execution_requests=requests
+            )
+            spec.process_block(state, parent)
+            parent.state_root = spec.hash_tree_root(state)
+            signed_parent = sign_block(spec, state, parent)
+            envelope = compute_and_sign_execution_payload_envelope(
+                spec, state, spec.hash_tree_root(parent), signed_parent, payload, requests
+            )
+            spec.verify_execution_payload_envelope(state, envelope, spec.NoopExecutionEngine())
+
+            block = build_empty_block_for_next_slot(spec, state)
+            block.body.signed_execution_payload_bid.message.parent_block_hash = payload.block_hash
+            block.body.parent_execution_requests = requests
+            transition_unsigned_block(spec, state, block)
+
+        withdrawable_epoch = state.builders[0].withdrawable_epoch
+        assert withdrawable_epoch == (
+            spec.get_current_epoch(state) + spec.config.MIN_BUILDER_WITHDRAWABILITY_DELAY
+        )
+        bases = {}
+        for comparison, offset in (("LT", -1), ("EQ", 0), ("GT", 1)):
+            epoch = spec.Epoch(int(withdrawable_epoch) + offset)
+            slot = spec.compute_start_slot_at_epoch(epoch) + 1
+            spec.process_slots(state, slot)
+            bases[comparison] = state.copy()
+        return bases
 
     def materialize_concrete_attributes(
         self, sol: Any, attributes: dict[str, Any]
@@ -54,61 +119,59 @@ class BidProcessingMaterializer(ConcretizingMaterializer):
         if not past_genesis:
             raise AssertionError("State slot should be past genesis")
 
-        pre = self._base_state()
-        current_epoch = attributes["current_epoch"]
-        if current_epoch != int(spec.get_current_epoch(pre)):
-            raise ValueError("bid concretization state epoch does not match the base state")
+        use_genesis_epoch = (
+            rec["cmp_state_epoch_deposit_epoch"] == "EQ"
+            and rec["cmp_finalized_epoch_deposit_epoch"] == "EQ"
+        )
+        builder_exited = rec["withdrawable_epoch_set"] is True
+        if builder_exited:
+            pre = self._exited_bases[rec["cmp_state_epoch_withdrawal_epoch"]].copy()
+        else:
+            pre = (self._genesis_epoch_base if use_genesis_epoch else self._base).copy()
+        current_epoch = int(spec.get_current_epoch(pre))
         builder_key_index = attributes["builder_key_index"]
         wrong_key_index = attributes["wrong_key_index"]
         builder_pubkey = builder_pubkeys[builder_key_index]
         wrong_pubkey = builder_pubkeys[wrong_key_index]
         builder_address = attributes["builder_address"]
 
-        builder_index = 0
-
-        # ---- Builder registry (EXTERNAL only) -------------------------------
-        # Append a new builder rather than overwriting existing ones.
+        builder_index = spec.BUILDER_INDEX_SELF_BUILD
+        bid_value = attributes["bid_value"]
         if not is_self:
-            deposit_epoch = attributes["deposit_epoch"]
-            finalized_epoch = attributes["finalized_epoch"]
-            finalized_root = attributes["finalized_root"]
-            pre.finalized_checkpoint = spec.Checkpoint(
-                epoch=spec.Epoch(finalized_epoch), root=spec.Root(finalized_root)
-            )
-
-            wset = rec["withdrawable_epoch_set"] is True
-            if not wset:
-                withdrawable_epoch = spec.FAR_FUTURE_EPOCH
+            if builder_exited:
+                builder_index = spec.BuilderIndex(0)
             else:
-                withdrawable_epoch = spec.Epoch(attributes["withdrawable_epoch"])
-
-            version = (
+                deposit_epoch = pick_deposit_epoch(
+                    rec["cmp_state_epoch_deposit_epoch"],
+                    rec["cmp_finalized_epoch_deposit_epoch"],
+                    current_epoch,
+                    int(pre.finalized_checkpoint.epoch),
+                    self.rng,
+                )
+                builder_index = spec.BuilderIndex(len(pre.builders))
+                pre.builders.append(
+                    spec.Builder(
+                        pubkey=spec.BLSPubkey(builder_pubkey),
+                        execution_address=spec.ExecutionAddress(builder_address),
+                        deposit_epoch=spec.Epoch(deposit_epoch),
+                        withdrawable_epoch=spec.FAR_FUTURE_EPOCH,
+                    )
+                )
+            builder = pre.builders[builder_index]
+            builder_pubkey = builder.pubkey
+            builder.version = (
                 spec.PAYLOAD_BUILDER_VERSION
                 if rec["payload_builder_version"] is True
                 else spec.Uint8(1)
             )
+            builder.balance = spec.Gwei(attributes["balance"])
 
             pending_payment_amount = attributes["pending_payment_amount"]
             pending_withdrawal_amount = attributes["pending_withdrawal_amount"]
-            balance = attributes["balance"]
-            bid_value = attributes["bid_value"]
-
-            pre.builders.append(
-                spec.Builder(
-                    pubkey=spec.BLSPubkey(builder_pubkey),
-                    version=version,
-                    execution_address=spec.ExecutionAddress(builder_address),
-                    balance=spec.Gwei(balance),
-                    deposit_epoch=spec.Epoch(deposit_epoch),
-                    withdrawable_epoch=withdrawable_epoch,
-                )
-            )
-            builder_index = len(pre.builders) - 1
 
             if rec["has_pending_payments"] is True:
                 payment_index = self.rng.randrange(len(pre.builder_pending_payments))
                 pre.builder_pending_payments[payment_index] = spec.BuilderPendingPayment(
-                    weight=spec.Gwei(self.rng.randrange(1, 1001)),
                     withdrawal=spec.BuilderPendingWithdrawal(
                         fee_recipient=spec.ExecutionAddress(builder_address),
                         amount=spec.Gwei(pending_payment_amount),
@@ -124,14 +187,6 @@ class BidProcessingMaterializer(ConcretizingMaterializer):
                         builder_index=spec.BuilderIndex(builder_index),
                     )
                 )
-
-        else:
-            bid_value = attributes["bid_value"]
-
-        # ---- builder_index for the bid ----------------------------------------
-        if is_self:
-            builder_index = spec.BUILDER_INDEX_SELF_BUILD
-        # else: builder_index already set above after appending
 
         # ---- bid.slot --------------------------------------------------------
         # cmp_state_slot_bid_slot = cmp(state_slot, bid_slot)
@@ -192,18 +247,18 @@ class BidProcessingMaterializer(ConcretizingMaterializer):
         sig_type = rec["bid_signature"]
         if sig_type == "INF":
             signature = spec.bls.G2_POINT_AT_INFINITY
-        elif is_self:
-            signature = self._sign(pre, bid, builder_pubkey_to_privkey[builder_pubkey])
         else:
-            key = builder_pubkey if sig_type == "VALID" else wrong_pubkey
-            signature = self._sign(pre, bid, builder_pubkey_to_privkey[key])
+            key = builder_pubkey if is_self or sig_type == "VALID" else wrong_pubkey
+            with bls_enabled():
+                signature = self._sign(pre, bid, builder_pubkey_to_privkey[key])
 
         signed = spec.SignedExecutionPayloadBid(message=bid, signature=signature)
 
         # ---- derive post (accepted) or omit (rejected) ----------------------
         post = pre.copy()
         try:
-            spec.process_execution_payload_bid(post, signed)
+            with bls_enabled():
+                spec.process_execution_payload_bid(post, signed)
         except (AssertionError, IndexError):
             post = None
 
