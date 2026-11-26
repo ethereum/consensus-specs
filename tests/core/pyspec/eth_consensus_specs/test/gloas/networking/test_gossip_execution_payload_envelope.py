@@ -396,10 +396,13 @@ def test_gossip_execution_payload_envelope__reject_builder_index_mismatch(spec, 
 
     seen = get_seen(spec)
     bid_builder_index = blocks[-1].message.body.signed_execution_payload_bid.message.builder_index
-    # Pick any builder index that differs from the bid's. We subtract 1 instead
-    # of adding so the value stays inside Uint64 range when the bid uses the
-    # max-value sentinel BUILDER_INDEX_SELF_BUILD.
-    signed_envelope.message.builder_index = spec.BuilderIndex(int(bid_builder_index) - 1)
+    # Pick a builder from the registry that differs from the bid's, so that the
+    # envelope can carry a valid signature of that builder.
+    signed_envelope.message.builder_index = spec.BuilderIndex(0 if bid_builder_index != 0 else 1)
+    # Sign again so that only the condition under test fails
+    signed_envelope = sign_execution_payload_envelope(
+        spec, state, blocks[-1], signed_envelope.message
+    )
     yield get_filename(signed_envelope), signed_envelope
 
     messages = []
