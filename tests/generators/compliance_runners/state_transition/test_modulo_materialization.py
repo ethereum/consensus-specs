@@ -8,6 +8,9 @@ import pytest
 
 from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import Context
+from tests.generators.compliance_runners.state_transition.evaluation.invariant_scan import (
+    entry_condition_violations,
+)
 from tests.generators.compliance_runners.state_transition.provider import load_provider
 
 
@@ -36,7 +39,19 @@ def test_epoch_remainder_claims_match_materialized_states(module_name, factor_na
     actual = target.record(target.observation(Context(spec, pre, None, post, {})))
     assert meta["claimed"] == actual == {k: v for k, v in record.items() if not k.startswith("_")}
     if module_name == "historical_summaries_update":
-        assert len(post.historical_summaries) - len(pre.historical_summaries) == (bucket == "ZERO")
+        assert not list(entry_condition_violations(spec, pre, "epoch_processing"))
+        assert len(pre.historical_summaries) == pre.slot // spec.SLOTS_PER_HISTORICAL_ROOT
+        for ring in (pre.block_roots, pre.state_roots):
+            assert all(root == spec.Root() for root in ring[int(pre.slot) + 1 :])
+        expected = pre.historical_summaries.copy()
+        if bucket == "ZERO":
+            expected.append(
+                spec.HistoricalSummary(
+                    block_summary_root=spec.hash_tree_root(pre.block_roots),
+                    state_summary_root=spec.hash_tree_root(pre.state_roots),
+                )
+            )
+        assert post.historical_summaries == expected
     elif module_name == "sync_committee_updates" and bucket != "ZERO":
         assert post.current_sync_committee == pre.current_sync_committee
         assert post.next_sync_committee == pre.next_sync_committee
@@ -84,4 +99,7 @@ def test_count_cmp5_claims_match_materialized_values(
         == {k: v for k, v in record.items() if not k.startswith("_")}
     )
     value = observation[attribute_name]
+    if module_name == "historical_summaries_update":
+        period = spec.SLOTS_PER_HISTORICAL_ROOT // spec.SLOTS_PER_EPOCH
+        assert value == (observation["next_epoch"] - 1) // period
     assert value == 0 if bucket == "EQ" else value == 1 if bucket == "GT_1" else value >= 2

@@ -1,13 +1,39 @@
 """Coverage regression checks for effective-balance hysteresis boundaries."""
 
+from random import Random
+from types import SimpleNamespace
+
 from eth_consensus_specs.gloas import minimal as spec
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import score
+from tests.generators.compliance_runners.state_transition.evaluation.invariant_scan import (
+    entry_condition_violations,
+    state_invariant_violations,
+)
 from tests.generators.compliance_runners.state_transition.provider import load_provider
 
 from .cases import constants, representatives, signature
+from .materializer import MATERIALIZER
 from .target import COMPARISONS, PROFILES, TARGET
 
 build_profile = load_provider("effective_balance_updates").build_profile
+
+
+def test_balance_update_changes_only_the_selected_validator():
+    record = next(
+        record
+        for record in build_profile("smoke", spec=spec)
+        if record["outcome"] == "EFFECTIVE_BALANCE_UPDATED"
+    )
+    materializer = MATERIALIZER(spec)
+    materializer.rng = Random(0)
+    _, parts = materializer.materialize_solution(SimpleNamespace(**record))
+    states = {name: spec.BeaconState.decode_bytes(data) for name, _, data in parts}
+    pre, post = states["pre"], states["post"]
+    assert not list(entry_condition_violations(spec, pre, "epoch_processing"))
+    assert not list(state_invariant_violations(spec, pre))
+    assert len(pre.validators) > 1
+    assert pre.validators[0].effective_balance != post.validators[0].effective_balance
+    assert pre.validators[1:] == post.validators[1:]
 
 
 def test_profiles_cover_their_dsl_obligations():
