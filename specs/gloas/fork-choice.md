@@ -272,8 +272,6 @@ def notify_ptc_messages(
     Extracts a list of ``PayloadAttestationMessage`` from ``payload_attestations`` and updates the store with them
     These Payload attestations are assumed to be in the beacon block hence signature verification is not needed
     """
-    if state.slot == 0:
-        return
     for payload_attestation in payload_attestations:
         indexed_payload_attestation = get_indexed_payload_attestation(state, payload_attestation)
         for idx in indexed_payload_attestation.attesting_indices:
