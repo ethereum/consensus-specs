@@ -6,6 +6,9 @@ import pytest
 
 from eth_consensus_specs.test.helpers.specs import spec_targets
 from eth_consensus_specs.utils import bls
+from tests.generators.compliance_runners.state_transition.attestation import (
+    materializer as attestation_materializer,
+)
 from tests.generators.compliance_runners.state_transition.declaration_validation import (
     recover_record,
     validate_record,
@@ -13,10 +16,14 @@ from tests.generators.compliance_runners.state_transition.declaration_validation
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
     Context,
 )
+from tests.generators.compliance_runners.state_transition.evaluation.invariant_scan import (
+    state_invariant_violations,
+)
 from tests.generators.compliance_runners.state_transition.provider import (
     load_provider,
     materialize_handler,
 )
+from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
 
 def case_context(module, spec, materializer, record):
@@ -33,6 +40,39 @@ def case_context(module, spec, materializer, record):
         spec.BeaconState.decode_bytes(encoded["post"]) if "post" in encoded else None,
         {},
     )
+
+
+def test_paid_attestation_builder_activation_replays_from_genesis(monkeypatch):
+    spec = spec_targets["minimal"]["gloas"]
+    module = load_provider("attestation")
+    materializer = module.MATERIALIZER(spec)
+    materializer.test_provider = "attestation"
+    record = next(
+        record
+        for record in module.build_profile("max", spec=spec)
+        if record["payment_weight_increased"]
+    )
+
+    blocks = []
+    next_epoch_with_attestations = attestation_materializer.next_epoch_with_attestations
+
+    def record_epoch(*args, **kwargs):
+        pre, epoch_blocks, post = next_epoch_with_attestations(*args, **kwargs)
+        blocks.extend(epoch_blocks)
+        return pre, epoch_blocks, post
+
+    monkeypatch.setattr(attestation_materializer, "next_epoch_with_attestations", record_epoch)
+    _, ctx = case_context(module, spec, materializer, record)
+    bid = ctx.pre.latest_execution_payload_bid
+    replay = materializer._genesis_state.copy()
+    assert not spec.is_active_builder(replay, bid.builder_index)
+    with bls_enabled():
+        for signed_block in blocks:
+            spec.state_transition(replay, signed_block)
+    assert spec.is_active_builder(replay, bid.builder_index)
+    assert replay == materializer._finalized_state
+    spec.process_slots(replay, bid.slot)
+    assert bid.parent_block_root == spec.hash_tree_root(replay.latest_block_header)
 
 
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])
@@ -54,6 +94,23 @@ def test_max_vectors_and_profile_obligations(preset, provider, count, monkeypatc
         _, observed, actual = recover_record(module.TARGET, ctx)
         assert actual == meta["claimed"] == record
         assert bls.bls_active is False
+        if provider == "attestation":
+            assert not list(state_invariant_violations(spec, ctx.pre))
+            if record["pending_payment_amount_positive"]:
+                data = ctx.operation.data
+                payment = ctx.pre.builder_pending_payments[
+                    spec.SLOTS_PER_EPOCH + data.slot % spec.SLOTS_PER_EPOCH
+                ]
+                bid = ctx.pre.latest_execution_payload_bid
+                assert bid.slot == data.slot > spec.GENESIS_SLOT
+                assert spec.is_active_builder(ctx.pre, bid.builder_index)
+                assert payment.withdrawal.builder_index == bid.builder_index
+                assert payment.withdrawal.amount == bid.value > 0
+                (attester,) = spec.get_attesting_indices(ctx.pre, ctx.operation)
+                attester_weight = ctx.pre.validators[attester].effective_balance
+                assert payment.weight == (
+                    0 if record["sets_new_participation_flag"] else attester_weight
+                )
         observations.append(observed)
     for name, formula in target.profiles.items():
         selected = module.build_profile(name, spec=spec)

@@ -48,6 +48,7 @@ class AttesterSlashingMaterializer(Materializer):
         slashing = get_valid_attester_slashing_by_indices(
             spec, pre, indices_1, indices_2, signed_1=True, signed_2=True
         )
+        spec.process_slots(pre, pre.slot + 1)
 
         if not solution.attestation_data_slashable:
             slashing.attestation_2.data = slashing.attestation_1.data.copy()
@@ -62,7 +63,7 @@ class AttesterSlashingMaterializer(Materializer):
             for index in set(slashing.attestation_1.attesting_indices).intersection(
                 slashing.attestation_2.attesting_indices
             ):
-                pre.validators[index].slashed = True
+                spec.slash_validator(pre, index)
 
         post = pre.copy()
         try:

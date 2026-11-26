@@ -2,11 +2,18 @@
 
 from __future__ import annotations
 
+from functools import cached_property
 from typing import Any, TYPE_CHECKING
 
-from eth_consensus_specs.test.helpers.attestations import get_valid_attestation, sign_attestation
+from eth_consensus_specs.test.helpers.attestations import (
+    get_valid_attestation,
+    next_epoch_with_attestations,
+    sign_attestation,
+)
+from eth_consensus_specs.test.helpers.block import build_empty_block
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
-from eth_consensus_specs.test.helpers.state import transition_to
+from eth_consensus_specs.test.helpers.keys import builder_privkeys
+from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.aspects_helpers.byte_witness import (
     distinct_bytes,
 )
@@ -25,44 +32,70 @@ class AttestationMaterializer(Materializer):
     runner_name = "operations"
     handler_name = "attestation"
 
-    def _base_state(self) -> Any:
-        state = create_genesis_state(
+    @cached_property
+    def _genesis_state(self) -> Any:
+        return create_genesis_state(
             self.spec,
             validator_balances=[self.spec.MAX_EFFECTIVE_BALANCE] * 64,
             activation_threshold=self.spec.MAX_EFFECTIVE_BALANCE,
         )
-        state.slot = self.spec.Slot(
-            self.rng.randrange(2, EPOCHS_PAST_GENESIS + 1) * self.spec.SLOTS_PER_EPOCH
-            + self.rng.randrange(1, self.spec.SLOTS_PER_EPOCH)
-        )
+
+    @cached_property
+    def _finalized_state(self) -> Any:
+        spec = self.spec
+        state = self._genesis_state
+        with bls_enabled():
+            # The first two epoch transitions skip justification. The next
+            # two justify consecutive checkpoints and finalize past genesis.
+            for _ in range(4):
+                _, _, state = next_epoch_with_attestations(
+                    spec, state, fill_cur_epoch=True, fill_prev_epoch=False
+                )
+        assert state.finalized_checkpoint.epoch > spec.GENESIS_EPOCH
         return state
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
-        spec, pre = self.spec, self._base_state()
+        spec = self.spec
         same_slot = sol.attestation_is_same_slot
-        if same_slot:
-            pre = create_genesis_state(
-                spec,
-                validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,
-                activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
-            )
-            transition_to(spec, pre, spec.Slot(spec.MIN_ATTESTATION_INCLUSION_DELAY))
-        current = int(spec.get_current_epoch(pre))
         target_current = sol.target_is_current
         target_matches_slot = sol.target_epoch_matches_slot
-        # For a mismatch, choose a slot from the opposite epoch first. This
-        # preserves target_is_current while making the target/slot comparison
-        # false; changing only the target epoch would invert that dimension.
-        slot_target_current = target_current if target_matches_slot else not target_current
-        slot = (
-            0
-            if same_slot
-            else (
-                int(pre.slot) - 1
-                if slot_target_current
-                else int(spec.compute_start_slot_at_epoch(current)) - 1
+        if same_slot:
+            pre = self._finalized_state.copy()
+            # The finality history already includes a block at its last slot.
+            slot = pre.slot + 1
+            spec.process_slots(pre, slot)
+            with bls_enabled():
+                block = build_empty_block(spec, pre)
+                if sol.pending_payment_amount_positive:
+                    bid = block.body.signed_execution_payload_bid.message.copy()
+                    bid.builder_index = spec.BuilderIndex(self.rng.randrange(len(pre.builders)))
+                    bid.value = spec.Gwei(self.rng.randrange(1, 1001))
+                    bid.fee_recipient = spec.ExecutionAddress(distinct_bytes(self.rng, 20)[0])
+                    domain = spec.get_domain(pre, spec.DOMAIN_BEACON_BUILDER)
+                    block.body.signed_execution_payload_bid = spec.SignedExecutionPayloadBid(
+                        message=bid,
+                        signature=bls.Sign(
+                            builder_privkeys[bid.builder_index],
+                            spec.compute_signing_root(bid, domain),
+                        ),
+                    )
+                spec.process_block(pre, block)
+            spec.process_slots(pre, slot + spec.MIN_ATTESTATION_INCLUSION_DELAY)
+        else:
+            pre = self._genesis_state.copy()
+            pre.slot = spec.Slot(
+                self.rng.randrange(2, EPOCHS_PAST_GENESIS + 1) * spec.SLOTS_PER_EPOCH
+                + self.rng.randrange(1, spec.SLOTS_PER_EPOCH)
             )
-        )
+            # For a mismatch, take the slot from the opposite epoch so the
+            # declared target epoch remains current or previous as requested.
+            slot_target_current = target_current if target_matches_slot else not target_current
+            slot = (
+                pre.slot - 1
+                if slot_target_current
+                else spec.compute_start_slot_at_epoch(spec.get_current_epoch(pre)) - 1
+            )
+        current = int(spec.get_current_epoch(pre))
         committee = spec.get_beacon_committee(pre, spec.Slot(slot), 0)
         participant = self.rng.choice(committee)
         attestation = get_valid_attestation(
@@ -73,6 +106,14 @@ class AttestationMaterializer(Materializer):
             signed=False,
             filter_participant_set=lambda _: {participant},
         )
+        parent_slot = pre.latest_block_header.slot
+        if same_slot and not sol.sets_new_participation_flag:
+            # Process a valid copy first so participation and payment weight
+            # reflect the same prior attestation.
+            previous = attestation.copy()
+            with bls_enabled():
+                sign_attestation(spec, pre, previous)
+                spec.process_attestation(pre, previous, parent_slot)
         data = attestation.data
         if not sol.target_epoch_in_window:
             data.target.epoch = spec.Epoch(current + 1)
@@ -97,25 +138,6 @@ class AttestationMaterializer(Materializer):
             # intended length-only failure into an earlier failure.
             aggregation_bits = list(attestation.aggregation_bits) + [False]
             attestation.aggregation_bits = spec.AggregationBits(data=aggregation_bits)
-        # These are pre-state properties. Materialize them independently of
-        # whether a later gate permits the handler to consume the attestation.
-        if same_slot and not sol.sets_new_participation_flag:
-            flags = pre.current_epoch_participation[participant]
-            for flag in range(len(spec.PARTICIPATION_FLAG_WEIGHTS)):
-                flags = spec.add_flag(flags, flag)
-            pre.current_epoch_participation[participant] = flags
-        if same_slot and sol.pending_payment_amount_positive:
-            payment_index = int(spec.SLOTS_PER_EPOCH) + slot % int(spec.SLOTS_PER_EPOCH)
-            fee_recipient, _ = distinct_bytes(self.rng, 20)
-            pre.builder_pending_payments[payment_index] = spec.BuilderPendingPayment(
-                weight=spec.Gwei(self.rng.randrange(1001)),
-                withdrawal=spec.BuilderPendingWithdrawal(
-                    fee_recipient=spec.ExecutionAddress(fee_recipient),
-                    amount=spec.Gwei(self.rng.randrange(1, 1001)),
-                    builder_index=spec.BuilderIndex(self.rng.randrange(64)),
-                ),
-                proposer_index=spec.ValidatorIndex(self.rng.randrange(len(pre.validators))),
-            )
         if (
             sol.signature_valid
             and sol.committee_indices_valid
@@ -125,7 +147,6 @@ class AttestationMaterializer(Materializer):
             with bls_enabled():
                 sign_attestation(spec, pre, attestation)
         post = pre.copy()
-        parent_slot = pre.latest_block_header.slot
         try:
             with bls_enabled():
                 spec.process_attestation(post, attestation, parent_slot)
