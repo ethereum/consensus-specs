@@ -489,6 +489,7 @@ The reference concatenation fits at most
 | Name                             | Value                 |
 | -------------------------------- | --------------------- |
 | `X_MAX_COMMITTEE_COUNT_PER_SLOT` | `Uint64(2**4)` (= 16) |
+| `X_COMMITTEE_COUNTS` | `tuple[Uint64, ...](())` |
 
 *Note*: `X_MAX_COMMITTEE_COUNT_PER_SLOT` is temporary and only for testing. A
 devnet may lower it to put its validators into fewer, larger committees, to test
@@ -507,6 +508,103 @@ follows:
 |      65,536       |                16                |         16          |           128            |
 |      65,536       |                4                 |          4          |           512            |
 |      65,536       |                1                 |          1          |          2,048           |
+
+### Experimental committee rotation
+
+`X_COMMITTEE_COUNTS` is an ordered list of actual committee counts per slot.
+It defaults to an empty list, which preserves the static cap rule. A nonempty
+list enables an experimental rotation from genesis, holding each entry for
+exactly eight epochs and then wrapping to the first entry. It is supported only
+on a fresh PQ-from-genesis devnet with immutable configuration. It is not a
+runtime node setting or a change to other forks.
+
+For example, a devnet with 65,536 active validators may use:
+
+```yaml
+X_MAX_COMMITTEE_COUNT_PER_SLOT: 16
+X_COMMITTEE_COUNTS: [16, 8, 4, 2, 1]
+```
+
+On the mainnet preset this gives 16 x 128, 8 x 256, 4 x 512, 2 x 1,024 and
+1 x 2,048 validators per committee, for epochs 0-7, 8-15, 16-23, 24-31 and
+32-39 respectively. Epoch 40 repeats the first stage. With 8,192 active
+validators, `[2, 1]` gives 2 x 128 then 1 x 256. A one-element list is valid.
+
+The canonical deployment YAML encoding is an inline list of integers, as above.
+The config API JSON encoding is an array of decimal strings:
+
+```json
+{"X_COMMITTEE_COUNTS": ["16", "8", "4", "2", "1"]}
+```
+
+The empty value is `[]` in both encodings. Clients MUST accept and emit these
+forms, preserve entry order, and reject invalid entries rather than silently
+retain defaults. Clients MAY accept additional YAML sequence syntax, but shared
+deployment tooling MUST use the inline form.
+
+Every configured count MUST be a power of two (including 1). Deployment tooling
+MAY generate the list by taking descending powers of two no larger than the
+ordinary static count and omitting stages exceeding the experimental size limit.
+For 12,288 active validators this yields `[2, 1]`, not `[3, 2, 1]`. The static
+fallback with rotation disabled is unchanged and need not be a power of two.
+
+Recommendation generation belongs exclusively to deployment tooling; clients
+need only parse, validate and execute the explicit list. The resulting list MUST
+be shared by every client. Clients MUST NOT sort, clamp, filter or regenerate it
+during consensus execution. A custom subset or ordering of valid powers of two
+is allowed. A generator finding no feasible stage MUST fail setup, not silently
+emit the empty disabled list.
+
+Before generating or accepting an enabled experiment genesis, validate:
+
+- `PQ_FORK_EPOCH == GENESIS_EPOCH`.
+- `1 <= X_MAX_COMMITTEE_COUNT_PER_SLOT <= MAX_COMMITTEES_PER_SLOT_PQ`.
+- Entries are distinct positive uint64 powers of two (`C & (C - 1) == 0`),
+  each no greater than
+  `max(1, min(X_MAX_COMMITTEE_COUNT_PER_SLOT,
+  N // SLOTS_PER_EPOCH // TARGET_COMMITTEE_SIZE))`, where `N` is the genesis
+  active validator count.
+- `N >= SLOTS_PER_EPOCH * max(X_COMMITTEE_COUNTS)`.
+- For each entry `C`, `ceil(N / (SLOTS_PER_EPOCH * C))` is at most
+  `MAX_VALIDATORS_PER_COMMITTEE`.
+
+Validate scalar/list types, positivity, powers of two, uniqueness and preset/cap
+bounds when reading configuration. Validate PQ-from-genesis and active-set size
+constraints once when generating or accepting experiment genesis. These are
+setup checks, not new per-block assertions. Implementations MUST
+reject invalid explicit configurations rather than repair them. Use checked
+integer arithmetic. The committee-size limit is an experimental eligibility
+limit (2,048 for the mainnet preset), not a PQ progressive-bitlist encoding
+limit. No SSZ container or proof validity bound changes.
+
+The study assumes a fixed active validator count. If it changes, the configured
+list and cycle phase remain unchanged; flag the affected measurements as outside
+the fixed-size experiment. Do not crash, re-filter stages or select a fallback
+count because the assumption changed. Existing consensus validity rules continue
+to apply.
+
+All count consumers MUST use the queried vote/duty epoch, including lookahead
+aggregation-committee windows, duty APIs, subnet assignments, and validation of
+older attestations. The same slot's shuffled validator range is partitioned into
+more or fewer committees; each validator still receives one attestation duty per
+epoch. Existing previous-epoch inclusion rules and proof merging apply across
+geometry boundaries. No new gossip topics, stagger rules or inclusion delays
+are introduced. Use a distinct agreed network/fork identity and never reuse a
+database under different rotation configuration.
+
+Before deployment, participating clients MUST compare shared boundary fixtures:
+committee counts and exact assignments, genesis aggregation-window roots,
+lookahead from epoch 7 into epoch 8, cycle wrap, next-epoch duties/subnets, and a
+block containing eligible votes from both geometries. Prepared boundary states
+can exercise these cases without running an entire proving-network cycle.
+
+Geometry-dependent gossip-scoring assumptions are a client integration concern,
+not new consensus rules. Clients SHOULD document their expected-rate policy and
+check for geometry-induced false penalties, including transition/decay behavior.
+This amendment does not prescribe identical cross-client scoring constants or a
+new scoring algorithm. Existing epoch/seed/dependent-root cache identities are
+sufficient within an immutable network; do not add stage state or per-entry
+configuration hashes solely for rotation.
 
 ### Time parameters
 
@@ -1336,8 +1434,9 @@ def get_attesting_indices(state: BeaconState, attestation: Attestation) -> set[V
 
 #### Modified `get_beacon_committee`
 
-*Note*: The body is unchanged, but each slot now has at most
-`X_MAX_COMMITTEE_COUNT_PER_SLOT` committees, so committees are larger.
+*Note*: The body is unchanged. Committee count comes from the queried epoch's
+rotation stage when enabled, or from the static cap otherwise. Do not use the
+state's current epoch in place of the slot's epoch.
 
 ```python
 def get_beacon_committee(
@@ -1365,6 +1464,9 @@ def get_committee_count_per_slot(state: BeaconState, epoch: Epoch) -> Uint64:
     """
     Return the number of committees in each slot for the given ``epoch``.
     """
+    if len(X_COMMITTEE_COUNTS) > 0:
+        stage = (epoch // 8) % len(X_COMMITTEE_COUNTS)
+        return Uint64(X_COMMITTEE_COUNTS[stage])
     return max(
         Uint64(1),
         min(

@@ -167,6 +167,8 @@ MAX_PER_EPOCH_ACTIVATION_CHURN_LIMIT_GLOAS: 256000000000
 # PQ
 # 2**4 (= 16) committees, temporary and only for testing
 X_MAX_COMMITTEE_COUNT_PER_SLOT: 16
+# Ordered committee counts, eight epochs each from PQ genesis; [] disables rotation
+X_COMMITTEE_COUNTS: []
 
 # Fork choice
 # ---------------------------------------------------------------
