@@ -53,6 +53,8 @@
   - [Messages](#messages)
     - [BeaconBlocksByRange v2](#beaconblocksbyrange-v2)
     - [BeaconBlocksByRoot v2](#beaconblocksbyroot-v2)
+    - [DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1)
+    - [DataColumnSidecarsByRoot v1](#datacolumnsidecarsbyroot-v1)
     - [ExecutionPayloadEnvelopesByRange v1](#executionpayloadenvelopesbyrange-v1)
     - [ExecutionPayloadEnvelopesByRoot v1](#executionpayloadenvelopesbyroot-v1)
 
@@ -1583,6 +1585,61 @@ beacon block type.
 | `ELECTRA_FORK_VERSION`   | `electra.SignedBeaconBlock`   |
 | `FULU_FORK_VERSION`      | `fulu.SignedBeaconBlock`      |
 | `GLOAS_FORK_VERSION`     | `gloas.SignedBeaconBlock`     |
+
+#### DataColumnSidecarsByRange v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_range/1/`
+
+The request and response are unchanged from Fulu, except for the verification of
+a Gloas sidecar and its `ForkDigest` context epoch.
+
+A Gloas sidecar has no inclusion proof. Before consuming the next response chunk
+of a Gloas sidecar, the response reader SHOULD verify the sidecar through
+`verify_data_column_sidecar` and `verify_data_column_sidecar_kzg_proofs`, with
+the `kzg_commitments` of the bid at
+`block.body.signed_execution_payload_bid.message.blob_kzg_commitments`, where
+`block` is the `BeaconBlock` with root `data_column_sidecar.beacon_block_root`.
+The reader SHOULD also verify that `data_column_sidecar.slot` equals
+`block.slot`. The reader therefore needs the blocks of the requested range, for
+example from a `BeaconBlocksByRange` request for the same range.
+
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(data_column_sidecar.slot)` for a Gloas
+sidecar, and as in Fulu for a Fulu sidecar.
+
+Per `fork_version = compute_fork_version(epoch)`:
+
+<!-- eth_consensus_specs: skip -->
+
+| `epoch`                                     | Chunk SSZ type            |
+| ------------------------------------------- | ------------------------- |
+| `FULU_FORK_EPOCH` to `GLOAS_FORK_EPOCH - 1` | `fulu.DataColumnSidecar`  |
+| `GLOAS_FORK_EPOCH` and later                | `gloas.DataColumnSidecar` |
+
+#### DataColumnSidecarsByRoot v1
+
+**Protocol ID:** `/eth2/beacon_chain/req/data_column_sidecars_by_root/1/`
+
+The request and response are unchanged from Fulu, except for the verification of
+a Gloas sidecar and its `ForkDigest` context epoch.
+
+Before consuming the next response chunk of a Gloas sidecar, the response reader
+SHOULD verify it as specified in
+[DataColumnSidecarsByRange v1](#datacolumnsidecarsbyrange-v1), with the block
+whose root is the `block_root` of the request identifier.
+
+For each successful `response_chunk`, the `ForkDigest` context epoch is
+determined by `compute_epoch_at_slot(data_column_sidecar.slot)` for a Gloas
+sidecar, and as in Fulu for a Fulu sidecar.
+
+Per `fork_version = compute_fork_version(epoch)`:
+
+<!-- eth_consensus_specs: skip -->
+
+| `epoch`                                     | Chunk SSZ type            |
+| ------------------------------------------- | ------------------------- |
+| `FULU_FORK_EPOCH` to `GLOAS_FORK_EPOCH - 1` | `fulu.DataColumnSidecar`  |
+| `GLOAS_FORK_EPOCH` and later                | `gloas.DataColumnSidecar` |
 
 #### ExecutionPayloadEnvelopesByRange v1
 
