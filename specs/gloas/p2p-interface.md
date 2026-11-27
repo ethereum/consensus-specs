@@ -378,7 +378,7 @@ def is_current_or_next_slot(
     (with MAXIMUM_GOSSIP_CLOCK_DISPARITY allowance).
     """
     is_current = is_current_slot(store, slot, current_time_ms)
-    is_next = is_current_slot(store, slot - 1, current_time_ms)
+    is_next = slot > GENESIS_SLOT and is_current_slot(store, Slot(slot - 1), current_time_ms)
     return is_current or is_next
 ```
 
@@ -1160,10 +1160,11 @@ def validate_execution_payload_bid_gossip(
         raise GossipIgnore("bid's slot is not the current or next slot")
 
     # [IGNORE] The bid is received after the payload attestation deadline of the previous slot
-    previous_slot_time_ms = compute_time_at_slot_ms(store.genesis_time_ms, bid.slot - 1)
-    payload_attestation_due_time_ms = previous_slot_time_ms + get_payload_attestation_due_ms()
-    if current_time_ms < payload_attestation_due_time_ms:
-        raise GossipIgnore("bid is received before the payload attestation deadline")
+    if bid.slot > GENESIS_SLOT:
+        previous_slot_time_ms = compute_time_at_slot_ms(store.genesis_time_ms, Slot(bid.slot - 1))
+        payload_attestation_due_time_ms = previous_slot_time_ms + get_payload_attestation_due_ms()
+        if current_time_ms < payload_attestation_due_time_ms:
+            raise GossipIgnore("bid is received before the payload attestation deadline")
 
     # [REJECT] The bid's execution payment is zero
     if bid.execution_payment != 0:

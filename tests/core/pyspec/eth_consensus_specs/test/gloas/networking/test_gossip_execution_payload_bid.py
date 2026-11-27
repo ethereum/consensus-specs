@@ -622,6 +622,64 @@ def test_gossip_execution_payload_bid__ignore_slot_too_far_future(spec, state):
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__ignore_genesis_slot(spec, state):
+    """A bid for the genesis slot is ignored, as it has no slot before it."""
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
+    finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
+    head_payload = record_head_payload(spec, state, store, blocks)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
+    yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
+
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
+    messages = []
+    seen, common_fee, parent_gas_limit, _, parent_block_hash, current_time_ms = yield from (
+        _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
+    )
+
+    genesis_slot = spec.Slot(spec.GENESIS_SLOT)
+    signed_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=spec.BuilderIndex(0),
+        slot=genesis_slot,
+        parent_block_hash=parent_block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(1),
+    )
+    yield get_filename(signed_bid), signed_bid
+
+    current_time_ms += 40
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=current_time_ms,
+    )
+    assert result == "ignore"
+    assert reason == "bid's slot is not the current or next slot"
+    messages.append(
+        {
+            "current_time_ms": int(current_time_ms),
+            "message": get_filename(signed_bid),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_slot_outside_lower_disparity(spec, state):
     """A bid whose slot is 1ms before the lower clock-disparity edge is ignored."""
     anchor_state = state.copy()
