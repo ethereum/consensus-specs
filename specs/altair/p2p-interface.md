@@ -282,6 +282,11 @@ def validate_sync_committee_contribution_and_proof_gossip(
 
     state = store.block_states[get_head(store).root]
 
+    # [IGNORE] The head state holds the sync committee that signs for the contribution's slot
+    slot_period = compute_sync_committee_period(compute_epoch_at_slot(contribution.slot + 1))
+    if slot_period > compute_sync_committee_period(get_current_epoch(state)) + 1:
+        raise GossipIgnore("head state does not hold the committee of the contribution's slot")
+
     # [REJECT] The aggregator index is valid
     if contribution_and_proof.aggregator_index >= len(state.validators):
         raise GossipReject("aggregator index out of range")
@@ -372,6 +377,13 @@ def validate_sync_committee_message_gossip(
         raise GossipIgnore("message is not for the current slot")
 
     state = store.block_states[get_head(store).root]
+
+    # [IGNORE] The head state holds the sync committee that signs for the message's slot
+    slot_period = compute_sync_committee_period(
+        compute_epoch_at_slot(sync_committee_message.slot + 1)
+    )
+    if slot_period > compute_sync_committee_period(get_current_epoch(state)) + 1:
+        raise GossipIgnore("head state does not hold the committee of the message's slot")
 
     # [REJECT] The validator index is valid
     if sync_committee_message.validator_index >= len(state.validators):
