@@ -13,6 +13,9 @@ from tests.generators.compliance_runners.state_transition.evaluation.coverage_ds
     Context,
     load_observations,
 )
+from tests.generators.compliance_runners.state_transition.evaluation.invariant_scan import (
+    state_invariant_violations,
+)
 from tests.generators.compliance_runners.state_transition.provider import (
     decode,
     load_provider,
@@ -48,10 +51,40 @@ def vector(module, spec, materializer, record):
     return meta, ctx
 
 
+def assert_pending_withdrawal_history(ctx, record):
+    spec, pre, post = ctx.spec, ctx.pre, ctx.post
+    assert not list(state_invariant_violations(spec, pre))
+    assert not list(state_invariant_violations(spec, post))
+    (withdrawal,) = pre.builder_pending_withdrawals
+    index = withdrawal.builder_index
+    parent_bid = pre.latest_execution_payload_bid
+    assert spec.is_active_builder(pre, index)
+    assert pre.latest_block_header.slot == pre.slot > parent_bid.slot
+    assert pre.execution_payload_availability[parent_bid.slot % spec.SLOTS_PER_HISTORICAL_ROOT]
+    assert index == parent_bid.builder_index != 0
+    assert withdrawal.amount == parent_bid.value
+    assert withdrawal.fee_recipient == parent_bid.fee_recipient != spec.ExecutionAddress()
+    assert withdrawal.fee_recipient != pre.builders[index].execution_address
+
+    reserved = spec.get_pending_balance_to_withdraw_for_builder(post, index)
+    assert bool(reserved) == record["has_pending_payments"]
+    assert post.builder_pending_payments == pre.builder_pending_payments
+    assert pre.builders[index].balance == spec.MIN_DEPOSIT_AMOUNT + reserved + withdrawal.amount
+    assert post.builders[index].balance == spec.MIN_DEPOSIT_AMOUNT + reserved
+    assert list(post.payload_expected_withdrawals) == [
+        spec.Withdrawal(
+            index=pre.next_withdrawal_index,
+            validator_index=spec.convert_builder_index_to_validator_index(index),
+            address=withdrawal.fee_recipient,
+            amount=withdrawal.amount,
+        )
+    ]
+
+
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])
 @pytest.mark.parametrize(
     ("provider", "count"),
-    [("parent_execution_payload", 768), ("builder_pending_withdrawal_processing", 12)],
+    [("parent_execution_payload", 768), ("builder_pending_withdrawal_processing", 2)],
 )
 def test_max_vectors_and_profile_coverage(preset, provider, count):
     module = provider_module(provider)
@@ -66,6 +99,8 @@ def test_max_vectors_and_profile_coverage(preset, provider, count):
         meta, ctx = vector(module, spec, materializer, record)
         _, observation, actual = recover_record(module.TARGET, ctx)
         assert actual == meta["claimed"] == record
+        if provider == "builder_pending_withdrawal_processing":
+            assert_pending_withdrawal_history(ctx, record)
         observed.append(observation)
     for name, formula in target.profiles.items():
         selected = module.build_profile(name, spec=spec)

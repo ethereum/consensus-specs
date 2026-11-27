@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from functools import cache
+from functools import cache, cached_property
 from typing import Any
 
+from eth_consensus_specs.test.helpers.block import build_empty_block
+from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import builder_pubkeys
 from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.builder_pending_withdrawal_processing.target import (
@@ -13,7 +15,9 @@ from tests.generators.compliance_runners.state_transition.builder_pending_withdr
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 from tests.generators.compliance_runners.state_transition.materializer.common import (
     BIG,
+    finalize_genesis_builders,
     make_base_state,
+    process_payload_block_after_empty_parent,
     set_parent_block,
 )
 from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
@@ -29,62 +33,6 @@ def _padding_pubkey(index: int) -> bytes:
     # Separate these inactive registry entries from the helper signing keys.
     with bls_enabled():
         return bls.SkToPk(2**40 + index)
-
-
-def _builder_params_from_dims(spec: Any, state_epoch: int, rec: dict[str, Any]) -> dict[str, Any]:
-    """Pick concrete Builder container fields from the entry's builder dims."""
-    min_deposit = int(spec.MIN_DEPOSIT_AMOUNT)
-
-    version = (
-        spec.PAYLOAD_BUILDER_VERSION
-        if rec["payload_builder_version"]
-        else spec.Uint8(spec.PAYLOAD_BUILDER_VERSION + 1)
-    )
-
-    if rec["cmp_state_epoch_deposit_epoch"] == "EQ":
-        deposit_epoch = state_epoch
-    elif rec["cmp_state_epoch_deposit_epoch"] == "GT":
-        deposit_epoch = max(0, state_epoch - 2)
-    else:  # LT
-        deposit_epoch = state_epoch + 2
-
-    if not rec["withdrawable_epoch_set"]:
-        withdrawable_epoch = spec.FAR_FUTURE_EPOCH
-    else:
-        w_cmp = rec["cmp_state_epoch_withdrawal_epoch"]
-        if w_cmp == "EQ":
-            withdrawable_epoch = spec.Epoch(state_epoch)
-        elif w_cmp == "GT":
-            withdrawable_epoch = spec.Epoch(max(0, state_epoch - 1))
-        else:  # LT
-            withdrawable_epoch = spec.Epoch(state_epoch + 1)
-
-    if rec["cmp_balance_zero"] == "EQ":
-        balance = 0
-    elif rec["cmp_balance_min_deposit"] == "LT":
-        balance = max(1, min_deposit - 1)
-    elif rec["cmp_balance_min_deposit"] == "EQ":
-        balance = min_deposit
-    else:  # GT
-        balance = min_deposit + BIG
-
-    return {
-        "pubkey": spec.BLSPubkey(builder_pubkeys[0]),
-        "version": version,
-        "execution_address": spec.ExecutionAddress(BUILDER_ADDRESS),
-        "balance": spec.Gwei(balance),
-        "deposit_epoch": spec.Epoch(deposit_epoch),
-        "withdrawable_epoch": withdrawable_epoch,
-    }
-
-
-def _pick_finalized_epoch(rec: dict[str, Any], deposit_epoch: int) -> int:
-    if rec["cmp_finalized_epoch_deposit_epoch"] == "LT":
-        return max(0, deposit_epoch - 1)
-    elif rec["cmp_finalized_epoch_deposit_epoch"] == "EQ":
-        return deposit_epoch
-    else:  # GT
-        return deposit_epoch + 1
 
 
 # --- withdrawal_processing helpers ---
@@ -283,58 +231,42 @@ class WithdrawalProcessingMaterializer(Materializer):
         )
         return {"description": f"{description}: {claimed}", "claimed": claimed}, parts
 
+    @cached_property
+    def _pending_withdrawal_base(self):
+        spec = self.spec
+        balance = spec.MAX_EFFECTIVE_BALANCE
+        state = create_genesis_state(spec, [balance] * 64, balance, builder_count=2)
+        return finalize_genesis_builders(spec, state)
+
     def _materialize_pending_withdrawal(self, rec: dict) -> tuple[Any, Any]:
         spec = self.spec
-
-        pre = self._base.copy()
-        state_epoch = int(spec.get_current_epoch(pre))
-
-        set_parent_block(spec, pre, rec["state_latest_block_hash_match"])
-
-        # One real pending withdrawal: add the referenced builder and the
-        # pending-withdrawal entry. The builder's computed Builder solution
-        # must match the entry's embedded builder dims.
-        params = _builder_params_from_dims(spec, state_epoch, rec)
-        pre.builders.append(spec.Builder(**params))
-        builder_index = len(pre.builders) - 1
-
-        deposit_epoch = int(params["deposit_epoch"])
-        finalized_epoch = _pick_finalized_epoch(rec, deposit_epoch)
-        pre.finalized_checkpoint = spec.Checkpoint(
-            epoch=spec.Epoch(finalized_epoch),
-            root=spec.Root(b"\x01" * 32),
-        )
-
-        # Pending withdrawal amount per cmp_builder_balance_amount
-        # (cmp_pending_amount_zero is GT: amount > 0 by construction).
-        balance = int(params["balance"])
-        cmp_bal_amount = rec["cmp_builder_balance_amount"]
-        if cmp_bal_amount == "LT":
-            amount = balance + 1
-        elif cmp_bal_amount == "EQ":
-            amount = balance
-        else:  # GT
-            amount = balance - 1
-
-        pre.builder_pending_withdrawals.append(
-            spec.BuilderPendingWithdrawal(
-                fee_recipient=spec.ExecutionAddress(BUILDER_ADDRESS),
-                amount=spec.Gwei(amount),
-                builder_index=spec.BuilderIndex(builder_index),
-            )
-        )
-
-        # has_pending_payments == T requires a matching pending payment
+        pre = self._pending_withdrawal_base.copy()
+        builder_index = spec.BuilderIndex(1)
+        requests = spec.ExecutionRequests()
         if rec["has_pending_payments"]:
-            pre.builder_pending_payments[0] = spec.BuilderPendingPayment(
-                weight=spec.Gwei(1),
-                withdrawal=spec.BuilderPendingWithdrawal(
-                    fee_recipient=spec.ExecutionAddress(BUILDER_ADDRESS),
-                    amount=spec.Gwei(1000),
-                    builder_index=spec.BuilderIndex(builder_index),
-                ),
-                proposer_index=spec.ValidatorIndex(0),
+            # The next block skips this payload, leaving its bid reserved.
+            process_payload_block_after_empty_parent(
+                spec, pre, requests, builder_index=builder_index, value=1_000
             )
+            spec.process_slots(pre, pre.slot + 1)
+
+        reserved = spec.get_pending_balance_to_withdraw_for_builder(pre, builder_index)
+        amount = pre.builders[builder_index].balance - spec.MIN_DEPOSIT_AMOUNT - reserved
+        payload_hash = process_payload_block_after_empty_parent(
+            spec,
+            pre,
+            requests,
+            builder_index=builder_index,
+            value=amount,
+            fee_recipient=spec.ExecutionAddress(BUILDER_ADDRESS),
+        )
+        spec.process_slots(pre, pre.slot + 1)
+        with bls_enabled():
+            child = build_empty_block(spec, pre)
+            child.body.signed_execution_payload_bid.message.parent_block_hash = payload_hash
+            # Stop at the child block's process_withdrawals entry point.
+            spec.process_parent_execution_payload(pre, child)
+            spec.process_block_header(pre, child)
 
         post = pre.copy()
         spec.process_withdrawals(post)

@@ -81,18 +81,20 @@ COVERAGE = coverage_spec(
     record="one withdrawals-processing step",
     aspects=ASPECTS,
     constraints=(
-        # The legacy slice always resolves a valid active builder with a
-        # positive pending withdrawal and balance above the minimum deposit.
+        # The paid bid requires an active builder whose deposit has finalized.
         all_of(
             parent,
             version,
-            current_deposit,
             finalized_deposit,
             ~exiting,
             withdrawals,
             balance_applied,
             consumed,
         ),
+        # The deposit precedes finality, and bids reserve the minimum deposit
+        # in addition to the pending balance.
+        coverage_value(current_deposit) == "GT",
+        coverage_value(balance_amount) == "GT",
         coverage_value(current_withdrawable) == "LT",
         coverage_value(balance_minimum) == "GT",
     ),

@@ -66,7 +66,9 @@ def finalize_genesis_builders(spec, state):
     return state
 
 
-def process_payload_block_after_empty_parent(spec, state, requests, *, builder_index=None, value=0):
+def process_payload_block_after_empty_parent(
+    spec, state, requests, *, builder_index=None, value=0, fee_recipient=None
+):
     """Process a block at the current slot and verify its payload envelope."""
     assert state.latest_block_hash != state.latest_execution_payload_bid.block_hash
     assert all(
@@ -76,6 +78,8 @@ def process_payload_block_after_empty_parent(spec, state, requests, *, builder_i
         parent, payload = build_block_and_payload(spec, state, execution_requests=requests)
         # The previous block's payload was skipped, so its withdrawals carry forward.
         payload.withdrawals = state.payload_expected_withdrawals.copy()
+        if fee_recipient is not None:
+            payload.fee_recipient = fee_recipient
         payload.block_hash = compute_el_block_hash(spec, payload, state, requests)
         signed_bid = compute_and_sign_execution_payload_bid(
             spec, state, payload, execution_requests=requests

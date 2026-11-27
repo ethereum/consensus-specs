@@ -777,13 +777,16 @@ selected queue entry. Generation, metadata, and validation use shared adapters;
 the custom handler MiniZinc model, coverage driver, and validator are removed.
 Generation uses the shared MiniZinc backend.
 
-`builder_pending_withdrawal_processing/target.py` retains all 12 signatures of
-the single pending-builder-withdrawal provider, using Boolean dimensions and
-numeric `cmp3` mappings. It additionally observes the applied balance debit and
-pending-queue consumption, and validation requires a post-state. Normal and
-standard profiles preserve grouped pairs. Smoke and exceptional preserve the
-legacy one-wise aspect obligations; the latter historically selects valid
-vectors rather than filtering on failures. `max` retains all 12 signatures.
+`builder_pending_withdrawal_processing/target.py` models the single
+pending-builder-withdrawal provider using Boolean dimensions and numeric `cmp3`
+mappings. Its two reachable signatures exercise settlement with and without an
+earlier pending bid. A deposit must precede finality, and a bid must leave the
+minimum deposit and other pending amounts reserved. The materializer uses
+included attestations to finalize the builder and a verified parent payload to
+queue the withdrawal at the child block's handler entry. Validation requires a
+post-state and observes the balance debit and queue consumption. Normal and
+standard profiles cover grouped pairs. Smoke and exceptional use the legacy
+one-wise aspect selection over successful vectors.
 
 This pending provider no longer enumerates a MiniZinc model or constructs a
 solution catalog. The aggregate withdrawal provider still uses its existing
