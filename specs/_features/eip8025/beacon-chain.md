@@ -37,9 +37,9 @@ enable constant time stateless validation of execution payloads.
 Execution proofs are non-consensus artifacts. Verifying or storing one does not
 change beacon-chain state, fork choice, or Gloas payload status.
 
-*Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md)
-and uses the proof-verification interface from
-[proof-engine.md](./proof-engine.md).
+*Note*: This specification is built upon [Gloas](../../gloas/beacon-chain.md),
+uses the proof-verification interface from [proof-engine.md](./proof-engine.md),
+and the guest program defined in [guest-program.md](./guest-program.md).
 
 ## Types
 
@@ -107,11 +107,15 @@ SHA-256 digest of the raw verification key.
 class PublicInput(ProgressiveContainer):
     ACTIVE_FIELDS = active_fields(width=4)
 
-    new_payload_request_root: Root
+    beacon_block_root: Root
     successful_validation: Boolean
     chain_id: Uint64
     schema_id: Uint16
 ```
+
+`beacon_block_root` is the root of the beacon block that committed to the proven
+payload. The guest program binds the payload to that block, as defined in
+[guest-program.md](./guest-program.md).
 
 ### New `ExecutionProof`
 
@@ -196,28 +200,14 @@ def verify_execution_proof_envelope(
 
 ```python
 def get_execution_proof(
-    state: BeaconState,
     proof_envelope: ExecutionProofEnvelope,
-    payload_envelope: ExecutionPayloadEnvelope,
 ) -> ExecutionProof:
     """
     Construct the ``ExecutionProof`` for submission to the proof engine.
     """
-    # Construct the proof-system public input from the accepted execution payload
-    bid = state.latest_execution_payload_bid
-    new_payload_request = NewPayloadRequest(
-        execution_payload=payload_envelope.payload,
-        versioned_hashes=VersionedHashes(
-            data=[
-                kzg_commitment_to_versioned_hash(commitment)
-                for commitment in bid.blob_kzg_commitments
-            ]
-        ),
-        parent_beacon_block_root=payload_envelope.parent_beacon_block_root,
-        execution_requests=payload_envelope.execution_requests,
-    )
+    # Construct the proof-system public input from the proven beacon block
     public_input = PublicInput(
-        new_payload_request_root=hash_tree_root(new_payload_request),
+        beacon_block_root=proof_envelope.beacon_block_root,
         successful_validation=Boolean(True),
         chain_id=DEPOSIT_CHAIN_ID,
         schema_id=STATELESS_INPUT_SCHEMA_ID,
@@ -235,7 +225,6 @@ def get_execution_proof(
 def process_execution_proof(
     state: BeaconState,
     signed_proof_envelope: SignedExecutionProofEnvelope,
-    payload_envelope: ExecutionPayloadEnvelope,
     proof_engine: ProofEngine,
 ) -> None:
     """
@@ -246,10 +235,6 @@ def process_execution_proof(
         signed_proof_envelope,
     )
 
-    proof = get_execution_proof(
-        state,
-        signed_proof_envelope.message,
-        payload_envelope,
-    )
+    proof = get_execution_proof(signed_proof_envelope.message)
     assert proof_engine.verify_execution_proof(proof)
 ```
