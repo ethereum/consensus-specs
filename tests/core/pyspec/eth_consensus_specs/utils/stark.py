@@ -39,8 +39,9 @@ def MergeProofs(proofs):
 def VerifyAggregates(statements, proof):
     """
     Check that ``proof`` holds, for each of ``statements`` in turn and each of
-    its public keys in order, a signature that ``xmss.Verify`` accepts. When
-    XMSS is inactive, every proof is accepted.
+    its public keys in order, a signature at any leaf that ``xmss.Verify``
+    accepts, since a proof does not bind the leaf index. When XMSS is inactive,
+    every proof is accepted.
     """
     if not xmss.xmss_active:
         return True
@@ -51,7 +52,8 @@ def VerifyAggregates(statements, proof):
             signature = proof[offset : offset + xmss.SIGNATURE_SIZE]
             if len(signature) != xmss.SIGNATURE_SIZE:
                 return False
-            if not xmss.Verify(pubkey, statement.leaf_index, statement.message, signature):
+            leaf_index = xmss.GetLeafIndex(signature)
+            if not xmss.Verify(pubkey, leaf_index, statement.message, signature):
                 return False
             offset += xmss.SIGNATURE_SIZE
     return offset == len(proof)

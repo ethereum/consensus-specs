@@ -106,13 +106,12 @@ def get_block_proof(spec, state, attestations):
     statements = []
     signatures = []
     for attestation in attestations:
+        leaf_index = spec.compute_xmss_attestation_leaf_index(attestation.data.target.epoch)
         for statement in spec.get_attestation_statements(state, attestation):
             statements.append(statement)
             signatures.append(
                 [
-                    spec.xmss_sign(
-                        pubkey_to_privkey[pubkey], statement.leaf_index, statement.message
-                    )
+                    spec.xmss_sign(pubkey_to_privkey[pubkey], leaf_index, statement.message)
                     for pubkey in statement.pubkeys
                 ]
             )

@@ -99,7 +99,6 @@ def prove_attestation_signatures(spec, state, attestation_data, participants, si
     domain = spec.get_domain(state, spec.DOMAIN_BEACON_ATTESTER, attestation_data.target.epoch)
     statement = spec.XMSSAggregateStatement(
         pubkeys=[state.validators[index].pubkey for index in participants],
-        leaf_index=spec.compute_xmss_attestation_leaf_index(attestation_data.target.epoch),
         message=spec.compute_signing_root(attestation_data, domain),
     )
     return spec.AttestationProof(data=stark.ProveAggregates([statement], [signatures]))
