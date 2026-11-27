@@ -34,7 +34,7 @@
   - [Rounds](#rounds)
   - [Head votes](#head-votes)
   - [Rewards](#rewards)
-  - [Inactivity](#inactivity)
+  - [Inactivity leak](#inactivity-leak)
   - [Max operations per block](#max-operations-per-block)
 - [Containers](#containers)
   - [New `HeightCheckpoint`](#new-heightcheckpoint)
@@ -64,6 +64,7 @@
     - [New `is_head_vote_same_slot`](#new-is_head_vote_same_slot)
     - [New `has_builder_payment_quorum`](#new-has_builder_payment_quorum)
     - [New `has_quorum`](#new-has_quorum)
+    - [Modified `is_in_inactivity_leak`](#modified-is_in_inactivity_leak)
     - [New `is_valid_aggregation_bits`](#new-is_valid_aggregation_bits)
   - [Misc](#misc-1)
     - [New `compute_round_at_slot`](#new-compute_round_at_slot)
@@ -73,6 +74,8 @@
     - [Modified `compute_ptc`](#modified-compute_ptc)
     - [New `compute_head_vote_committee`](#new-compute_head_vote_committee)
   - [Beacon state accessors](#beacon-state-accessors)
+    - [New `get_current_round`](#new-get_current_round)
+    - [New `get_previous_round`](#new-get_previous_round)
     - [New `get_attestation_committee`](#new-get_attestation_committee)
     - [New `get_fg_duty_positions`](#new-get_fg_duty_positions)
     - [New `get_aggregate_participants`](#new-get_aggregate_participants)
@@ -83,6 +86,7 @@
     - [New `get_validator_weight`](#new-get_validator_weight)
     - [New `get_total_weight`](#new-get_total_weight)
     - [New `get_participating_weight`](#new-get_participating_weight)
+    - [Modified `get_finality_delay`](#modified-get_finality_delay)
     - [New `get_round_base_reward_per_increment`](#new-get_round_base_reward_per_increment)
     - [New `get_fg_rewards`](#new-get_fg_rewards)
   - [Beacon state mutators](#beacon-state-mutators)
@@ -421,6 +425,7 @@ their proposers also earn the existing sync committee inclusion reward.
 
 | Name                  | Value             |
 | --------------------- | ----------------- |
+| `GENESIS_ROUND`       | `Round(0)`        |
 | `TIMEOUT_DELAY_SLOTS` | `SLOTS_PER_ROUND` |
 | `FG_REWARD_WINDOW`    | `Slot(16)`        |
 
@@ -457,11 +462,12 @@ their proposers also earn the existing sync committee inclusion reward.
 | --------------------- | --------------------- |
 | `ROUND_REWARD_FACTOR` | `Uint64(2**4)` (= 16) |
 
-### Inactivity
+### Inactivity leak
 
-| Name                        | Value                      |
-| --------------------------- | -------------------------- |
-| `EJECTION_INACTIVITY_SCORE` | `Uint64(2**16)` (= 65,536) |
+| Name                            | Value                      |
+| ------------------------------- | -------------------------- |
+| `MIN_ROUNDS_TO_INACTIVITY_LEAK` | `Round(2**4)` (= 16)       |
+| `EJECTION_INACTIVITY_SCORE`     | `Uint64(2**16)` (= 65,536) |
 
 ### Max operations per block
 
@@ -950,6 +956,14 @@ def has_quorum(state: BeaconState, participation: HeightParticipation) -> bool:
     return participating_weight > 0 and participating_weight * 3 >= total_weight * 2
 ```
 
+#### Modified `is_in_inactivity_leak`
+
+```python
+def is_in_inactivity_leak(state: BeaconState) -> bool:
+    # [Modified in EIP8453]
+    return get_finality_delay(state) > MIN_ROUNDS_TO_INACTIVITY_LEAK
+```
+
 #### New `is_valid_aggregation_bits`
 
 ```python
@@ -1067,6 +1081,30 @@ def compute_head_vote_committee(state: BeaconState, slot: Slot) -> HeadVoteCommi
 ```
 
 ### Beacon state accessors
+
+#### New `get_current_round`
+
+```python
+def get_current_round(state: BeaconState) -> Round:
+    """
+    Return the current round.
+    """
+    return compute_round_at_slot(state.slot)
+```
+
+#### New `get_previous_round`
+
+```python
+def get_previous_round(state: BeaconState) -> Round:
+    """
+    Return the previous round, or ``GENESIS_ROUND`` if that is
+    the current round.
+    """
+    current_round = get_current_round(state)
+    if current_round == GENESIS_ROUND:
+        return GENESIS_ROUND
+    return current_round - 1
+```
 
 #### New `get_attestation_committee`
 
@@ -1242,6 +1280,21 @@ def get_participating_weight(state: BeaconState, participation: HeightParticipat
         if participation[index] and not state.validators[index].slashed:
             participating_indices.add(index)
     return get_total_weight(state, participating_indices)
+```
+
+#### Modified `get_finality_delay`
+
+*Note*: The function `get_finality_delay` is rewritten to measure the delay in
+rounds. The finality gadget can finalize a block of the current round, so the
+delay stops at zero rather than going negative.
+
+```python
+def get_finality_delay(state: BeaconState) -> Round:
+    previous_round = get_previous_round(state)
+    finalized_round = compute_round_at_slot(state.finalized_slot)
+    if finalized_round > previous_round:
+        return Round(0)
+    return previous_round - finalized_round
 ```
 
 #### New `get_round_base_reward_per_increment`

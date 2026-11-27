@@ -24,8 +24,10 @@ HEAD_VOTE_COMMITTEE_SIZE: 16
 # [customized] 2**5 (= 32)
 ROUND_REWARD_FACTOR: 32
 
-# Inactivity
+# Inactivity leak
 # ---------------------------------------------------------------
+# [customized] 2**3 (= 8)
+MIN_ROUNDS_TO_INACTIVITY_LEAK: 8
 # 2**16 (= 65,536)
 EJECTION_INACTIVITY_SCORE: 65536
 
