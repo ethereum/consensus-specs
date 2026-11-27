@@ -5,6 +5,7 @@ from eth_consensus_specs.test.context import (
 )
 from eth_consensus_specs.test.helpers.attester_slashings import (
     get_valid_attester_slashing,
+    get_valid_attester_slashing_by_indices,
 )
 from eth_consensus_specs.test.helpers.gossip import (
     get_filename,
@@ -516,3 +517,121 @@ def test_gossip_attester_slashing__reject_no_slashable_validators(spec, state):
             }
         ],
     )
+
+
+@with_all_phases
+@spec_state_test
+def test_gossip_attester_slashing__ignore_all_slashable_validators_already_seen(spec, state):
+    """
+    Test that an attester slashing whose only unseen validator is not slashable is ignored.
+    """
+    yield "topic", "meta", "attester_slashing"
+
+    messages = []
+    seen = get_seen(spec)
+
+    # The last validator is in the registry but has not been activated yet
+    slashable_index = 0
+    pending_index = len(state.validators) - 1
+    state.validators[pending_index].activation_epoch = spec.FAR_FUTURE_EPOCH
+
+    yield "state", state
+
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    # An attester slashing for the slashable validator should pass
+    attester_slashing = get_valid_attester_slashing_by_indices(
+        spec, state, [slashable_index], signed_1=True, signed_2=True
+    )
+    yield get_filename(attester_slashing), attester_slashing
+
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, attester_slashing=attester_slashing
+    )
+    assert result == "valid"
+    assert reason is None
+    messages.append({"message": get_filename(attester_slashing), "expected": "valid"})
+
+    # The same attester slashing co-signed by the pending validator should be ignored,
+    # since it cannot slash any validator that has not already been seen
+    attester_slashing = get_valid_attester_slashing_by_indices(
+        spec, state, [slashable_index, pending_index], signed_1=True, signed_2=True
+    )
+    yield get_filename(attester_slashing), attester_slashing
+
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, attester_slashing=attester_slashing
+    )
+    assert result == "ignore"
+    assert reason == "all slashable validators in intersection already seen"
+    messages.append(
+        {
+            "message": get_filename(attester_slashing),
+            "expected": "ignore",
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_all_phases
+@spec_state_test
+def test_gossip_attester_slashing__not_slashable_validator_not_marked_as_seen(spec, state):
+    """
+    Test that an attester slashing only marks the validators it can slash as seen.
+    """
+    yield "topic", "meta", "attester_slashing"
+
+    messages = []
+    seen = get_seen(spec)
+
+    # The last validator is in the registry but has not been activated yet
+    slashable_index = 0
+    pending_index = len(state.validators) - 1
+    state.validators[pending_index].activation_epoch = spec.FAR_FUTURE_EPOCH
+
+    yield "state", state
+
+    store, signed_anchor = get_store_from_state(spec, state)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    # An attester slashing for both validators should pass
+    attester_slashing = get_valid_attester_slashing_by_indices(
+        spec, state, [slashable_index, pending_index], signed_1=True, signed_2=True
+    )
+    yield get_filename(attester_slashing), attester_slashing
+
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, attester_slashing=attester_slashing
+    )
+    assert result == "valid"
+    assert reason is None
+    # Only the slashable validator is marked as seen
+    assert seen.attester_slashing_indices == {slashable_index}
+    messages.append({"message": get_filename(attester_slashing), "expected": "valid"})
+
+    # An attester slashing for the pending validator alone is rejected as not slashable,
+    # not ignored as already seen
+    attester_slashing = get_valid_attester_slashing_by_indices(
+        spec, state, [pending_index], signed_1=True, signed_2=True
+    )
+    yield get_filename(attester_slashing), attester_slashing
+
+    result, reason = run_validate_gossip(
+        spec, seen=seen, store=store, attester_slashing=attester_slashing
+    )
+    assert result == "reject"
+    assert reason == "no slashable validators in intersection"
+    messages.append(
+        {
+            "message": get_filename(attester_slashing),
+            "expected": "reject",
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
