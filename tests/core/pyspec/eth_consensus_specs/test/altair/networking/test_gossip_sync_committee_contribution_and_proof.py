@@ -469,6 +469,77 @@ def test_gossip_sync_committee_contribution_and_proof__ignore_past_slot(spec, st
 
 @with_altair_and_later
 @spec_state_test
+def test_gossip_sync_committee_contribution_and_proof__ignore_slot_two_periods_ahead_of_head(
+    spec, state
+):
+    """Test that a contribution whose committee the head state does not hold is ignored."""
+    yield "topic", "meta", "sync_committee_contribution_and_proof"
+    yield "state", state
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    seen = get_seen(spec)
+
+    # The committee of period 2 signs for the last slot of period 1
+    period_length = spec.Uint64(spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
+    contribution_slot = spec.Slot(2 * period_length - 1)
+    aggregator = None
+    for validator_index in range(len(state.validators)):
+        for subcommittee_index in spec.compute_subnets_for_sync_committee(
+            state, state.slot, validator_index
+        ):
+            selection_proof = spec.get_sync_committee_selection_proof(
+                state, contribution_slot, subcommittee_index, privkeys[validator_index]
+            )
+            if spec.is_sync_committee_aggregator(selection_proof):
+                aggregator = validator_index, subcommittee_index
+                break
+        if aggregator is not None:
+            break
+    assert aggregator is not None
+    aggregator_index, subcommittee_index = aggregator
+    subcommittee_pubkeys = spec.get_sync_subcommittee_pubkeys(state, state.slot, subcommittee_index)
+    signed_cap = create_valid_signed_contribution_and_proof(
+        spec,
+        state,
+        aggregator_index,
+        subcommittee_index,
+        subcommittee_pubkeys,
+        slot=contribution_slot,
+    )
+
+    yield get_filename(signed_cap), signed_cap
+
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, contribution_slot) + 500
+
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_contribution_and_proof=signed_cap,
+        current_time_ms=current_time_ms,
+    )
+    assert result == "ignore"
+    assert reason == "head state does not hold the committee of the contribution's slot"
+
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(signed_cap),
+                "expected": "ignore",
+                "reason": reason,
+            }
+        ],
+    )
+
+
+@with_altair_and_later
+@spec_state_test
 def test_gossip_sync_committee_contribution_and_proof__reject_invalid_subcommittee_index(
     spec, state
 ):

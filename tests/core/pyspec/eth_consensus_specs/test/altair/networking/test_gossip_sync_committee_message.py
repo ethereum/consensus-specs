@@ -287,6 +287,55 @@ def test_gossip_sync_committee_message__ignore_past_slot(spec, state):
 
 @with_altair_and_later
 @spec_state_test
+def test_gossip_sync_committee_message__ignore_slot_two_periods_ahead_of_head(spec, state):
+    """Test that a message whose committee the head state does not hold is ignored."""
+    yield "topic", "meta", "sync_committee"
+    yield "state", state
+    store, anchor_block = get_genesis_forkchoice_store_and_block(spec, state)
+    signed_anchor = wrap_genesis_block(spec, anchor_block)
+    yield get_filename(signed_anchor), signed_anchor
+    yield "blocks", "meta", [{"block": get_filename(signed_anchor)}]
+
+    seen = get_seen(spec)
+    validator_index, subnet_id = get_sync_committee_member(spec, state)
+
+    # The committee of period 2 signs for the last slot of period 1
+    period_length = spec.Uint64(spec.EPOCHS_PER_SYNC_COMMITTEE_PERIOD) * spec.SLOTS_PER_EPOCH
+    message_slot = spec.Slot(2 * period_length - 1)
+    message = create_valid_sync_committee_message(spec, state, validator_index, slot=message_slot)
+
+    yield get_filename(message), message
+
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, message_slot) + 500
+
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        sync_committee_message=message,
+        current_time_ms=current_time_ms,
+        subnet_id=subnet_id,
+    )
+    assert result == "ignore"
+    assert reason == "head state does not hold the committee of the message's slot"
+
+    yield (
+        "messages",
+        "meta",
+        [
+            {
+                "current_time_ms": int(current_time_ms),
+                "subnet_id": int(subnet_id),
+                "message": get_filename(message),
+                "expected": "ignore",
+                "reason": reason,
+            }
+        ],
+    )
+
+
+@with_altair_and_later
+@spec_state_test
 def test_gossip_sync_committee_message__reject_wrong_subnet(spec, state):
     """Test that a sync committee message on the wrong subnet is rejected."""
     yield "topic", "meta", "sync_committee"
