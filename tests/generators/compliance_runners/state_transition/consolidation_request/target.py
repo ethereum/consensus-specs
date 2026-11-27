@@ -273,6 +273,7 @@ COVERAGE = coverage_spec(
     aspects=ASPECTS,
     constraints=(
         implies(found & old & ~exiting, active),
+        implies(pending, (credential == "COMPOUNDING") & old & (active | exiting)),
         outcome
         == result(
             same,

@@ -1,4 +1,4 @@
-"""Consolidation declarations preserve legacy coverage and observe concrete effects."""
+"""Consolidation declarations cover reachable queue inputs and concrete effects."""
 
 import json
 from functools import lru_cache
@@ -25,6 +25,10 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     BoundFormula,
     exhaustive,
 )
+from tests.generators.compliance_runners.state_transition.evaluation.invariant_scan import (
+    scan,
+    state_invariant_violations,
+)
 from tests.generators.compliance_runners.state_transition.provider import (
     load_provider,
     materialize_handler,
@@ -47,15 +51,13 @@ def records(preset, profile):
 
 
 @pytest.mark.parametrize("preset", ["minimal", "mainnet"])
-def test_legacy_space_and_fault_scope_fingerprints(preset):
+def test_reachable_space_and_fault_scope_fingerprints(preset):
     bound = target(preset)
-    # Legacy MiniZinc rows, after Boolean/NA normalization and removal of the
-    # three redundant credential-predicate columns. These compare every row,
-    # including inactive roles, switch balances, and consolidation churn.
+    # Legacy rows filtered by the prerequisites for a pending partial withdrawal.
     for scope, expected_count, expected_digest in (
-        (None, 27996, "2f528143d0c8c39fb9e586dd6b1bc7ad45ceef8a46cc0cbdb4fd9850e00550be"),
-        (NORMAL_SCOPE, 118, "0349c85e8bbf27bbff12f1807534a6711957f07f10148546e760fa4240c30325"),
-        (SINGLE_FAULT, 311, "104d5b495c1149c19230c1281ea36f566ab20f94514bb91836bd42e79dd0a1d0"),
+        (None, 15288, "58153caab81aec33edf5aafa5b379df6b93b0020a286d5f94d69126d13448e6e"),
+        (NORMAL_SCOPE, 64, "6a9277140b6844f16ca0ebd6abb77087d3cc1eb83959b55e2c77ee2edc58f14f"),
+        (SINGLE_FAULT, 201, "7129eeba0d01663f32f7ffd938d7295b9730d707f3f2c01c8f0fcde178b52cba"),
     ):
         plan = exhaustive(FACTORS)
         if scope is not None:
@@ -105,13 +107,29 @@ def vector(materializer, record):
     materializer.rng = materializer._rng_for_solution(solution)
     metadata, parts = materializer.materialize_solution(solution)
     encoded = {name: data for name, _, data in parts}
-    return metadata, Context(
+    ctx = Context(
         spec,
         spec.BeaconState.decode_bytes(encoded["pre"]),
         spec.ConsolidationRequest.decode_bytes(encoded["consolidation_request"]),
         spec.BeaconState.decode_bytes(encoded["post"]),
         metadata,
     )
+    for state in (ctx.pre, ctx.post):
+        assert not list(state_invariant_violations(spec, state))
+        delay = spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+        queue = state.pending_consolidations
+        exits = []
+        for entry in queue:
+            source = state.validators[entry.source_index]
+            assert entry.source_index != entry.target_index
+            assert spec.has_execution_withdrawal_credential(source)
+            assert spec.has_compounding_withdrawal_credential(state.validators[entry.target_index])
+            assert source.withdrawable_epoch == source.exit_epoch + delay
+            exits.append(source.exit_epoch)
+        if exits:
+            assert exits == sorted(exits)
+            assert exits[-1] == state.earliest_consolidation_epoch
+    return metadata, ctx
 
 
 def test_every_minimal_max_case_survives_serialization():
@@ -149,6 +167,9 @@ def test_smoke_pipeline_and_coverage_loading(preset, tmp_path):
         materialize_handler("consolidation_request", "smoke", tmp_path, preset_name=preset, seed=7)
         == 19
     )
+    reports, errors = scan(tmp_path, provider="consolidation_request", preset=preset)
+    assert not errors
+    assert reports[f"{preset}/consolidation_request"].failed == 0
     bound = target(preset)
     observations = load_observations([tmp_path], bound, preset)
     assert len(observations) == 19

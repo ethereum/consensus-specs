@@ -1,18 +1,20 @@
 """Materialize aspect-model solutions into process_consolidation_request cases.
 
 Realizes source and target validator roles, preset-specific active-balance
-witnesses for the consolidation churn gate, and queue inputs. No BLS. The
-operation returns normally on every path, so `post` is always present.
+witnesses for the consolidation churn gate, and queue inputs. The operation
+returns normally on every path, so `post` is always present.
 
 Spec: specs/electra/beacon-chain.md process_consolidation_request (inherited by gloas).
 """
 
 from __future__ import annotations
 
+from functools import cache, cached_property
 from typing import Any, TYPE_CHECKING
 
 from eth_consensus_specs.test.helpers.genesis import create_genesis_state
 from eth_consensus_specs.test.helpers.keys import pubkeys
+from eth_consensus_specs.utils import bls
 from tests.generators.compliance_runners.state_transition.aspects_helpers.authorization import (
     credential_and_other_address,
 )
@@ -26,6 +28,7 @@ from tests.generators.compliance_runners.state_transition.aspects_helpers.withdr
     withdrawal_credentials_from_profile,
 )
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
+from tests.generators.compliance_runners.state_transition.validation_helpers import bls_enabled
 
 from .target import TARGET
 
@@ -38,6 +41,13 @@ _VALIDATOR_COUNT_BY_CHURN_RELATION = {
     "GT": 64,
 }
 PENDING_WITHDRAWAL_AMOUNT = 10**9
+SMALL_QUEUE_LIMIT = 64
+
+
+@cache
+def _queue_source_pubkeys(count: int) -> tuple[bytes, ...]:
+    with bls_enabled():
+        return tuple(bls.SkToPk(2**40 + index) for index in range(count))
 
 
 class ConsolidationRequestMaterializer(Materializer):
@@ -61,7 +71,8 @@ class ConsolidationRequestMaterializer(Materializer):
         if active:
             exit_epoch = current_epoch + self.rng.randrange(1, 11) if exiting else far
         elif exiting:
-            exit_epoch = self.rng.randrange(current_epoch + 1)
+            activation = min(activation, current_epoch - 1)
+            exit_epoch = self.rng.randrange(activation + 1, current_epoch + 1)
         else:
             activation, exit_epoch = current_epoch + self.rng.randrange(1, 11), far
         return activation, exit_epoch
@@ -85,6 +96,124 @@ class ConsolidationRequestMaterializer(Materializer):
         activation, exit_epoch = self._epochs(current_epoch, active, exiting, old_enough)
         v.activation_epoch = spec.Epoch(activation)
         v.exit_epoch = spec.Epoch(exit_epoch)
+        if exiting:
+            v.withdrawable_epoch = v.exit_epoch + spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY
+
+    @cached_property
+    def _queue_schedule(self):
+        """Record the exit and remaining churn after each accepted request."""
+        spec = self.spec
+        count = min(int(spec.PENDING_CONSOLIDATIONS_LIMIT), SMALL_QUEUE_LIMIT)
+        balance = spec.MIN_ACTIVATION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT
+        maximum = int(spec.MAX_EFFECTIVE_BALANCE_ELECTRA)
+        quotient = int(spec.config.CONSOLIDATION_CHURN_LIMIT_QUOTIENT)
+        budget = 2 * int(spec.MIN_ACTIVATION_BALANCE) * quotient
+        extra = max(0, (budget - int(balance) * (count + 1) + maximum - 1) // maximum)
+        history = create_genesis_state(
+            spec, [balance] * (count + 1) + [maximum] * extra, spec.MIN_ACTIVATION_BALANCE
+        )
+        history.slot = spec.compute_start_slot_at_epoch(spec.config.SHARD_COMMITTEE_PERIOD)
+        target = history.validators[count].pubkey
+        schedule = []
+        for index in range(count):
+            source = history.validators[index]
+            spec.process_consolidation_request(
+                history,
+                spec.ConsolidationRequest(
+                    source_address=spec.ExecutionAddress(source.withdrawal_credentials[12:]),
+                    source_pubkey=source.pubkey,
+                    target_pubkey=target,
+                ),
+            )
+            assert len(history.pending_consolidations) == index + 1
+            schedule.append((source.exit_epoch, history.consolidation_balance_to_consume))
+        return schedule
+
+    def _populate_consolidation_queue(self, pre, length, target_index, variant):
+        if not length:
+            return
+        spec = self.spec
+        delay = int(spec.config.MIN_VALIDATOR_WITHDRAWABILITY_DELAY)
+        if length <= SMALL_QUEUE_LIMIT:
+            schedule = self._queue_schedule[:length]
+            exit_epochs = [int(epoch) for epoch, _ in schedule]
+            remaining = schedule[-1][1]
+        else:
+            # Assemble the full mainnet capacity snapshot in linear time.
+            # Keep the exited sources within the pending withdrawal window.
+            first_exit = int(spec.get_current_epoch(pre)) - delay + 1
+            exit_epochs = [first_exit + index * delay // length for index in range(length)]
+            remaining = spec.Gwei(0)
+
+        shift = 0
+        if variant in ("CARRY_FIT", "CARRY_OVERFLOW"):
+            shift = int(pre.earliest_consolidation_epoch) - exit_epochs[-1]
+        else:
+            pre.earliest_consolidation_epoch = spec.Epoch(exit_epochs[-1])
+            pre.consolidation_balance_to_consume = remaining
+
+        target = pre.validators[target_index]
+        credentials = spec.Bytes32(
+            spec.COMPOUNDING_WITHDRAWAL_PREFIX + b"\x00" * 11 + target.withdrawal_credentials[12:]
+        )
+        target.withdrawal_credentials = credentials
+        balance = spec.MIN_ACTIVATION_BALANCE + spec.EFFECTIVE_BALANCE_INCREMENT
+        for pubkey, epoch in zip(_queue_source_pubkeys(length), exit_epochs, strict=True):
+            source_index = spec.ValidatorIndex(len(pre.validators))
+            exit_epoch = spec.Epoch(epoch + shift)
+            pre.validators.append(
+                spec.Validator(
+                    pubkey=spec.BLSPubkey(pubkey),
+                    withdrawal_credentials=credentials,
+                    effective_balance=balance,
+                    activation_eligibility_epoch=spec.GENESIS_EPOCH,
+                    activation_epoch=spec.GENESIS_EPOCH,
+                    exit_epoch=exit_epoch,
+                    withdrawable_epoch=exit_epoch + delay,
+                )
+            )
+            pre.balances.append(balance)
+            pre.previous_epoch_participation.append(spec.ParticipationFlags(0))
+            pre.current_epoch_participation.append(spec.ParticipationFlags(0))
+            pre.inactivity_scores.append(spec.Uint64(0))
+            pre.pending_consolidations.append(
+                spec.PendingConsolidation(source_index=source_index, target_index=target_index)
+            )
+
+    def _queue_partial_withdrawal(self, pre, source_index):
+        spec = self.spec
+        source = pre.validators[source_index]
+        current_slot = pre.slot
+        current_epoch = spec.get_current_epoch(pre)
+        active = spec.is_active_validator(source, current_epoch)
+        exiting = source.exit_epoch != spec.FAR_FUTURE_EPOCH
+        source.activation_epoch = spec.GENESIS_EPOCH
+        source.exit_epoch = spec.FAR_FUTURE_EPOCH
+        source.withdrawable_epoch = spec.FAR_FUTURE_EPOCH
+        withdrawal_epoch = current_epoch - spec.MAX_SEED_LOOKAHEAD - 2
+        pre.slot = spec.compute_start_slot_at_epoch(withdrawal_epoch)
+        amount = spec.Gwei(self.rng.randrange(1, PENDING_WITHDRAWAL_AMOUNT + 1))
+        pre.balances[source_index] = max(
+            pre.balances[source_index], spec.MIN_ACTIVATION_BALANCE + amount
+        )
+        spec.process_withdrawal_request(
+            pre,
+            spec.WithdrawalRequest(
+                source_address=spec.ExecutionAddress(source.withdrawal_credentials[12:]),
+                validator_pubkey=source.pubkey,
+                amount=amount,
+            ),
+        )
+        assert len(pre.pending_partial_withdrawals) == 1
+        if exiting:
+            # A slashing can initiate an exit while the partial is pending.
+            slashing_epoch = (
+                current_epoch if active else current_epoch - 1 - spec.MAX_SEED_LOOKAHEAD
+            )
+            pre.slot = spec.compute_start_slot_at_epoch(slashing_epoch)
+            spec.slash_validator(pre, spec.ValidatorIndex(source_index))
+        pre.slot = current_slot
+        assert spec.is_active_validator(source, current_epoch) == active
 
     def materialize_solution(self, sol: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
@@ -123,12 +252,26 @@ class ConsolidationRequestMaterializer(Materializer):
                 activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
             )
         pre = self._bases[n].copy()
-        current_epoch = self.rng.randrange(
-            int(spec.config.SHARD_COMMITTEE_PERIOD) + 10,
-            int(spec.config.SHARD_COMMITTEE_PERIOD) + 101,
+        queue_capacity = sol.pending_consolidations_capacity
+        queue_limit = int(spec.PENDING_CONSOLIDATIONS_LIMIT)
+        queue_length = (
+            self.rng.randint(1, min(SMALL_QUEUE_LIMIT, queue_limit - 1))
+            if queue_capacity == "AVAILABLE"
+            else queue_length_from_profile(queue_capacity, queue_limit, self.rng)
         )
+        committee_period = int(spec.config.SHARD_COMMITTEE_PERIOD)
+        current_epoch = self.rng.randrange(
+            committee_period + 80,
+            committee_period + 151,
+        )
+        if queue_length > SMALL_QUEUE_LIMIT:
+            requests_per_epoch = int(
+                spec.MAX_CONSOLIDATION_REQUESTS_PER_PAYLOAD * spec.SLOTS_PER_EPOCH
+            )
+            current_epoch += (queue_length + requests_per_epoch - 1) // requests_per_epoch
         pre.slot = spec.Slot(current_epoch * spec.SLOTS_PER_EPOCH)
-        source_index, target_index = distinct_indices(self.rng, role_count, 2)
+        queue_target_index = role_count - 1
+        source_index, target_index = distinct_indices(self.rng, role_count - bool(queue_length), 2)
         absent_source_index, absent_target_index = distinct_indices(
             self.rng,
             len(pubkeys) - n,
@@ -201,12 +344,26 @@ class ConsolidationRequestMaterializer(Materializer):
         else:
             target_pubkey = absent_target
 
+        if source_found and sol.has_pending_partial_withdrawal:
+            self._queue_partial_withdrawal(pre, source_index)
+
+        self._populate_consolidation_queue(
+            pre, queue_length, spec.ValidatorIndex(queue_target_index), variant
+        )
+
         if total_balance is not None:
+            epoch = spec.Epoch(current_epoch)
             role_balance = sum(
                 int(v.effective_balance)
                 for v in pre.validators[:role_count]
-                if spec.is_active_validator(v, spec.Epoch(current_epoch))
+                if spec.is_active_validator(v, epoch)
             )
+            if variant in ("CARRY_FIT", "CARRY_OVERFLOW"):
+                role_balance += sum(
+                    int(v.effective_balance)
+                    for v in pre.validators[n:]
+                    if spec.is_active_validator(v, epoch)
+                )
             remaining = total_balance - role_balance
             for index in range(role_count, n):
                 balance = min(int(spec.MAX_EFFECTIVE_BALANCE_ELECTRA), max(0, remaining))
@@ -218,37 +375,6 @@ class ConsolidationRequestMaterializer(Materializer):
                 remaining -= balance
             if remaining != 0:
                 raise ValueError("insufficient filler balance for the consolidation churn witness")
-
-        # ---- source pending partial withdrawal ---------------------------------
-        if source_found and sol.has_pending_partial_withdrawal:
-            pre.pending_partial_withdrawals.append(
-                spec.PendingPartialWithdrawal(
-                    validator_index=spec.ValidatorIndex(source_index),
-                    amount=spec.Gwei(self.rng.randrange(1, PENDING_WITHDRAWAL_AMOUNT + 1)),
-                    withdrawable_epoch=spec.Epoch(current_epoch + self.rng.randrange(11)),
-                )
-            )
-
-        # ---- pending consolidations queue --------------------------------------
-        queue_capacity = sol.pending_consolidations_capacity
-        queue_limit = int(spec.PENDING_CONSOLIDATIONS_LIMIT)
-        queue_length = (
-            self.rng.randint(1, min(64, queue_limit - 1))
-            if queue_capacity == "AVAILABLE"
-            else queue_length_from_profile(queue_capacity, queue_limit, self.rng)
-        )
-        if queue_length:
-
-            def pending_consolidation() -> Any:
-                queue_source_index, queue_target_index = distinct_indices(self.rng, n, 2)
-                return spec.PendingConsolidation(
-                    source_index=spec.ValidatorIndex(queue_source_index),
-                    target_index=spec.ValidatorIndex(queue_target_index),
-                )
-
-            pre.pending_consolidations = spec.PendingConsolidations(
-                data=[pending_consolidation() for _ in range(queue_length)]
-            )
 
         request = spec.ConsolidationRequest(
             source_address=spec.ExecutionAddress(source_address),

@@ -842,9 +842,11 @@ effects and missing posts.
 
 ### Consolidation-request migration
 
-`consolidation_request/target.py` retains all 27,996 feasible legacy signatures,
-including the complete 118-assignment zero-fault and 311-assignment single-fault
-spaces. Conditional Boolean dimensions describe source and target roles. Raw
+`consolidation_request/target.py` retains 15,288 legacy signatures after
+applying the prerequisites for a pending partial withdrawal. These include 64
+zero-fault and 201 single-fault signatures. A source with a pending partial
+withdrawal has compounding credentials and has reached the required activation
+age. Conditional Boolean dimensions describe source and target roles. Raw
 consolidation churn and source balances use `cmp3` against the bound activation
 minimum; credential predicates are derived expressions rather than three
 redundant coverage columns. Shared `NA` represents unresolved roles, unused
@@ -855,10 +857,10 @@ preserves grouped pairwise inputs and carries outcome context when projecting
 switch balances and churn; exceptional retains exactly one independently
 applicable failed gate. Membership failures deactivate the remaining predicates
 for that role. Both branches return normally on failure, so the scopes describe
-ignored-operation gates rather than rejecting assertions. `max` generates all
-118 successful signatures and covers feasible pairs of active factors across
-rejected requests with 327 cases. Validation requires a post-state and observes
-changed credentials, a correctly formed excess-balance pending deposit, or a
+ignored-operation gates rather than rejecting assertions. `max` generates all 64
+successful signatures and covers feasible pairs of active factors across
+rejected requests. Validation requires a post-state and observes changed
+credentials, a correctly formed excess-balance pending deposit, or a
 consolidation append and source exit.
 
 Generation, metadata, validation, and coverage loading use the shared adapters;
@@ -871,12 +873,15 @@ space for that fallback. Standalone coverage-model export still reports the
 encoding limit. Sparse-model tests cover conditional activation, union,
 compatible and conflicting products, complete witnesses, and unsatisfiable
 inputs. The generic native-backend comparison skips Cartesian spaces exceeding
-ten million tuples; this provider instead compares its complete rows and fault
-scopes against fingerprints from the legacy MiniZinc model under both presets.
+ten million tuples. The provider fingerprints the filtered legacy rows and fault
+scopes under both presets.
 
 Concrete regressions cover every minimal `max` case, both preset smoke
-pipelines, and mainnet standard witnesses with small queues. Full mainnet queues
-(262,144 entries) are exercised by smoke. The legacy fixed validator counts were
+pipelines, and mainnet standard witnesses with small queues. The materializer
+uses schedules from accepted consolidation requests for small queues and gives
+each entry a dedicated registered source with a pending exit. Smoke exercises a
+full mainnet queue (262,144 entries) using a synthetic capacity snapshot with
+the same source and lifecycle properties. The legacy fixed validator counts were
 specific to minimal: mainnet now uses a compact pool of compounding validators,
 each at or below its effective-balance cap, to realize its much larger churn
 quotient. Low-churn fixtures retain enough validators for nonempty PTC slot
