@@ -85,3 +85,19 @@ def test_drain_prefix_only(spec, state):
     assert state.randao_commitments[3] == spec.Bytes32()
     assert len(state.pending_randao_commitments) == 1
     assert state.pending_randao_commitments[0].commitment == pending
+
+
+@with_eip8321_and_later
+@spec_state_test
+def test_activate_regardless_of_validator_status(spec, state):
+    # Activation ignores validator status
+    next_epoch = spec.get_current_epoch(state) + 1
+    state.validators[1].slashed = True
+    spec.initiate_validator_exit(state, 2)
+    commitments = {index: queue_commitment(spec, state, index, next_epoch) for index in (1, 2)}
+
+    yield from run_process_pending_randao_commitments(spec, state)
+
+    assert len(state.pending_randao_commitments) == 0
+    for index, commitment in commitments.items():
+        assert state.randao_commitments[index] == commitment
