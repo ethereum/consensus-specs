@@ -465,6 +465,13 @@ with aggregator selection in the honest validator guide.
 
 ##### New `attestation_aggregate`
 
+An aggregate can still be relayed after the height advances or a checkpoint
+finalizes if a vote can earn an outstanding reward or record activity for its
+assigned target under `process_attestation`. If an omitted vote is held as a
+`SingleAttestation`, it can be relayed here in a one-signer aggregate using the
+original committee epoch. The usual validation rules still apply on the
+attestation subnet.
+
 *TODO*: Specify this topic, which propagates aggregated FG attestations,
 together with aggregator selection in the honest validator guide.
 

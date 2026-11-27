@@ -197,7 +197,8 @@ be of slot `block.slot - 1`, for a block in the accepted tree at proposal time
 whose slot is no later than the vote's slot. Otherwise, clear the bit.
 
 *Note*: A vote for an unknown block may be included with its support bits
-cleared.
+cleared. Every newly represented seat from the previous slot can earn its
+inclusion payment, including seats whose support bits are clear.
 
 *TODO*: Specify aggregate selection when the proposal view exceeds
 `MAX_HEAD_VOTES`, preserving the requirements of view merge.
@@ -213,6 +214,13 @@ including its epoch, committee encoding and signature.
 A proposer should prefer aggregates that add target, progress or
 pending-finality participation. An attestation for a previous height can still
 contribute to a retained finality pair.
+
+Use remaining capacity for valid aggregates that pay an outstanding reward or
+record activity for an assigned target. This applies even after the height
+advances or the checkpoint finalizes. Keep signed votes while the duty is
+pending or its inclusion window is open. A vote included before its first
+assigned opportunity can be included again once it becomes payable. Check the
+duties against the state at the proposed inclusion slot.
 
 ##### Attester slashings
 
@@ -292,8 +300,9 @@ First, obtain `source` and `head` from the same AC-to-FG observation. The source
 is the deepest block in the viable tree passing the fast test in the applicable
 confirmation update. If no such block exists, the validator does not attest.
 
-Let `source_state` and `head_state` be the states after processing `source` and
-`head`, respectively:
+Let `source_state` be the state after processing `source`. For the finality
+pair, use the state on the observed head chain at the start of the assigned
+slot, before processing any block from that slot. Call this state `head_state`.
 
 - Let `target` be a copy of `source_state.target_checkpoint`.
 - Let `justified = head_state.justified_checkpoint`.
@@ -302,8 +311,8 @@ Let `source_state` and `head_state` be the states after processing `source` and
 If `target.root == Root()` because `source` advanced the height, set
 `target.root = hash_tree_root(source)`.
 
-*Note*: The height vote comes from the source state. The finality pair comes
-from the head state.
+*Note*: A justification or finalization in the assigned slot's block first
+affects the finality pair for validators assigned to the following slot.
 
 ##### Finality pair
 
@@ -583,7 +592,6 @@ The validator broadcasts the aggregate for block inclusion.
 broadcast deadlines. Gossip deduplication must use the data and signers, since
 the epoch is not signed.
 
-*Note*: An FG aggregate's epoch must be between
-`compute_epoch_at_slot(state.finalized_slot)` and `get_current_epoch(state)`,
-inclusive, when included in a block. Its data must also remain valid against the
-inclusion state.
+*Note*: See
+[`process_attestation`](./beacon-chain.md#modified-process_attestation) for the
+inclusion rules for live votes and recent duties.

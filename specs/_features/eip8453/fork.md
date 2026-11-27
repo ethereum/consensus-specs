@@ -57,7 +57,9 @@ change is made to upgrade to EIP-8453.
 
 *Note*: The finality gadget starts at height 0 from the last finalized Casper
 FFG checkpoint, and the target of height 1 is the latest block before the
-upgrade. Participation in the last epoch before the upgrade is not rewarded.
+upgrade. Participation in the last epoch before the upgrade is not rewarded. The
+first FG reward duties are assigned in the slot following the upgrade. That is
+the first slot whose confirmation update can use EIP-8453 head votes.
 
 ```python
 def upgrade_to_eip8453(pre: heze.BeaconState) -> BeaconState:
@@ -141,13 +143,15 @@ def upgrade_to_eip8453(pre: heze.BeaconState) -> BeaconState:
         # [New in EIP8453]
         progress_participation=HeightParticipation(data=[Boolean(False)] * len(pre.validators)),
         # [New in EIP8453]
-        round_participation=RoundParticipation(data=[ParticipationFlags(0)] * len(pre.validators)),
-        # [New in EIP8453]
         pending_finality=PendingFinalities(),
         # [New in EIP8453]
         head_vote_participation=HeadVoteParticipation(),
         # [New in EIP8453]
         head_vote_committee_window=HeadVoteCommitteeWindow(),
+        # [New in EIP8453]
+        reward_history=FinalityRewardHistory(),
+        # [New in EIP8453]
+        rewarded_flags=RoundParticipation(data=[ParticipationFlags(0)] * len(pre.validators)),
     )
 
     # [New in EIP8453]
