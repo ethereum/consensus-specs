@@ -1,0 +1,73 @@
+from __future__ import annotations
+
+from pathlib import Path
+
+import pytest
+
+from tests.generators.compliance_runners.state_transition.catalog import HANDLERS
+from tests.generators.compliance_runners.state_transition.provider import PROFILES
+
+
+def pytest_addoption(parser):
+    parser.addoption(
+        "--comptests-output",
+        type=Path,
+        default=None,
+        help="Output directory for generated compliance tests",
+    )
+    parser.addoption(
+        "--handler",
+        choices=(*HANDLERS, "all"),
+        default="all",
+        help="State-transition handler to generate",
+    )
+    parser.addoption(
+        "--profile",
+        choices=PROFILES,
+        default="standard",
+        help="State-transition coverage profile",
+    )
+    parser.addoption(
+        "--preset",
+        choices=("minimal", "mainnet"),
+        default="minimal",
+        help="Preset to generate compliance tests for",
+    )
+    parser.addoption(
+        "--seed",
+        type=int,
+        default=None,
+        help="Seed for deterministic materialization variation",
+    )
+
+
+@pytest.fixture
+def comptests_output(request) -> Path:
+    output = request.config.getoption("--comptests-output")
+    if output is None:
+        raise pytest.UsageError("--comptests-output is required")
+    return output
+
+
+def pytest_generate_tests(metafunc):
+    if "handler" not in metafunc.fixturenames:
+        return
+
+    selected_handler = metafunc.config.getoption("--handler")
+    handlers = HANDLERS if selected_handler == "all" else (selected_handler,)
+    metafunc.parametrize("handler", handlers, ids=handlers)
+
+
+@pytest.fixture
+def profile(request) -> str:
+    return request.config.getoption("--profile")
+
+
+@pytest.fixture
+def preset(request) -> str:
+    return request.config.getoption("--preset")
+
+
+@pytest.fixture
+def seed(request) -> int | None:
+    return request.config.getoption("--seed")

@@ -1,0 +1,63 @@
+# A group selects both test vectors and the processor slices to score.  Groups
+# may include other groups; `handlers` adds individual handlers directly.
+all_operations:
+  handlers:
+    - block_header
+    - attestation
+    - attester_slashing
+    - bls_to_execution_change
+    - builder_deposit_request
+    - builder_exit_request
+    - consolidation_request
+    - deposit_request
+    - execution_payload_bid
+    - parent_execution_payload
+    - payload_attestation
+    - proposer_slashing
+    - sync_aggregate
+    - voluntary_exit
+    - withdrawal_request
+    - withdrawals
+
+all_epoch_processing:
+  handlers:
+    - builder_pending_payments
+    - eth1_data_reset
+    - effective_balance_updates
+    - historical_summaries_update
+    - inactivity_updates
+    - justification_and_finalization
+    - proposer_lookahead
+    - participation_flag_updates
+    - pending_consolidations
+    - pending_deposits
+    - ptc_window
+    - randao_mixes_reset
+    - slashings_reset
+    - slashings
+    - sync_committee_updates
+    - registry_updates
+    - rewards_and_penalties
+
+all_sanity:
+  handlers:
+    - blocks
+    - slots
+
+process_slot:
+  handlers:
+    - slots
+
+# The parent handler is an integration test; the individual handlers provide
+# detailed coverage of the execution requests it dispatches.
+parent_execution_payload_plus_invoked:
+  handlers:
+    - parent_execution_payload
+    - deposit_request
+    - withdrawal_request
+    - consolidation_request
+    - builder_deposit_request
+    - builder_exit_request
+
+all:
+  includes: [all_operations, all_epoch_processing, all_sanity]
