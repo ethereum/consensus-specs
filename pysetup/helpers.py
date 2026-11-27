@@ -413,6 +413,10 @@ def parse_config_vars(conf: dict[str, str]) -> dict[str, str | list[dict[str, st
                 count = int(value)
                 if not 0 <= count < 2**64:
                     raise ValueError("X_COMMITTEE_COUNTS entry is outside uint64 range")
+                if count == 0 or count & (count - 1):
+                    raise ValueError("X_COMMITTEE_COUNTS entries must be positive powers of two")
+                if count in counts:
+                    raise ValueError("X_COMMITTEE_COUNTS entries must be distinct")
                 counts.append(count)
             out[k] = repr(tuple(counts))
         elif isinstance(v, list):
