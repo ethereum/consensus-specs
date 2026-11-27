@@ -182,7 +182,8 @@ of the first `XMSS_RESERVED_LEAVES` leaves. A bid instead uses any leaf reserved
 for bids, see `is_builder_bid_leaf_index`. An honest signer never equivocates
 and uses each leaf it chooses at most once, so it never reuses a leaf. Each
 signature carries its leaf index, and verification checks that the message may
-use it.
+use it, except for signatures proved by a STARK, whose proof does not bind the
+leaf index.
 
 XMSS has no native aggregation. A STARK instead proves many XMSS signatures at
 once, such as those of attestations in an `AttestationProof`.
@@ -888,7 +889,6 @@ class VoluntaryExitRequest(Container):
 @dataclass
 class XMSSAggregateStatement:
     pubkeys: Sequence[XMSSPubkey]
-    leaf_index: Uint64
     message: Bytes32
 ```
 
@@ -966,8 +966,8 @@ def stark_verify_aggregates(
 ) -> bool:
     """
     Return ``True`` only if ``proof`` proves, for each of ``statements`` and
-    each of its public keys, a signature that
-    ``xmss_verify(pubkey, statement.leaf_index, statement.message, signature)``
+    each of its public keys, a signature at any leaf that
+    ``xmss_verify(pubkey, xmss_get_leaf_index(signature), statement.message, signature)``
     accepts.
     """
     return stark.VerifyAggregates(statements, proof)
@@ -1241,8 +1241,7 @@ def is_valid_indexed_attestation(
     pubkeys = [state.validators[index].pubkey for index in indices]
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, indexed_attestation.data.target.epoch)
     signing_root = compute_signing_root(indexed_attestation.data, domain)
-    leaf_index = compute_xmss_attestation_leaf_index(indexed_attestation.data.target.epoch)
-    statement = XMSSAggregateStatement(pubkeys=pubkeys, leaf_index=leaf_index, message=signing_root)
+    statement = XMSSAggregateStatement(pubkeys=pubkeys, message=signing_root)
     return stark_verify_aggregates([statement], indexed_attestation.proof)
 ```
 
@@ -1439,7 +1438,6 @@ def get_attestation_statements(
     """
     domain = get_domain(state, DOMAIN_BEACON_ATTESTER, attestation.data.target.epoch)
     message = compute_signing_root(attestation.data, domain)
-    leaf_index = compute_xmss_attestation_leaf_index(attestation.data.target.epoch)
     statements = []
     committee_offset = 0
     for committee_index in get_committee_indices(attestation.committee_bits):
@@ -1449,9 +1447,7 @@ def get_attestation_statements(
             for i, validator_index in enumerate(committee)
             if attestation.aggregation_bits[committee_offset + i]
         ]
-        statements.append(
-            XMSSAggregateStatement(pubkeys=pubkeys, leaf_index=leaf_index, message=message)
-        )
+        statements.append(XMSSAggregateStatement(pubkeys=pubkeys, message=message))
         committee_offset += len(committee)
     return statements
 ```
