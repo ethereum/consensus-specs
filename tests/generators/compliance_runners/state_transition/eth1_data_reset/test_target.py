@@ -2,10 +2,18 @@ from types import SimpleNamespace
 
 import pytest
 
+from eth_consensus_specs.gloas import minimal as spec
+from tests.generators.compliance_runners.runner.discovery import gather_tests
+from tests.generators.compliance_runners.runner.state_transition import get_test_case
 from tests.generators.compliance_runners.state_transition.evaluation.coverage_dsl import (
     Context,
     score,
 )
+from tests.generators.compliance_runners.state_transition.evaluation.invariant_scan import (
+    entry_condition_violations,
+    state_invariant_violations,
+)
+from tests.generators.compliance_runners.state_transition.provider import materialize_handler
 
 from .observation import observe_attributes
 from .target import COVERAGE, TARGET
@@ -80,3 +88,34 @@ def test_profiles_cover_all_boundary_and_occupancy_combinations(profile):
     report = score(target, records, target.profiles[profile])
     assert report.total == report.covered == (7 if profile == "smoke" else 12)
     assert report.uncovered == report.unexpected == []
+
+
+def test_max_vectors_reach_epoch_entry_with_included_votes(tmp_path):
+    assert materialize_handler("eth1_data_reset", "max", tmp_path, spec=spec, seed=124) == 12
+    for case in gather_tests([tmp_path], kind="state_transition"):
+        vector = get_test_case(spec, case.test_dir, case.handler)
+        pre, post = vector["pre"], vector["post"]
+        assert not list(entry_condition_violations(spec, pre, case.runner))
+        assert not list(state_invariant_violations(spec, pre))
+        current_epoch = spec.get_current_epoch(pre)
+        if current_epoch == spec.GENESIS_EPOCH:
+            assert all(
+                spec.has_compounding_withdrawal_credential(validator)
+                and validator.effective_balance == spec.MAX_EFFECTIVE_BALANCE_ELECTRA
+                for validator in pre.validators
+            )
+
+        votes = pre.eth1_data_votes
+        if votes:
+            assert pre.latest_block_header.slot == pre.slot
+            voted_slots = range(int(pre.slot) - len(votes) + 1, int(pre.slot) + 1)
+            roots = {pre.block_roots[slot % spec.SLOTS_PER_HISTORICAL_ROOT] for slot in voted_slots}
+            assert len(roots) == len(votes)
+            assert len({vote.block_hash for vote in votes}) == min(len(votes), 2)
+            assert all(vote.deposit_count == pre.eth1_data.deposit_count for vote in votes)
+
+        expected = pre.copy()
+        next_epoch = current_epoch + 1
+        if next_epoch % spec.EPOCHS_PER_ETH1_VOTING_PERIOD == 0:
+            expected.eth1_data_votes = spec.Eth1DataVotes()
+        assert post == expected
