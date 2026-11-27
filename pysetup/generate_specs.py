@@ -60,6 +60,7 @@ def load_config(config_path: Path) -> dict[str, str | list[dict[str, str]]]:
     """
     yaml = YAML(typ="base")
     config_data = yaml.load(config_path)
+    config_data.setdefault("X_COMMITTEE_COUNTS", [])
     return parse_config_vars(config_data)
 
 

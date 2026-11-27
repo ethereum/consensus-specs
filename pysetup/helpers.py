@@ -402,7 +402,20 @@ def parse_config_vars(conf: dict[str, str]) -> dict[str, str | list[dict[str, st
     """
     out: dict[str, str | list[dict[str, str]]] = {}
     for k, v in conf.items():
-        if isinstance(v, list):
+        if k == "X_COMMITTEE_COUNTS":
+            # Keep this experimental scalar sequence separate from record configs.
+            if not isinstance(v, list):
+                raise ValueError("X_COMMITTEE_COUNTS must be a YAML sequence")
+            counts = []
+            for value in v:
+                if type(value) not in (str, int):
+                    raise ValueError("X_COMMITTEE_COUNTS entries must be uint64 integers")
+                count = int(value)
+                if not 0 <= count < 2**64:
+                    raise ValueError("X_COMMITTEE_COUNTS entry is outside uint64 range")
+                counts.append(count)
+            out[k] = repr(tuple(counts))
+        elif isinstance(v, list):
             # A special case for list of records
             out[k] = v
         elif isinstance(v, str) and (
