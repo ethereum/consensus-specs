@@ -192,7 +192,7 @@ def prepare_execution_payload(
     execution_engine: ExecutionEngine,
 ) -> PayloadId | None:
     parent_bid = state.latest_execution_payload_bid
-    if should_build_on_full(store, head, get_current_slot(store)):
+    if should_build_on_full(store, head, state.slot):
         envelope = store.payloads[head.root]
         # Make a copy of the state to avoid mutability issues
         state = state.copy()
@@ -234,8 +234,8 @@ def prepare_execution_payload(
 ### Inclusion list proposal
 
 A validator is expected to propose a
-[`SignedInclusionList`](./beacon-chain.md#signedinclusionlist) at the beginning
-of any `slot` for which
+[`SignedInclusionList`](./beacon-chain.md#signedinclusionlist) during any `slot`
+for which
 `get_inclusion_list_committee_assignment(state, epoch, validator_index)`
 returns.
 

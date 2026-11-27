@@ -16,6 +16,9 @@ from eth_consensus_specs.test.helpers.block import (
     build_empty_block,
     sign_block,
 )
+from eth_consensus_specs.test.helpers.execution_payload import (
+    commit_bid_to_execution_payload,
+)
 from eth_consensus_specs.test.helpers.fork_choice import (
     add_attestation,
     add_attester_slashing,
@@ -315,6 +318,8 @@ def produce_block(
 
     valid = True
     try:
+        if is_post_gloas(spec):
+            commit_bid_to_execution_payload(spec, state, block)
         spec.process_block(post_state, block)
     except AssertionError:
         valid = False
@@ -526,7 +531,7 @@ def make_events(spec, test_data: FCTestData) -> list[tuple[int, object, bool]]:
         elif event_kind == "attestation":
             return data.data.slot + 1
         elif event_kind == "attester_slashing":
-            return max(data.attestation_1.data.slot, data.attestation_1.data.slot) + 1
+            return max(data.attestation_1.data.slot, data.attestation_2.data.slot) + 1
         elif event_kind == "execution_payload":
             return data.message.payload.slot_number
         elif event_kind == "payload_attestation":

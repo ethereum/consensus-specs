@@ -95,8 +95,10 @@ Missing `InclusionList`s are represented by empty elements, as are untimely
 `InclusionList`s when `only_timely` is `True`.
 
 *Note*: Inclusion lists MUST be retained for at least
-`MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS` slots beyond their slot, after which
-they MAY be pruned.
+`MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS + 1` slots beyond their slot, after
+which they MAY be pruned. The inclusion lists of slot `N` are read whenever the
+payload of slot `N + 1` is processed, which may happen during slot `N + 2` while
+`should_extend_payload` still decides on that payload.
 
 ```python
 def get_inclusion_lists(

@@ -24,13 +24,18 @@
   - [Modified `verify_data_column_sidecar_kzg_proofs`](#modified-verify_data_column_sidecar_kzg_proofs)
   - [Modified `verify_data_column_sidecar`](#modified-verify_data_column_sidecar)
   - [New `compute_max_data_column_sidecar_size`](#new-compute_max_data_column_sidecar_size)
+  - [New `get_builder_bid_limit`](#new-get_builder_bid_limit)
   - [New `is_current_or_next_slot`](#new-is_current_or_next_slot)
   - [New `is_past_slot`](#new-is_past_slot)
   - [New `is_gas_limit_target_compatible`](#new-is_gas_limit_target_compatible)
   - [New `is_bid_compatible_with_head`](#new-is_bid_compatible_with_head)
+  - [New `get_max_payload_gas_limit`](#new-get_max_payload_gas_limit)
   - [New `verify_attestation_payload_status`](#new-verify_attestation_payload_status)
   - [New `verify_block_body_operation_limits`](#new-verify_block_body_operation_limits)
   - [New `verify_execution_requests_limits`](#new-verify_execution_requests_limits)
+  - [New `keccak256`](#new-keccak256)
+  - [New `compute_ordered_trie_root`](#new-compute_ordered_trie_root)
+  - [New `compute_execution_block_hash`](#new-compute_execution_block_hash)
 - [The gossip domain: gossipsub](#the-gossip-domain-gossipsub)
   - [Topics and messages](#topics-and-messages)
     - [Global topics](#global-topics)
@@ -79,9 +84,16 @@ for the corresponding variable-size libp2p messages. The bound for
 
 ## Configs
 
-| Name                   | Value                  |
-| ---------------------- | ---------------------- |
-| `MAX_REQUEST_PAYLOADS` | `Uint64(2**7)` (= 128) |
+*Note*: `MIN_TRANSACTION_GAS` is a lower bound on the gas used by a single
+transaction, it bounds the number of transactions an execution payload can
+contain for a given gas limit. The value is set well below the cheapest
+transaction in Glamsterdam (12,000 gas). It may need to be changed in a future
+fork if the execution layer reduces the cost of a transaction below this value.
+
+| Name                   | Value                     |
+| ---------------------- | ------------------------- |
+| `MAX_REQUEST_PAYLOADS` | `Uint64(2**7)` (= 128)    |
+| `MIN_TRANSACTION_GAS`  | `Uint64(2**12)` (= 4,096) |
 
 ## Types
 
@@ -212,7 +224,7 @@ class Seen:
     # [New in Gloas:EIP7732]
     payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
     # [New in Gloas:EIP7732]
-    execution_payload_bids: set[tuple[Slot, Hash32, Root, BuilderIndex]]
+    execution_payload_bid_counts: Counter[tuple[Slot, Hash32, Root, BuilderIndex]]
     # [New in Gloas:EIP7732]
     best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
     # [New in Gloas:EIP7732]
@@ -341,6 +353,18 @@ def compute_max_data_column_sidecar_size() -> Uint64:
     return Uint64(len(ssz_serialize(sidecar)))
 ```
 
+### New `get_builder_bid_limit`
+
+```python
+def get_builder_bid_limit(state: BeaconState, builder_index: BuilderIndex) -> Uint64:
+    """
+    Return the number of bids the builder may submit for each slot and parent.
+    """
+    balance = state.builders[builder_index].balance
+    pending_withdrawals_amount = get_pending_balance_to_withdraw_for_builder(state, builder_index)
+    return Uint64(saturating_sub(balance, pending_withdrawals_amount) // ETH_TO_GWEI)
+```
+
 ### New `is_current_or_next_slot`
 
 ```python
@@ -410,7 +434,11 @@ def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
     builds_on_parent_payload = bid.parent_block_hash == head_bid.parent_block_hash
 
     if builds_on_parent_block and builds_on_parent_payload:
-        return True
+        # A proposer only builds on the head's parent to re-org the head
+        bid_slot_ok = head_block.slot + 1 == bid.slot
+        head_late = is_head_late(store, head_node.root)
+        proposer_equivocation = is_proposer_equivocation(store, head_node.root)
+        return bid_slot_ok and (head_late or proposer_equivocation)
 
     if bid.parent_block_root != head_node.root:
         return False
@@ -421,6 +449,25 @@ def is_bid_compatible_with_head(store: Store, bid: ExecutionPayloadBid) -> bool:
         return builds_on_head_payload
 
     return builds_on_parent_payload
+```
+
+### New `get_max_payload_gas_limit`
+
+```python
+def get_max_payload_gas_limit(store: Store, block: BeaconBlock) -> Uint64:
+    """
+    Return the highest gas limit the EIP-1559 transition rule allows for the
+    execution payload of ``block``, given the gas limit of the parent payload,
+    i.e. the payload of the closest full ancestor. If no ancestor in the store
+    is full, the parent payload is unknown and the bid's gas limit is the bound.
+    """
+    bid = block.body.signed_execution_payload_bid.message
+    while block.parent_root in store.blocks:
+        if is_parent_node_full(store, block):
+            parent_gas_limit = store.payloads[block.parent_root].payload.gas_limit
+            return parent_gas_limit + saturating_sub(parent_gas_limit // 1024, 1)
+        block = store.blocks[block.parent_root]
+    return bid.gas_limit
 ```
 
 ### New `verify_attestation_payload_status`
@@ -526,6 +573,91 @@ def verify_execution_requests_limits(execution_requests: ExecutionRequests) -> N
     # [REJECT] The builder exit request count is within the limit
     if len(execution_requests.builder_exits) > MAX_BUILDER_EXIT_REQUESTS_PER_PAYLOAD:
         raise GossipReject("too many builder exit requests")
+```
+
+### New `keccak256`
+
+```python
+def keccak256(data: Sequence[int]) -> Bytes32:
+    """
+    Return the Keccak-256 hash of ``data``.
+    """
+    return Bytes32(keccak256_hash(bytes(data)))
+```
+
+### New `compute_ordered_trie_root`
+
+```python
+def compute_ordered_trie_root(values: Sequence[Sequence[int]]) -> Bytes32:
+    """
+    Return the root of the Merkle Patricia Trie that maps ``rlp_encode(index)``
+    to the value at each index of ``values``.
+    """
+    trie = HexaryTrie(db={})
+    for index, value in enumerate(values):
+        trie.set(rlp_encode(index), bytes(value))
+    return Bytes32(trie.root_hash)
+```
+
+### New `compute_execution_block_hash`
+
+```python
+def compute_execution_block_hash(
+    payload: ExecutionPayload,
+    parent_beacon_block_root: Root,
+    execution_requests: ExecutionRequests,
+) -> Hash32:
+    """
+    Return the hash of the execution block header described by ``payload``.
+    """
+    ommers_hash = keccak256(rlp_encode([]))
+    transactions_root = compute_ordered_trie_root(payload.transactions)
+    withdrawals_root = compute_ordered_trie_root([
+        rlp_encode([
+            withdrawal.index,
+            withdrawal.validator_index,
+            withdrawal.address,
+            withdrawal.amount,
+        ])
+        for withdrawal in payload.withdrawals
+    ])
+    request_hashes = b""
+    for request in get_execution_requests_list(execution_requests):
+        request_hashes += sha256(request)
+    requests_hash = sha256(request_hashes)
+    block_access_list_hash = keccak256(payload.block_access_list)
+
+    return Hash32(
+        keccak256(
+            rlp_encode([
+                payload.parent_hash,
+                ommers_hash,
+                payload.fee_recipient,
+                payload.state_root,
+                transactions_root,
+                payload.receipts_root,
+                payload.logs_bloom,
+                # Difficulty
+                0,
+                payload.block_number,
+                payload.gas_limit,
+                payload.gas_used,
+                payload.timestamp,
+                payload.extra_data,
+                payload.prev_randao,
+                # Nonce
+                Bytes8(),
+                payload.base_fee_per_gas,
+                withdrawals_root,
+                payload.blob_gas_used,
+                payload.excess_blob_gas,
+                parent_beacon_block_root,
+                requests_hash,
+                block_access_list_hash,
+                payload.slot_number,
+            ])
+        )
+    )
 ```
 
 ## The gossip domain: gossipsub
@@ -855,9 +987,21 @@ def validate_execution_payload_envelope_gossip(
     if block.slot != payload.slot_number:
         raise GossipReject("block's slot does not match payload's slot number")
 
+    # [REJECT] The envelope's parent beacon block root matches the block's parent root
+    if envelope.parent_beacon_block_root != block.parent_root:
+        raise GossipReject("envelope's parent beacon block root does not match the block's")
+
     # [REJECT] The envelope is from the builder committed to by the bid
     if envelope.builder_index != bid.builder_index:
         raise GossipReject("envelope's builder index does not match the bid's builder index")
+
+    # [REJECT] The payload's previous randao matches the bid's previous randao
+    if payload.prev_randao != bid.prev_randao:
+        raise GossipReject("payload's previous randao does not match the bid's previous randao")
+
+    # [REJECT] The payload's gas limit matches the bid's gas limit
+    if payload.gas_limit != bid.gas_limit:
+        raise GossipReject("payload's gas limit does not match the bid's gas limit")
 
     # [REJECT] The payload's block hash matches the bid's block hash
     if payload.block_hash != bid.block_hash:
@@ -873,6 +1017,37 @@ def validate_execution_payload_envelope_gossip(
     # [REJECT] The number of withdrawals is within the limit
     if len(payload.withdrawals) > MAX_WITHDRAWALS_PER_PAYLOAD:
         raise GossipReject("too many withdrawals")
+
+    # [REJECT] The number of transactions is within the limit implied by the parent payload's gas limit
+    max_gas_limit = get_max_payload_gas_limit(store, block)
+    max_payload_transactions = max_gas_limit // MIN_TRANSACTION_GAS
+    if len(payload.transactions) > max_payload_transactions:
+        raise GossipReject("too many transactions")
+
+    # [REJECT] The payload builds on the execution head of the block's post-state
+    if payload.parent_hash != state.latest_block_hash:
+        raise GossipReject("payload's parent hash does not match the latest block hash")
+
+    # [REJECT] The payload's timestamp is correct with respect to the slot
+    if payload.timestamp != compute_time_at_slot(state.genesis_time, block.slot):
+        raise GossipReject("incorrect execution payload timestamp")
+
+    # [REJECT] The payload contains no empty transactions
+    if any(len(transaction) == 0 for transaction in payload.transactions):
+        raise GossipReject("payload contains an empty transaction")
+
+    # [REJECT] The payload's withdrawals match the withdrawals expected by the block's post-state
+    if hash_tree_root(payload.withdrawals) != hash_tree_root(state.payload_expected_withdrawals):
+        raise GossipReject("payload's withdrawals do not match the expected withdrawals")
+
+    # [REJECT] The payload's block hash is computed correctly
+    block_hash = compute_execution_block_hash(
+        payload,
+        envelope.parent_beacon_block_root,
+        envelope.execution_requests,
+    )
+    if payload.block_hash != block_hash:
+        raise GossipReject("payload's block hash is not computed correctly")
 
     # [REJECT] The envelope signature is valid
     if not verify_execution_payload_envelope_signature(state, signed_execution_payload_envelope):
@@ -952,6 +1127,15 @@ def validate_payload_attestation_message_gossip(
 
 This topic is used to propagate signed bids as `SignedExecutionPayloadBid`.
 
+*Note*: The proposer for `bid.slot` SHOULD consider higher-value bids from a
+builder for its block regardless of how many bids it has already seen from that
+builder for the same slot and parent. Otherwise, a builder could send low-value
+bids to the proposer and a high-value bid to the rest of the network. Nodes that
+accepted the high-value bid would not forward competing bids with lower values,
+and the proposer would ignore the high-value bid, leaving it with only the
+low-value bids. A bid past the builder's bid limit is still ignored for gossip,
+so the proposer does not forward it.
+
 ```python
 def validate_execution_payload_bid_gossip(
     seen: Seen,
@@ -965,11 +1149,6 @@ def validate_execution_payload_bid_gossip(
     """
     bid = signed_execution_payload_bid.message
 
-    # [IGNORE] This is the first bid for this slot, parent, and builder
-    bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
-    if bid_key in seen.execution_payload_bids:
-        raise GossipIgnore("already seen valid bid for this slot, parent, and builder")
-
     # [IGNORE] This is the highest value bid seen for the slot and parent
     best_bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root)
     if best_bid_key in seen.best_execution_payload_bid:
@@ -979,6 +1158,12 @@ def validate_execution_payload_bid_gossip(
     # [IGNORE] The bid's slot is the current slot or the next slot
     if not is_current_or_next_slot(store, bid.slot, current_time_ms):
         raise GossipIgnore("bid's slot is not the current or next slot")
+
+    # [IGNORE] The bid is received after the payload attestation deadline of the previous slot
+    previous_slot_time_ms = compute_time_at_slot_ms(store.genesis_time_ms, bid.slot - 1)
+    payload_attestation_due_time_ms = previous_slot_time_ms + get_payload_attestation_due_ms()
+    if current_time_ms < payload_attestation_due_time_ms:
+        raise GossipIgnore("bid is received before the payload attestation deadline")
 
     # [REJECT] The bid's execution payment is zero
     if bid.execution_payment != 0:
@@ -1062,6 +1247,12 @@ def validate_execution_payload_bid_gossip(
     if not is_active_builder(state, bid.builder_index):
         raise GossipReject("builder is not active")
 
+    # [IGNORE] The builder has not reached its bid limit for this slot and parent
+    bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
+    bid_limit = get_builder_bid_limit(state, bid.builder_index)
+    if seen.execution_payload_bid_counts[bid_key] >= bid_limit:
+        raise GossipIgnore("builder has reached its bid limit for this slot and parent")
+
     # [IGNORE] The builder can cover the bid
     if not can_builder_cover_bid(state, bid.builder_index, bid.value):
         raise GossipIgnore("builder cannot cover bid value")
@@ -1078,8 +1269,8 @@ def validate_execution_payload_bid_gossip(
     if not verify_execution_payload_bid_signature(state, signed_execution_payload_bid):
         raise GossipReject("invalid bid signature")
 
-    # Mark this bid as seen and update the highest-value bid for this slot/parent
-    seen.execution_payload_bids.add(bid_key)
+    # Count this bid and update the highest-value bid for this slot/parent
+    seen.execution_payload_bid_counts[bid_key] += 1
     seen.best_execution_payload_bid[best_bid_key] = bid.value
 ```
 

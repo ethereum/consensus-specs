@@ -245,8 +245,8 @@ def compute_el_block_hash_with_new_fields(spec, payload, parent_beacon_block_roo
     if not is_post_deneb(spec):
         parent_beacon_block_root = None
     if is_post_gloas(spec):
-        block_access_list_rlp = encode(bytearray(payload.block_access_list), Binary(0))
-        block_access_list_hash = keccak(block_access_list_rlp)
+        # The block access list is already RLP-encoded
+        block_access_list_hash = keccak(bytes(payload.block_access_list))
 
     return compute_el_header_block_hash(
         spec,
@@ -397,7 +397,8 @@ def build_empty_execution_payload(
         payload.blob_gas_used = 0
         payload.excess_blob_gas = 0
     if is_post_gloas(spec):
-        payload.block_access_list = spec.BlockAccessList()
+        # An empty block access list, RLP-encoded
+        payload.block_access_list = spec.BlockAccessList(data=list(b"\xc0"))
         payload.slot_number = state.slot
 
     payload.block_hash = compute_el_block_hash(spec, payload, state, execution_requests)
@@ -498,11 +499,9 @@ def sign_execution_payload_envelope(spec, state, signed_block, envelope):
     )
 
 
-def build_signed_execution_payload_envelope(
-    spec, state, block_root, signed_block, execution_requests=None
-):
+def build_execution_payload_envelope(spec, state, block_root, block, execution_requests=None):
     # Get builder_index from the block's execution payload bid
-    builder_index = signed_block.message.body.signed_execution_payload_bid.message.builder_index
+    builder_index = block.body.signed_execution_payload_bid.message.builder_index
 
     # Create execution payload with fields matching the bid's commitments
     payload = build_empty_execution_payload(spec, state)
@@ -515,15 +514,58 @@ def build_signed_execution_payload_envelope(
         execution_requests = spec.ExecutionRequests()
 
     # Create the execution payload envelope message
-    envelope_message = spec.ExecutionPayloadEnvelope(
+    return spec.ExecutionPayloadEnvelope(
         payload=payload,
         execution_requests=execution_requests,
         builder_index=builder_index,
         beacon_block_root=block_root,
-        parent_beacon_block_root=signed_block.message.parent_root,
+        parent_beacon_block_root=block.parent_root,
     )
 
+
+def build_signed_execution_payload_envelope(
+    spec, state, block_root, signed_block, execution_requests=None
+):
+    envelope_message = build_execution_payload_envelope(
+        spec, state, block_root, signed_block.message, execution_requests
+    )
     return sign_execution_payload_envelope(spec, state, signed_block, envelope_message)
+
+
+def compute_el_block_hash_for_envelope(spec, envelope):
+    requests_list = spec.get_execution_requests_list(envelope.execution_requests)
+    return compute_el_block_hash_with_new_fields(
+        spec,
+        envelope.payload,
+        envelope.parent_beacon_block_root,
+        compute_requests_hash(requests_list),
+    )
+
+
+def commit_bid_to_execution_payload(
+    spec, state, block, execution_requests=None, update_envelope=None
+):
+    """
+    Commit the bid of ``block`` to the block hash of its envelope's payload, after
+    ``update_envelope`` (if given) changes the envelope. Call before signing the block.
+    Return the unsigned envelope with the committed payload hash.
+    """
+    post_state = state.copy()
+    if post_state.slot < block.slot:
+        spec.process_slots(post_state, block.slot)
+    spec.process_block(post_state, block)
+    envelope = build_execution_payload_envelope(
+        spec, post_state, spec.Root(), block, execution_requests
+    )
+    if update_envelope is not None:
+        update_envelope(envelope)
+
+    bid = block.body.signed_execution_payload_bid.message
+    bid.block_hash = compute_el_block_hash_for_envelope(spec, envelope)
+    envelope.payload.block_hash = bid.block_hash
+    if bid.builder_index != spec.BUILDER_INDEX_SELF_BUILD:
+        block.body.signed_execution_payload_bid = sign_execution_payload_bid(spec, state, bid)
+    return envelope
 
 
 def compute_execution_payload_bid(spec, state, payload, execution_requests=None):

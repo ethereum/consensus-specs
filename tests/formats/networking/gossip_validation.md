@@ -39,6 +39,9 @@ blocks: [{                   -- Optional. Blocks to import before validation (ol
     payload: string,         -- Optional. `SignedExecutionPayloadEnvelope` file for
                              -- this block. The envelope has been received and
                              -- verified, as recorded by `on_execution_payload_envelope`.
+    late: bool,              -- Optional. If true, the block was received after its
+                             -- slot's attestation deadline, as recorded by
+                             -- `record_block_timeliness` (`is_head_late` returns true).
 }]
 finalized_checkpoint:        -- Optional. Custom finalized checkpoint. Use it wherever
                              -- validation consults finalization: the store's finalized
@@ -127,6 +130,9 @@ Block files (`block_<root>.ssz_snappy`) serve multiple purposes:
    - If `payload` is present, record the referenced envelope's message for that
      block as `on_execution_payload_envelope` would (e.g. add it to
      `store.payloads`).
+   - If `late: true`, record the block as received after its slot's attestation
+     deadline, as `record_block_timeliness` would. Otherwise the block is
+     timely.
    - If `payload_status` is present, track the execution payload status for that
      block.
      - `VALID`: the block's execution payload is known valid.

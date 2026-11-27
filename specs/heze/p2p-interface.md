@@ -90,7 +90,7 @@ class Seen:
     execution_payloads: dict[Hash32, ExecutionPayload]
     execution_payload_envelopes: set[tuple[Root, BuilderIndex]]
     payload_attestation_validators: set[tuple[Slot, ValidatorIndex]]
-    execution_payload_bids: set[tuple[Slot, Hash32, Root, BuilderIndex]]
+    execution_payload_bid_counts: Counter[tuple[Slot, Hash32, Root, BuilderIndex]]
     best_execution_payload_bid: dict[tuple[Slot, Hash32, Root], Gwei]
     proposer_preferences: dict[tuple[Slot, Root], ProposerPreferences]
     # [New in Heze:EIP7805]
@@ -190,11 +190,6 @@ def validate_execution_payload_bid_gossip(
     """
     bid = signed_execution_payload_bid.message
 
-    # [IGNORE] This is the first bid for this slot, parent, and builder
-    bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
-    if bid_key in seen.execution_payload_bids:
-        raise GossipIgnore("already seen valid bid for this slot, parent, and builder")
-
     # [IGNORE] This is the highest value bid seen for the slot and parent
     best_bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root)
     if best_bid_key in seen.best_execution_payload_bid:
@@ -204,6 +199,12 @@ def validate_execution_payload_bid_gossip(
     # [IGNORE] The bid's slot is the current slot or the next slot
     if not is_current_or_next_slot(store, bid.slot, current_time_ms):
         raise GossipIgnore("bid's slot is not the current or next slot")
+
+    # [IGNORE] The bid is received after the payload attestation deadline of the previous slot
+    previous_slot_time_ms = compute_time_at_slot_ms(store.genesis_time_ms, bid.slot - 1)
+    payload_attestation_due_time_ms = previous_slot_time_ms + get_payload_attestation_due_ms()
+    if current_time_ms < payload_attestation_due_time_ms:
+        raise GossipIgnore("bid is received before the payload attestation deadline")
 
     # [REJECT] The bid's execution payment is zero
     if bid.execution_payment != 0:
@@ -287,6 +288,12 @@ def validate_execution_payload_bid_gossip(
     if not is_active_builder(state, bid.builder_index):
         raise GossipReject("builder is not active")
 
+    # [IGNORE] The builder has not reached its bid limit for this slot and parent
+    bid_key = (bid.slot, bid.parent_block_hash, bid.parent_block_root, bid.builder_index)
+    bid_limit = get_builder_bid_limit(state, bid.builder_index)
+    if seen.execution_payload_bid_counts[bid_key] >= bid_limit:
+        raise GossipIgnore("builder has reached its bid limit for this slot and parent")
+
     # [IGNORE] The builder can cover the bid
     if not can_builder_cover_bid(state, bid.builder_index, bid.value):
         raise GossipIgnore("builder cannot cover bid value")
@@ -317,8 +324,8 @@ def validate_execution_payload_bid_gossip(
     if not verify_execution_payload_bid_signature(state, signed_execution_payload_bid):
         raise GossipReject("invalid bid signature")
 
-    # Mark this bid as seen and update the highest-value bid for this slot/parent
-    seen.execution_payload_bids.add(bid_key)
+    # Count this bid and update the highest-value bid for this slot/parent
+    seen.execution_payload_bid_counts[bid_key] += 1
     seen.best_execution_payload_bid[best_bid_key] = bid.value
 ```
 

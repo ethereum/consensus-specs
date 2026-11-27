@@ -5,6 +5,7 @@ from eth_consensus_specs.test.context import (
 from eth_consensus_specs.test.helpers.block import build_empty_block_for_next_slot
 from eth_consensus_specs.test.helpers.execution_payload import (
     build_signed_execution_payload_envelope,
+    commit_bid_to_execution_payload,
 )
 from eth_consensus_specs.test.helpers.gloas.bid import (
     activate_builders,
@@ -32,8 +33,28 @@ from eth_consensus_specs.test.helpers.state import (
 )
 
 
+def _advance_to_payload_attestation_due(spec, store, bid_slot, current_time_ms):
+    """
+    Bids are ignored until the payload attestation deadline of the slot before
+    ``bid_slot``. Return ``current_time_ms`` moved up to that deadline.
+    """
+    payload_attestation_due_time_ms = (
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(bid_slot - 1))
+        + spec.get_payload_attestation_due_ms()
+    )
+    return max(current_time_ms, payload_attestation_due_time_ms)
+
+
 def _seed_bid_context(
-    spec, state, store, head_payload, messages, current_time_ms, seed_prefs=True, seed_envelope=True
+    spec,
+    state,
+    store,
+    head_payload,
+    messages,
+    current_time_ms,
+    seed_prefs=True,
+    seed_envelope=True,
+    advance_to_payload_attestation_due=True,
 ):
     """
     Yield and validate the proposer preferences and payload envelope messages
@@ -45,6 +66,9 @@ def _seed_bid_context(
     bid validation condition, so tests can flip exactly the one condition
     under test. The expected outcome then does not depend on the order in
     which a client checks independent conditions.
+
+    Unless ``advance_to_payload_attestation_due`` is False, the returned time is
+    moved up to the earliest time a bid for ``proposal_slot`` is accepted.
 
     Returns (seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, current_time_ms).
     """
@@ -101,6 +125,11 @@ def _seed_bid_context(
                 "message": get_filename(head_payload),
                 "expected": result,
             }
+        )
+
+    if advance_to_payload_attestation_due:
+        current_time_ms = _advance_to_payload_attestation_due(
+            spec, store, proposal_slot, current_time_ms
         )
 
     return seen, common_fee, parent_gas_limit, proposal_slot, parent_block_hash, current_time_ms
@@ -167,56 +196,115 @@ def test_gossip_execution_payload_bid__valid(spec, state):
     yield "messages", "meta", messages
 
 
-@with_gloas_and_later
-@spec_state_test_with_matching_config
-def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(spec, state):
-    """A bid on the head's beacon parent uses that parent's RANDAO mix."""
-    anchor_state = state.copy()
-    yield "topic", "meta", "execution_payload_bid"
+def _append_block(spec, state, store, blocks, parent_block_hash, block_hash, late=False):
+    """
+    Advance ``state`` with a block for the next slot whose bid builds on
+    ``parent_block_hash`` and commits to ``block_hash``, record the block in
+    ``store`` and append it to ``blocks``. Returns the block root.
+    """
+    block = build_empty_block_for_next_slot(spec, state)
+    block.body.signed_execution_payload_bid.message.parent_block_hash = parent_block_hash
+    block.body.signed_execution_payload_bid.message.block_hash = block_hash
+    signed_block = state_transition_and_sign_block(spec, state, block)
+    blocks.append(signed_block)
+    return record_block_in_store(spec, store, signed_block, state.copy(), late=late)
 
+
+def _setup_store_with_head_on_parent(spec, state, late, equivocation=False):
+    """
+    Append a head block to the advanced store, with the payload of the head's
+    beacon parent recorded. A ``late`` head arrived after its slot's attestation
+    deadline. With ``equivocation``, the head's proposer has published a second
+    block for the head's slot, and either block may be the head. Returns (store,
+    blocks, parent_root, head_root, parent_state, parent_payload,
+    finalized_checkpoint_meta).
+    """
     store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
     parent_state = state.copy()
     parent_block = blocks[-1]
+    parent_block_hash = parent_block.message.body.signed_execution_payload_bid.message.block_hash
 
-    head_block = build_empty_block_for_next_slot(spec, state)
-    head_block.body.signed_execution_payload_bid.message.parent_block_hash = (
-        parent_block.message.body.signed_execution_payload_bid.message.block_hash
+    head_slot_roots = []
+    if equivocation:
+        block_hash = spec.Hash32(b"\x04" + b"\x00" * 31)
+        head_slot_roots.append(
+            _append_block(spec, parent_state.copy(), store, blocks, parent_block_hash, block_hash)
+        )
+    block_hash = spec.Hash32(b"\x03" + b"\x00" * 31)
+    head_slot_roots.append(
+        _append_block(spec, state, store, blocks, parent_block_hash, block_hash, late=late)
     )
-    head_block.body.signed_execution_payload_bid.message.block_hash = spec.Hash32(
-        b"\x03" + b"\x00" * 31
-    )
-    signed_head_block = state_transition_and_sign_block(spec, state, head_block)
-    head_root = record_block_in_store(spec, store, signed_head_block, state.copy())
-    blocks.append(signed_head_block)
     finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
     parent_state.finalized_checkpoint = state.finalized_checkpoint
-    store.block_states[parent_root].finalized_checkpoint = state.finalized_checkpoint
+    for root in (parent_root, *head_slot_roots):
+        store.block_states[root].finalized_checkpoint = state.finalized_checkpoint
 
     parent_payload = build_signed_execution_payload_envelope(
         spec, parent_state, parent_root, parent_block
     )
     store.payloads[parent_root] = parent_payload.message
 
-    head_bid = signed_head_block.message.body.signed_execution_payload_bid.message
+    head_root = spec.get_head(store).root
+    head_block = store.blocks[head_root]
+    head_bid = head_block.body.signed_execution_payload_bid.message
+    assert head_root in head_slot_roots
+    assert head_block.parent_root == parent_root
+    assert head_bid.parent_block_hash == parent_payload.message.payload.block_hash
+    assert spec.is_proposer_equivocation(store, head_root) == equivocation
+    return (
+        store,
+        blocks,
+        parent_root,
+        head_root,
+        parent_state,
+        parent_payload,
+        finalized_checkpoint_meta,
+    )
+
+
+def _run_bid_on_head_parent(
+    spec, state, late, expected, reason=None, for_head_slot=False, equivocation=False
+):
+    """
+    Validate a bid building on the head's beacon parent, which is only selected
+    in a re-org of the head. The bid is for the slot after the head, unless
+    ``for_head_slot`` makes it a bid for the head's own slot.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    (
+        store,
+        blocks,
+        parent_root,
+        head_root,
+        parent_state,
+        parent_payload,
+        finalized_checkpoint_meta,
+    ) = _setup_store_with_head_on_parent(spec, state, late=late, equivocation=equivocation)
     parent_randao = spec.get_randao_mix(parent_state, spec.get_current_epoch(parent_state))
     head_randao = spec.get_randao_mix(state, spec.get_current_epoch(state))
-    assert spec.get_head(store).root == head_root
-    assert signed_head_block.message.parent_root == parent_root
-    assert head_bid.parent_block_hash == parent_payload.message.payload.block_hash
     assert parent_randao != head_randao
 
     yield "state", anchor_state
     for signed in blocks:
         yield get_filename(signed), signed
     blocks_meta = get_blocks_meta(blocks)
-    blocks_meta[-2]["payload"] = get_filename(parent_payload)
+    parent_index = [signed.message.hash_tree_root() for signed in blocks].index(parent_root)
+    blocks_meta[parent_index]["payload"] = get_filename(parent_payload)
+    if late:
+        blocks_meta[-1]["late"] = True
     yield "blocks", "meta", blocks_meta
     yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
 
-    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
+    head_slot_start_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
     messages = []
+    # The proposal slot is the one following the state the context is seeded
+    # from: the parent state itself for the head's slot, otherwise the parent
+    # state advanced to the head's slot.
     proposal_state = parent_state.copy()
-    spec.process_slots(proposal_state, state.slot)
+    if not for_head_slot:
+        spec.process_slots(proposal_state, state.slot)
     (
         seen,
         common_fee,
@@ -225,8 +313,9 @@ def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(s
         parent_block_hash,
         current_time_ms,
     ) = yield from (
-        _seed_bid_context(spec, proposal_state, store, parent_payload, messages, current_time_ms)
+        _seed_bid_context(spec, proposal_state, store, parent_payload, messages, head_slot_start_ms)
     )
+    assert proposal_slot == (state.slot if for_head_slot else state.slot + 1)
     assert spec.get_shuffling_dependent_root(
         store, head_root, spec.compute_epoch_at_slot(proposal_slot)
     ) == spec.get_shuffling_dependent_root(
@@ -248,24 +337,163 @@ def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(s
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 40
-    result, reason = run_validate_gossip(
+    result, actual_reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
         signed_execution_payload_bid=signed_bid,
         current_time_ms=current_time_ms,
     )
-    assert result == "valid"
-    assert reason is None
-    messages.append(
-        {
-            "current_time_ms": int(current_time_ms),
-            "message": get_filename(signed_bid),
-            "expected": result,
-        }
-    )
+    assert result == expected
+    assert actual_reason == reason
+    message = {
+        "current_time_ms": int(current_time_ms),
+        "message": get_filename(signed_bid),
+        "expected": result,
+    }
+    if reason is not None:
+        message["reason"] = reason
+    messages.append(message)
 
     yield "messages", "meta", messages
+
+
+def _run_bid_around_payload_attestation_due(spec, state, bid_time_offset_ms, expected, reason=None):
+    """
+    Validate an otherwise valid bid for the next slot, received at
+    ``bid_time_offset_ms`` from the current slot's payload attestation deadline.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
+    finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
+    head_payload = record_head_payload(spec, state, store, blocks)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
+    yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
+
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
+    messages = []
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        _,
+    ) = yield from _seed_bid_context(
+        spec,
+        state,
+        store,
+        head_payload,
+        messages,
+        current_time_ms,
+        advance_to_payload_attestation_due=False,
+    )
+
+    signed_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=spec.BuilderIndex(0),
+        slot=proposal_slot,
+        parent_block_hash=parent_block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=spec.Gwei(1),
+    )
+    yield get_filename(signed_bid), signed_bid
+
+    current_time_ms = (
+        spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(proposal_slot - 1))
+        + spec.get_payload_attestation_due_ms()
+        + bid_time_offset_ms
+    )
+    result, actual_reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_execution_payload_bid=signed_bid,
+        current_time_ms=current_time_ms,
+    )
+    assert result == expected
+    assert actual_reason == reason
+    message = {
+        "current_time_ms": int(current_time_ms),
+        "message": get_filename(signed_bid),
+        "expected": result,
+    }
+    if reason is not None:
+        message["reason"] = reason
+    messages.append(message)
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__valid_on_head_parent_uses_parent_randao(spec, state):
+    """A bid on the late head's beacon parent uses that parent's RANDAO mix."""
+    yield from _run_bid_on_head_parent(spec, state, late=True, expected="valid")
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__valid_on_head_parent_proposer_equivocation(spec, state):
+    """A bid on the timely head's beacon parent is valid if the head's proposer equivocated."""
+    yield from _run_bid_on_head_parent(spec, state, late=False, expected="valid", equivocation=True)
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__ignore_on_head_parent_timely_head(spec, state):
+    """A bid on the head's beacon parent is ignored if the head arrived on time."""
+    yield from _run_bid_on_head_parent(
+        spec,
+        state,
+        late=False,
+        expected="ignore",
+        reason="bid is not compatible with the current head branch",
+    )
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__ignore_on_head_parent_for_head_slot(spec, state):
+    """A bid on the head's beacon parent for the head's own slot is ignored."""
+    yield from _run_bid_on_head_parent(
+        spec,
+        state,
+        late=True,
+        expected="ignore",
+        reason="bid is not compatible with the current head branch",
+        for_head_slot=True,
+    )
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__ignore_before_payload_attestation_due(spec, state):
+    """A bid received 1ms before the previous slot's payload attestation deadline is ignored."""
+    yield from _run_bid_around_payload_attestation_due(
+        spec,
+        state,
+        bid_time_offset_ms=-1,
+        expected="ignore",
+        reason="bid is received before the payload attestation deadline",
+    )
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__valid_at_payload_attestation_due(spec, state):
+    """A bid received exactly at the previous slot's payload attestation deadline is valid."""
+    yield from _run_bid_around_payload_attestation_due(
+        spec, state, bid_time_offset_ms=0, expected="valid"
+    )
 
 
 @with_gloas_and_later
@@ -426,7 +654,15 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_lower_disparity(spec,
         proposal_slot,
         parent_block_hash,
         current_time_ms,
-    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
+    ) = yield from _seed_bid_context(
+        spec,
+        state,
+        store,
+        head_payload,
+        messages,
+        current_time_ms,
+        advance_to_payload_attestation_due=False,
+    )
     assert proposal_slot == bid_slot
 
     signed_bid = build_signed_bid(
@@ -458,111 +694,6 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_lower_disparity(spec,
             "message": get_filename(signed_bid),
             "expected": result,
             "reason": reason,
-        }
-    )
-
-    yield "messages", "meta", messages
-
-
-@with_gloas_and_later
-@spec_state_test_with_matching_config
-def test_gossip_execution_payload_bid__valid_slot_at_lower_disparity(spec, state):
-    """A bid whose slot lands exactly on the lower clock-disparity edge is valid."""
-    anchor_state = state.copy()
-    yield "topic", "meta", "execution_payload_bid"
-
-    store, blocks, parent_root = setup_store_advanced_for_bid(spec, state)
-    finalized_checkpoint_meta = activate_builders(spec, state, store, blocks)
-    head_payload = record_head_payload(spec, state, store, blocks)
-    yield "state", anchor_state
-    for signed in blocks:
-        yield get_filename(signed), signed
-    yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
-    yield "finalized_checkpoint", "meta", finalized_checkpoint_meta
-
-    seen = get_seen(spec)
-    common_fee = spec.ExecutionAddress(b"\x11" * 20)
-    parent_gas_limit = state.latest_execution_payload_bid.gas_limit
-    bid_slot = spec.Slot(state.slot + 1)
-    # Lower edge of the disparity window: (bid_slot - 1)'s start minus disparity.
-    current_time_ms = (
-        spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(bid_slot - 1))
-        - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
-    )
-    messages = []
-
-    proposal_slot, validator_index = find_upcoming_proposal_slot(spec, state)
-    signed_prefs = build_signed_proposer_preferences(
-        spec,
-        state,
-        proposal_slot=proposal_slot,
-        validator_index=validator_index,
-        fee_recipient=common_fee,
-        target_gas_limit=parent_gas_limit,
-    )
-    yield get_filename(signed_prefs), signed_prefs
-    result, reason = run_validate_gossip(
-        spec,
-        seen=seen,
-        store=store,
-        signed_proposer_preferences=signed_prefs,
-        current_time_ms=current_time_ms,
-    )
-    assert result == "valid"
-    assert reason is None
-    messages.append(
-        {
-            "current_time_ms": int(current_time_ms),
-            "message": get_filename(signed_prefs),
-            "expected": result,
-        }
-    )
-
-    yield get_filename(head_payload), head_payload
-    result, reason = run_validate_gossip(
-        spec, seen=seen, store=store, signed_execution_payload_envelope=head_payload
-    )
-    assert result == "valid"
-    assert reason is None
-    messages.append(
-        {
-            "message": get_filename(head_payload),
-            "expected": result,
-        }
-    )
-
-    signed_bid = build_signed_bid(
-        spec,
-        state,
-        builder_index=spec.BuilderIndex(0),
-        slot=proposal_slot,
-        parent_block_hash=head_payload.message.payload.block_hash,
-        parent_block_root=parent_root,
-        fee_recipient=common_fee,
-        gas_limit=parent_gas_limit,
-        value=spec.Gwei(1),
-    )
-    yield get_filename(signed_bid), signed_bid
-
-    # Validate the bid exactly at the lower edge of the disparity window.
-    current_time_ms = (
-        spec.compute_time_at_slot_ms(store.genesis_time_ms, spec.Slot(proposal_slot - 1))
-        - spec.config.MAXIMUM_GOSSIP_CLOCK_DISPARITY
-    )
-    result, reason = run_validate_gossip(
-        spec,
-        seen=seen,
-        store=store,
-        signed_execution_payload_bid=signed_bid,
-        current_time_ms=current_time_ms,
-    )
-    assert result == "valid"
-    assert reason is None
-    messages.append(
-        {
-            "current_time_ms": int(current_time_ms),
-            "message": get_filename(signed_bid),
-            "expected": result,
         }
     )
 
@@ -739,11 +870,11 @@ def test_gossip_execution_payload_bid__ignore_slot_outside_upper_disparity(spec,
 
 @with_gloas_and_later
 @spec_state_test_with_matching_config
-def test_gossip_execution_payload_bid__ignore_duplicate_from_builder(spec, state):
-    """A second bid from the same builder for the same slot and parent is ignored.
+def test_gossip_execution_payload_bid__ignore_builder_bid_limit_reached(spec, state):
+    """A bid past the builder's bid limit for the same slot and parent is ignored.
 
-    The first bid is fully valid, seeding the seen-bids cache, so the second
-    (higher-value) bid from the same builder hits the duplicate check.
+    Each bid up to the builder's limit is fully valid, filling its bid count, so
+    the next (higher-value) bid from the same builder hits the bid limit check.
     """
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
@@ -769,7 +900,45 @@ def test_gossip_execution_payload_bid__ignore_duplicate_from_builder(spec, state
     ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
 
     builder_index = spec.BuilderIndex(0)
-    first_bid = build_signed_bid(
+    bid_limit = spec.get_builder_bid_limit(state, builder_index)
+    assert bid_limit > 1
+
+    current_time_ms += 30
+    for value in range(1, bid_limit + 1):
+        bid = build_signed_bid(
+            spec,
+            state,
+            builder_index=builder_index,
+            slot=proposal_slot,
+            parent_block_hash=parent_block_hash,
+            parent_block_root=parent_root,
+            fee_recipient=common_fee,
+            gas_limit=parent_gas_limit,
+            value=spec.Gwei(value),
+        )
+        yield get_filename(bid), bid
+
+        current_time_ms += 10
+        result, reason = run_validate_gossip(
+            spec,
+            seen=seen,
+            store=store,
+            signed_execution_payload_bid=bid,
+            current_time_ms=current_time_ms,
+        )
+        assert result == "valid"
+        assert reason is None
+        messages.append(
+            {
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(bid),
+                "expected": result,
+            }
+        )
+
+    # One more bid from the same builder for the same slot and parent, with a
+    # higher value so only the bid limit check can trigger the ignore.
+    extra_bid = build_signed_bid(
         spec,
         state,
         builder_index=builder_index,
@@ -778,57 +947,148 @@ def test_gossip_execution_payload_bid__ignore_duplicate_from_builder(spec, state
         parent_block_root=parent_root,
         fee_recipient=common_fee,
         gas_limit=parent_gas_limit,
-        value=spec.Gwei(1),
+        value=spec.Gwei(bid_limit + 1),
     )
-    yield get_filename(first_bid), first_bid
-
-    current_time_ms += 40
-    result, reason = run_validate_gossip(
-        spec,
-        seen=seen,
-        store=store,
-        signed_execution_payload_bid=first_bid,
-        current_time_ms=current_time_ms,
-    )
-    assert result == "valid"
-    assert reason is None
-    messages.append(
-        {
-            "current_time_ms": int(current_time_ms),
-            "message": get_filename(first_bid),
-            "expected": result,
-        }
-    )
-
-    # A second bid from the same builder for the same slot and parent, with a
-    # higher value so only the duplicate check can trigger the ignore.
-    duplicate_bid = build_signed_bid(
-        spec,
-        state,
-        builder_index=builder_index,
-        slot=proposal_slot,
-        parent_block_hash=parent_block_hash,
-        parent_block_root=parent_root,
-        fee_recipient=common_fee,
-        gas_limit=parent_gas_limit,
-        value=spec.Gwei(2),
-    )
-    yield get_filename(duplicate_bid), duplicate_bid
+    yield get_filename(extra_bid), extra_bid
 
     current_time_ms += 10
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
         store=store,
-        signed_execution_payload_bid=duplicate_bid,
+        signed_execution_payload_bid=extra_bid,
         current_time_ms=current_time_ms,
     )
     assert result == "ignore"
-    assert reason == "already seen valid bid for this slot, parent, and builder"
+    assert reason == "builder has reached its bid limit for this slot and parent"
     messages.append(
         {
             "current_time_ms": int(current_time_ms),
-            "message": get_filename(duplicate_bid),
+            "message": get_filename(extra_bid),
+            "expected": result,
+            "reason": reason,
+        }
+    )
+
+    yield "messages", "meta", messages
+
+
+@with_gloas_and_later
+@spec_state_test_with_matching_config
+def test_gossip_execution_payload_bid__ignore_builder_bid_limit_excludes_pending_balance(
+    spec, state
+):
+    """A builder's bid limit does not count balance owed in pending withdrawals.
+
+    The parent's bid pays builder 0, and only a descendant block settles a
+    payment, so the payment is still pending at the bid's slot. The builder's
+    balance is a whole number of ETH, so the pending payment lowers its bid
+    limit by one. The bids up to the lowered limit are valid, and the next
+    (higher-value) bid, which the builder's full balance would have allowed,
+    hits the bid limit check.
+    """
+    anchor_state = state.copy()
+    yield "topic", "meta", "execution_payload_bid"
+
+    requests = spec.ExecutionRequests()
+    store, blocks, parent_root, builder_index, pending_value = (
+        setup_store_finalized_with_head_payment(spec, state, requests)
+    )
+    head_payload = record_head_payload(spec, state, store, blocks, execution_requests=requests)
+    yield "state", anchor_state
+    for signed in blocks:
+        yield get_filename(signed), signed
+    yield "blocks", "meta", get_blocks_meta(blocks, head_payload)
+
+    current_time_ms = spec.compute_time_at_slot_ms(store.genesis_time_ms, state.slot)
+    messages = []
+    (
+        seen,
+        common_fee,
+        parent_gas_limit,
+        proposal_slot,
+        parent_block_hash,
+        current_time_ms,
+    ) = yield from _seed_bid_context(spec, state, store, head_payload, messages, current_time_ms)
+
+    advanced_state = store.block_states[parent_root].copy()
+    spec.process_slots(advanced_state, proposal_slot)
+    balance = advanced_state.builders[builder_index].balance
+    assert balance % spec.ETH_TO_GWEI == 0
+    assert 0 < pending_value < spec.ETH_TO_GWEI
+    assert (
+        spec.get_pending_balance_to_withdraw_for_builder(advanced_state, builder_index)
+        == pending_value
+    )
+    bid_limit = spec.get_builder_bid_limit(advanced_state, builder_index)
+    assert bid_limit == balance // spec.ETH_TO_GWEI - 1
+    assert bid_limit > 0
+
+    current_time_ms += 30
+    for value in range(1, bid_limit + 1):
+        bid = build_signed_bid(
+            spec,
+            state,
+            builder_index=builder_index,
+            slot=proposal_slot,
+            parent_block_hash=parent_block_hash,
+            parent_block_root=parent_root,
+            fee_recipient=common_fee,
+            gas_limit=parent_gas_limit,
+            value=spec.Gwei(value),
+        )
+        yield get_filename(bid), bid
+
+        current_time_ms += 10
+        result, reason = run_validate_gossip(
+            spec,
+            seen=seen,
+            store=store,
+            signed_execution_payload_bid=bid,
+            current_time_ms=current_time_ms,
+        )
+        assert result == "valid"
+        assert reason is None
+        messages.append(
+            {
+                "current_time_ms": int(current_time_ms),
+                "message": get_filename(bid),
+                "expected": result,
+            }
+        )
+
+    # One more bid from the same builder for the same slot and parent, with a
+    # higher value that the builder can cover, so only the bid limit check can
+    # trigger the ignore.
+    extra_value = spec.Gwei(bid_limit + 1)
+    assert spec.can_builder_cover_bid(advanced_state, builder_index, extra_value)
+    extra_bid = build_signed_bid(
+        spec,
+        state,
+        builder_index=builder_index,
+        slot=proposal_slot,
+        parent_block_hash=parent_block_hash,
+        parent_block_root=parent_root,
+        fee_recipient=common_fee,
+        gas_limit=parent_gas_limit,
+        value=extra_value,
+    )
+    yield get_filename(extra_bid), extra_bid
+
+    current_time_ms += 10
+    result, reason = run_validate_gossip(
+        spec,
+        seen=seen,
+        store=store,
+        signed_execution_payload_bid=extra_bid,
+        current_time_ms=current_time_ms,
+    )
+    assert result == "ignore"
+    assert reason == "builder has reached its bid limit for this slot and parent"
+    messages.append(
+        {
+            "current_time_ms": int(current_time_ms),
+            "message": get_filename(extra_bid),
             "expected": result,
             "reason": reason,
         }
@@ -899,7 +1159,7 @@ def test_gossip_execution_payload_bid__ignore_not_highest_value(spec, state):
         }
     )
 
-    # A lower-value bid from a different builder (so the duplicate check does
+    # A lower-value bid from a different builder (so the bid limit check does
     # not apply) is not the highest bid for this slot and parent.
     lower_bid = build_signed_bid(
         spec,
@@ -999,7 +1259,7 @@ def test_gossip_execution_payload_bid__ignore_equal_value(spec, state):
         }
     )
 
-    # A second bid from a different builder (so the duplicate check does not
+    # A second bid from a different builder (so the bid limit check does not
     # apply) with value exactly equal to the best is not strictly higher.
     equal_bid = build_signed_bid(
         spec,
@@ -1098,7 +1358,7 @@ def test_gossip_execution_payload_bid__valid_higher_value(spec, state):
         }
     )
 
-    # A second bid from a different builder (so the duplicate check does not
+    # A second bid from a different builder (so the bid limit check does not
     # apply) with a strictly higher value is the new highest bid.
     higher_bid = build_signed_bid(
         spec,
@@ -1207,12 +1467,12 @@ def test_gossip_execution_payload_bid__reject_builder_index_out_of_range(spec, s
 @spec_state_test_with_matching_config
 def test_gossip_execution_payload_bid__ignore_builder_cannot_cover(spec, state):
     """A bid whose value exceeds what the builder can cover is ignored."""
-    # Zero out the builder's balance so it cannot cover even a tiny bid. This
-    # is baked into the anchor state so replaying the blocks preserves it.
-    # Builder activity does not depend on balance, so this is the only
-    # failing condition.
+    # Leave the builder with only the minimum balance, so it cannot cover even
+    # a tiny bid but is still allowed one bid. This is baked into the anchor
+    # state so replaying the blocks preserves it. Builder activity does not
+    # depend on balance, so this is the only failing condition.
     builder_index = spec.BuilderIndex(0)
-    state.builders[builder_index].balance = spec.Gwei(0)
+    state.builders[builder_index].balance = spec.MIN_DEPOSIT_AMOUNT
     anchor_state = state.copy()
     yield "topic", "meta", "execution_payload_bid"
 
@@ -2034,7 +2294,14 @@ def test_gossip_execution_payload_bid__reject_slot_not_higher_than_parent(spec, 
     messages = []
     seen, common_fee, parent_gas_limit, _, parent_block_hash, current_time_ms = yield from (
         _seed_bid_context(
-            spec, state, store, head_payload, messages, current_time_ms, seed_prefs=False
+            spec,
+            state,
+            store,
+            head_payload,
+            messages,
+            current_time_ms,
+            seed_prefs=False,
+            advance_to_payload_attestation_due=False,
         )
     )
 
@@ -2243,6 +2510,9 @@ def test_gossip_execution_payload_bid__ignore_parent_state_unavailable(spec, sta
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 50
+    current_time_ms = _advance_to_payload_attestation_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -2402,6 +2672,9 @@ def test_gossip_execution_payload_bid__ignore_preferences_not_seen(spec, state):
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 50
+    current_time_ms = _advance_to_payload_attestation_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -2502,6 +2775,9 @@ def test_gossip_execution_payload_bid__ignore_fee_recipient_mismatch(spec, state
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 40
+    current_time_ms = _advance_to_payload_attestation_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -2603,6 +2879,9 @@ def test_gossip_execution_payload_bid__ignore_gas_limit_incompatible(spec, state
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 40
+    current_time_ms = _advance_to_payload_attestation_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -2708,6 +2987,9 @@ def test_gossip_execution_payload_bid__reject_incorrect_prev_randao(spec, state)
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 40
+    current_time_ms = _advance_to_payload_attestation_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -2811,6 +3093,9 @@ def test_gossip_execution_payload_bid__reject_block_hash_equals_parent_block_has
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 40
+    current_time_ms = _advance_to_payload_attestation_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -2911,6 +3196,9 @@ def test_gossip_execution_payload_bid__reject_invalid_signature(spec, state):
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 40
+    current_time_ms = _advance_to_payload_attestation_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -3026,6 +3314,9 @@ def _run_bid_gas_limit_scenario(
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 40
+    current_time_ms = _advance_to_payload_attestation_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -3057,11 +3348,11 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
     store, blocks, _ = setup_store_advanced_for_bid(spec, state)
 
     parent_gas_limit = spec.Uint64(30_000_000)
-    payload_block_hash = spec.Hash32(b"\xaa" * 32)
     payload_block = build_empty_block_for_next_slot(spec, state)
     payload_bid = payload_block.body.signed_execution_payload_bid.message
-    payload_bid.block_hash = payload_block_hash
     payload_bid.gas_limit = parent_gas_limit
+    commit_bid_to_execution_payload(spec, state, payload_block)
+    payload_block_hash = payload_bid.block_hash
     signed_payload_block = state_transition_and_sign_block(spec, state, payload_block)
     payload_root = record_block_in_store(spec, store, signed_payload_block, state.copy())
     blocks.append(signed_payload_block)
@@ -3166,6 +3457,9 @@ def test_gossip_execution_payload_bid__valid_gas_limit_after_empty_parent(spec, 
     )
 
     current_time_ms += 40
+    current_time_ms = _advance_to_payload_attestation_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,
@@ -3415,6 +3709,9 @@ def test_gossip_execution_payload_bid__valid_requires_state_advanced_across_epoc
     yield get_filename(signed_bid), signed_bid
 
     current_time_ms += 40
+    current_time_ms = _advance_to_payload_attestation_due(
+        spec, store, signed_bid.message.slot, current_time_ms
+    )
     result, reason = run_validate_gossip(
         spec,
         seen=seen,

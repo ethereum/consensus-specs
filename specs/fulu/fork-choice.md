@@ -91,7 +91,9 @@ def is_data_available(beacon_block_root: Root) -> bool:
     # `MIN_EPOCHS_FOR_DATA_COLUMN_SIDECARS_REQUESTS` epochs.
     column_sidecars = retrieve_column_sidecars(beacon_block_root)
     return all(
-        verify_data_column_sidecar(column_sidecar)
+        hash_tree_root(column_sidecar.signed_block_header.message) == beacon_block_root
+        and verify_data_column_sidecar(column_sidecar)
+        and verify_data_column_sidecar_inclusion_proof(column_sidecar)
         and verify_data_column_sidecar_kzg_proofs(column_sidecar)
         for column_sidecar in column_sidecars
     )

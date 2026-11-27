@@ -163,7 +163,7 @@ def get_forkchoice_store(anchor_state: BeaconState, anchor_block: BeaconBlock) -
         payload_timeliness_vote={anchor_root: [None] * PTC_SIZE},
         payload_data_availability_vote={anchor_root: [None] * PTC_SIZE},
         # [New in Heze:EIP7805]
-        payload_inclusion_list_satisfaction={},
+        payload_inclusion_list_satisfaction={anchor_root: True},
     )
 ```
 
@@ -266,7 +266,8 @@ def on_inclusion_list(store: Store, signed_inclusion_list: SignedInclusionList) 
     inclusion_list = signed_inclusion_list.message
     current_slot = get_current_slot(store)
 
-    # The slot must be within the retention window
+    # The slot must be within the retention window. If inclusion lists are in the future,
+    # their consideration must be delayed until their slot starts.
     assert inclusion_list.slot <= current_slot
     assert inclusion_list.slot + MIN_SLOTS_FOR_INCLUSION_LISTS_REQUESTS >= current_slot
 
@@ -319,6 +320,12 @@ def on_execution_payload_envelope(
     Run ``on_execution_payload_envelope`` upon receiving a new execution payload envelope.
     """
     envelope = signed_envelope.message
+
+    # [New in Heze:EIP7805]
+    # Return early if the payload is already known
+    if is_payload_verified(store, envelope.beacon_block_root):
+        return
+
     # The corresponding beacon block root needs to be known
     assert envelope.beacon_block_root in store.block_states
 
