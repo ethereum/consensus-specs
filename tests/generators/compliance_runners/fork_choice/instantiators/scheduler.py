@@ -176,8 +176,8 @@ class MessageScheduler:
                 self.enqueue_message(item)
             valid = False
         if valid:
-            applied_events.extend(self.purge_queue())
             self.process_block_messages(signed_block)
+            applied_events.extend(self.purge_queue())
         return valid, applied_events
 
     def process_payload(self, signed_payload) -> bool:
