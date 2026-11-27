@@ -329,6 +329,7 @@ TARGET_HANDLERS = {
     "withdrawal_processing": "withdrawals",
     "bid_processing": "execution_payload_bid",
     "builder_pending_withdrawal_processing": "withdrawals",
+    "inactivity_updates_loop": "inactivity_updates",
     "process_operations": "blocks",
     "process_operations_dispatch": "blocks",
     "process_slot": "slots",
@@ -345,6 +346,8 @@ def load_observations(tests: list[Path], target: Target, preset: str) -> list[Ob
         if target.name in (
             "process_operations_dispatch",
             "builder_pending_withdrawal_processing",
+            "inactivity_updates",
+            "inactivity_updates_loop",
             "withdrawal_processing",
         ):
             dimensions_path = Path(case.test_dir) / "dimensions.yaml"

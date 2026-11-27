@@ -1,4 +1,4 @@
-"""One inactivity-update iteration, observed on a singleton eligible set.
+"""One inactivity-update iteration, observed on the first eligible validator.
 
 Activation prerequisites are included by conditional coverage formulas. Missing
 post-state data affects observation availability, not factor activation.
@@ -19,6 +19,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     dimension,
     each,
     exhaustive,
+    implies,
     Integer,
     maximum,
     nwise,
@@ -28,7 +29,7 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
 from .cases import arithmetic_witnesses
 from .observation import observe_attributes
 
-single_eligible = attribute("single_eligible", Boolean())
+focus_present = attribute("focus_present", Boolean())
 post_present = attribute("post_present", Boolean())
 score = attribute("score", Integer(min=0))
 post_score = attribute("post_score", Integer(min=0))
@@ -74,6 +75,7 @@ ALL_FACTORS = BODY.declarations
 CONSTRAINTS = (
     all_of(ACTIVE, FLAGGED, ~SLASHED) == PARTICIPATING,
     any_of(ACTIVE, SLASHED),
+    implies(FLAGGED, ACTIVE),
 )
 
 
@@ -123,10 +125,10 @@ PROFILES = {
     "standard": NORMAL,
 }
 COVERAGE = coverage_spec(
-    "inactivity_updates",
+    "inactivity_updates_loop",
     focus="process_inactivity_updates: loop body",
-    record="one eligible validator in a singleton vector",
-    applicable_when=single_eligible,
+    record="the first eligible validator in a committee-sized vector",
+    applicable_when=focus_present,
     aspects=ASPECTS,
     profiles=PROFILES,
     constraints=CONSTRAINTS,

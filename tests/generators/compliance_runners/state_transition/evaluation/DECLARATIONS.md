@@ -416,7 +416,9 @@ concrete witnesses around zero, the leak threshold, and the
 participation-adjusted recovery threshold. These witnesses preserve
 relationships between score, participation, recovery saturation, and the
 resulting score change. Materialization completes partial obligations with a
-feasible full assignment and selects its score/finality-delay witness.
+feasible full assignment and selects its score/finality-delay witness. The loop
+observes the first eligible validator in a committee-sized state. Target votes
+come from included attestations for validators active in the previous epoch.
 Regenerate existing vectors for these three targets: the numeric factors now
 claim comparison buckets rather than booleans.
 
@@ -433,14 +435,23 @@ mainnet candidate pool. The bounded search retries with deterministic RANDAO
 mixes and verifies its result using spec proposer selection. Regenerate older
 proposer-lookahead vectors, whose candidate-count claims were booleans.
 
-The outer `inactivity_updates` target declares the genesis, nonempty-loop, and
-slashed-validator prerequisites as factor dependencies. Single-factor coverage
-therefore includes their prerequisite assignments. Its `eligible` profile now
-covers the full conditional aspect, including interactions between the slashed
-boundary and the ineligible-validator flag; the old manual shape/boundary union
-covered fewer interactions. Missing post-state only affects observation of
-`scores_changed`. Full-configuration feasibility can also prune combinations
-whose impossibility was invisible to the legacy partial-assignment filtering.
+The outer `inactivity_updates` target declares the genesis, committee-sized
+eligible set, and slashed-validator prerequisites as factor dependencies.
+Single-factor coverage therefore includes their prerequisite assignments. Its
+`eligible` profile now covers the full conditional aspect, including
+interactions between the slashed boundary and the ineligible-validator flag; the
+old manual shape/boundary union covered fewer interactions. Missing post-state
+only affects observation of `scores_changed`. Full-configuration feasibility can
+also prune combinations whose impossibility was invisible to the legacy
+partial-assignment filtering. Both materializers advance to the final slot, set
+the arithmetic score witnesses, and run slot processing and the epoch prefix
+through justification and finalization. The outer fixtures exercise the exact
+withdrawal boundary and the epoch immediately before it. Minimal replays slot
+and epoch processing from the signed slashing. Mainnet uses a synthetic
+checkpoint near withdrawal maturity with opaque roots for the archived prefix,
+which leaves the execution chain at genesis. It samples the two sync committees
+at their selection epochs, then replays the historical summary append, slashings
+reset, and sync committee rotation at the cutoff.
 
 Observations contain exactly the declared attributes and factor values. Outcome
 coverage is explicit: declare a `post_present` attribute and an `accepted`

@@ -1,10 +1,15 @@
-"""Materialize singleton-eligible vectors for the inactivity-update loop."""
+"""Materialize the first eligible validator's inactivity-update witnesses."""
 
 from __future__ import annotations
 
+from functools import cached_property
 from typing import Any, TYPE_CHECKING
 
-from eth_consensus_specs.test.helpers.genesis import create_genesis_state
+from eth_consensus_specs.test.helpers.epoch_processing import run_epoch_processing_to
+from tests.generators.compliance_runners.state_transition.inactivity_updates.history import (
+    FOCUS_INDEX,
+    InactivityHistory,
+)
 from tests.generators.compliance_runners.state_transition.materializer import Materializer
 
 from .cases import arithmetic_witnesses
@@ -18,13 +23,12 @@ class InactivityUpdatesLoopMaterializer(Materializer):
     runner_name = "epoch_processing"
     handler_name = "inactivity_updates"
 
+    @cached_property
+    def _history(self):
+        return InactivityHistory(self.spec)
+
     def materialize_solution(self, solution: Any) -> tuple[dict, list[TestCasePart]]:
         spec = self.spec
-        pre = create_genesis_state(
-            spec,
-            validator_balances=[spec.MAX_EFFECTIVE_BALANCE] * 64,
-            activation_threshold=spec.MAX_EFFECTIVE_BALANCE,
-        )
         assignment = vars(solution)
         witnesses = arithmetic_witnesses(
             int(spec.MIN_EPOCHS_TO_INACTIVITY_PENALTY),
@@ -38,29 +42,15 @@ class InactivityUpdatesLoopMaterializer(Materializer):
             if frozenset(key) <= frozenset(assignment.items())
         ]
         _, (score, delay) = min(matches, key=lambda item: repr(item[0]))
-        epoch = int(spec.GENESIS_EPOCH) + delay + 1
-        pre.slot = spec.Slot((epoch + 1) * int(spec.SLOTS_PER_EPOCH) - 1)
-        pre.finalized_checkpoint = type(pre.finalized_checkpoint)(
-            epoch=int(spec.get_previous_epoch(pre)) - delay,
-            root=pre.finalized_checkpoint.root,
-        )
-        focus_index = self.rng.randrange(len(pre.validators))
-        for index, validator in enumerate(pre.validators):
-            if index != focus_index:
-                validator.activation_epoch = spec.FAR_FUTURE_EPOCH
-        validator = pre.validators[focus_index]
-        active = assignment["is_active_in_previous"]
-        flagged = assignment["has_target_flag"]
-        slashed = assignment["is_slashed"]
-        validator.slashed = slashed
-        validator.activation_epoch = spec.GENESIS_EPOCH if active else spec.FAR_FUTURE_EPOCH
-        validator.exit_epoch = spec.FAR_FUTURE_EPOCH
-        validator.withdrawable_epoch = spec.FAR_FUTURE_EPOCH
-        pre.inactivity_scores[focus_index] = score
-        if flagged:
-            pre.previous_epoch_participation[focus_index] = spec.ParticipationFlags(
-                1 << int(spec.TIMELY_TARGET_FLAG_INDEX)
-            )
+        pre = self._history.loop(
+            delay=delay,
+            active=assignment["is_active_in_previous"],
+            flagged=assignment["has_target_flag"],
+            slashed=assignment["is_slashed"],
+        ).copy()
+        pre.inactivity_scores[FOCUS_INDEX] = spec.Uint64(score)
+        run_epoch_processing_to(spec, pre, "process_inactivity_updates")
+        assert spec.get_finality_delay(pre) == delay
         post = pre.copy()
         spec.process_inactivity_updates(post)
         claimed = self.claimed_record(TARGET, solution)

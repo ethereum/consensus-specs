@@ -5,10 +5,8 @@ The handler is a genesis guard plus a loop over
 the *set* rather than of one iteration:
 
   method    ``get_current_epoch(state) == GENESIS_EPOCH`` and the early return
-  eligible  the shape of ``get_eligible_validator_indices``: how many indices it
-            yields, whether the filter excludes anyone, and which disjunct
-            (active in the previous epoch / slashed and not yet withdrawable)
-            admits them
+  eligible  the committee-sized set, including which validator roles are
+            excluded and whether slashed validators are still withdrawable
   loop      properties that do not exist for a single validator: the mix of
             branches taken across iterations, and whether any score changed
 
@@ -16,15 +14,13 @@ the *set* rather than of one iteration:
 from one that applies the first index's branch to every index, so it belongs
 here and not in the body target.
 
-The loop body itself is covered by ``inactivity_updates_loop``, on vectors with
-exactly one eligible index, where per-validator factors are well defined.
+The loop body itself is covered by ``inactivity_updates_loop``, which observes
+the first eligible validator in a committee-sized vector.
 """
 
 from itertools import combinations
 
 from tests.generators.compliance_runners.state_transition.evaluation.declarations import (
-    all_of,
-    any_of,
     aspect,
     attribute,
     bind,
@@ -40,7 +36,6 @@ from tests.generators.compliance_runners.state_transition.evaluation.declaration
     implies,
     Integer,
     nwise,
-    present,
     union,
 )
 
@@ -118,20 +113,11 @@ ZERO_SCORE = LOOP.ref("has_zero_score_eligible")
 CHANGED = LOOP.ref("scores_changed")
 
 CONSTRAINTS = (
-    implies(
-        ELIGIBLE_COUNT == "ZERO",
-        all_of(~any_of(*(present(f) for f in LOOP.declarations)), ~HAS_ACTIVE, ~UNWITHDRAWABLE),
-    ),
-    implies(ELIGIBLE_COUNT == "ONE", BRANCH != "MIXED"),
-    implies(ELIGIBLE_COUNT != "ZERO", any_of(HAS_ACTIVE, HAS_SLASHED & UNWITHDRAWABLE)),
-    # The genesis state has a fixed 64-validator set in this materializer.
-    implies(~HAS_INELIGIBLE, present(ELIGIBLE_COUNT) & (ELIGIBLE_COUNT == "MANY")),
-    implies((ELIGIBLE_COUNT == "ONE") & ZERO_SCORE & CHANGED, LEAKING),
+    # Gloas needs an active committee in every previous-epoch slot.
+    implies(AFTER_GENESIS, HAS_ACTIVE & (ELIGIBLE_COUNT == "MANY")),
+    implies(HAS_SLASHED & ~UNWITHDRAWABLE, HAS_INELIGIBLE),
     implies(~CHANGED, ZERO_SCORE & ~LEAKING),
-    implies((ELIGIBLE_COUNT == "ONE") & ZERO_SCORE & CHANGED, BRANCH != "ALL_DECREMENT"),
-    implies(~HAS_ACTIVE, BRANCH == "ALL_INCREMENT"),
     implies(HAS_SLASHED & UNWITHDRAWABLE, BRANCH != "ALL_DECREMENT"),
-    implies(~HAS_INELIGIBLE & HAS_SLASHED, BRANCH != "ALL_DECREMENT"),
 )
 
 BRANCHES = exhaustive(LOOP.declarations[:3])

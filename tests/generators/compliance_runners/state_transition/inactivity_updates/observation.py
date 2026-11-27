@@ -2,8 +2,8 @@
 
 Two targets abstract this handler: this package covers the genesis guard and
 the shape of ``get_eligible_validator_indices``, and
-``inactivity_updates_loop`` covers the loop body on vectors with exactly one
-eligible index.  Both read the same things out of a decoded vector, so the
+``inactivity_updates_loop`` covers the loop body for the first eligible index.
+Both read the same things out of a decoded vector, so the
 recovery lives here and neither target can drift in how it reads
 ``get_eligible_validator_indices`` or ``get_unslashed_participating_indices``.
 """
@@ -73,13 +73,9 @@ class Slice:
     # --- loop-wide views ------------------------------------------------------
 
     @property
-    def single_eligible(self) -> bool:
-        return len(self.eligible) == 1
-
-    @property
     def focus(self) -> Any:
-        """The only eligible index, or ``NA`` when the loop is not a singleton."""
-        return self.eligible[0] if self.single_eligible else NA
+        """The first eligible index, or ``NA`` when the loop has no iterations."""
+        return self.eligible[0] if self.eligible else NA
 
     @property
     def participating_count(self) -> int:
