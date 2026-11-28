@@ -51,12 +51,25 @@ def _hash_to_G2(message):
     return G2.hash_to_curve(message, b"BLS_SIG_BLS12381G2_XMD:SHA-256_SSWU_RO_POP_")
 
 
+def _deserialize(group, data):
+    """
+    Deserialize a compressed point in `group` without a subgroup check.
+    Raise `ValueError` if `data` is not the canonical encoding of the point,
+    e.g. a point at infinity with non-zero bits after the flags, which
+    py_arkworks_bls12381 accepts.
+    """
+    point = group.from_compressed_bytes_unchecked(data)
+    if point.to_compressed_bytes() != bytes(data):
+        raise ValueError("non-canonical point encoding")
+    return point
+
+
 def _pubkey_to_point(pubkey):
     """
     Deserialize `pubkey` to a G1 point, or `None` if the encoding is invalid.
     """
     try:
-        return G1.from_compressed_bytes_unchecked(pubkey)
+        return _deserialize(G1, pubkey)
     except Exception:
         return None
 
@@ -66,7 +79,7 @@ def _signature_to_point(signature):
     Deserialize `signature` to a G2 point, or `None` if the encoding is invalid.
     """
     try:
-        return G2.from_compressed_bytes_unchecked(signature)
+        return _deserialize(G2, signature)
     except Exception:
         return None
 
@@ -281,7 +294,7 @@ def bytes48_to_G1(bytes48):
           of a point in G1, then this method will raise
           an exception.
     """
-    return G1.from_compressed_bytes_unchecked(bytes48)
+    return _deserialize(G1, bytes48)
 
 
 def bytes96_to_G2(bytes96):
@@ -292,4 +305,4 @@ def bytes96_to_G2(bytes96):
           of a point in G2, then this method will raise
           an exception.
     """
-    return G2.from_compressed_bytes_unchecked(bytes96)
+    return _deserialize(G2, bytes96)
